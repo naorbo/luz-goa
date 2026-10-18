@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --canopy-900: #15241C;
+    --canopy-800: #1C2E24;
+    --sand-100: #F4F1EB;
+    --sand-200: #EAE4D8;
+    --terracotta-500: #D46B54;
+    --ochre-500: #D4AF37;
+    --lagoon-600: #2A6F7B;
+    caret-color: #D46B54;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    background-color: #F4F1EB;
+    color: #1C2E24;
+    overflow-x: hidden;
+  }
+
+  /* Custom Selection & Scrollbars */
+  ::selection {
+    background-color: #D46B54;
+    color: #FAF8F5;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #EAE4D8;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #426B54;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #1C2E24;
+  }
+
+  /* Focus Rings */
+  *:focus-visible {
+    outline: 2px solid #D4AF37;
+    outline-offset: 2px;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes subtleReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reveal {
+  animation: subtleReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
