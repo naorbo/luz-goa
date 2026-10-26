@@ -217,8 +217,13 @@ export function generateWhatsAppDigest(
   families: YouthCenterFamily[],
   bookings: BookingRecord[],
   mode: 'user_weekly' | 'admin_system',
-  lang: Language
+  lang: Language,
+  businesses: import('../types/luz').CommunityBusiness[] = [],
+  appEnv: import('../types/luz').AppEnvironment = 'prod'
 ): string {
+  const envTagHe = appEnv === 'test' ? ' [סביבת TEST — נתוני הדגמה]' : '';
+  const envTagEn = appEnv === 'test' ? ' [TEST Sandbox]' : '';
+
   if (mode === 'user_weekly') {
     const events = entities.filter((e) => e.type === 'event' || e.type === 'workshop');
     const services = entities.filter((e) => e.type === 'service');
@@ -226,54 +231,77 @@ export function generateWhatsAppDigest(
 
     if (lang === 'he') {
       return [
-        `🌴 *LUZ גואה — הסיכום השבועי מהבוט "בן"* 🌴`,
+        `*LUZ גואה — הסיכום השבועי מהבוט "בן"*${envTagHe}`,
         `היי חברים! הנה מה שקורה השבוע בקהילה שלנו בקולום, פטנם ופאלולם:`,
         ``,
-        `📅 *אירועים ומפגשי מתנ"ס השבוע (${events.length}):*`,
-        ...events.map(
-          (e) =>
-            `• *${e.titleHe}* (${e.area}) — ${e.date ? e.date : 'קבוע שבועי'} בשעה ${e.startTime || '17:00'} | ${
-              e.priceCurrency === 'FREE' ? 'כניסה חופשית' : `${e.priceAmount} ${e.priceCurrency}`
-            }`
-        ),
+        `*אירועים ומפגשי מתנ"ס השבוע (${events.length}):*`,
+        ...(events.length === 0
+          ? ['• טרם פורסמו אירועים מאומתים לשבוע זה']
+          : events.map(
+              (e) =>
+                `• *${e.titleHe}* (${e.area}) — ${e.date ? e.date : 'קבוע שבועי'} בשעה ${e.startTime || '17:00'} | ${
+                  e.priceCurrency === 'FREE' ? 'כניסה חופשית' : `${e.priceAmount} ${e.priceCurrency}`
+                }`
+            )),
         ``,
-        `⚡ *שירותים שעתיים ומשאבי קהילה זמינים לתיאום (${services.length}):*`,
-        ...services.map(
-          (s) =>
-            `• *${s.titleHe}* — עם ${s.hostName} (${s.timeSlots?.length || 4} משבצות פנויות השבוע)`
-        ),
+        `*בעלי עסקים ומטפלים בקהילה (${businesses.length}):*`,
+        ...(businesses.length === 0
+          ? ['• האינדקס פתוח לרישום בעלי עסקים מאומתים']
+          : businesses.map(
+              (b) =>
+                `• *${b.businessNameHe}* (${b.specialtyHe}) — ${b.ownerNameHe}, ${b.area}`
+            )),
         ``,
-        `🏡 *בתים וסאבלטים פנויים בקהילה (${rentals.length}):*`,
-        ...rentals.map(
-          (r) =>
-            `• *${r.titleHe}* (${r.bedrooms} חדרים ב-${r.area}) — זמין מ-${r.availableFrom} עד ${r.availableTo} | ₹${r.pricePerNight}/לילה`
-        ),
+        `*משאבי קהילה ושירותים שעתיים (${services.length}):*`,
+        ...(services.length === 0
+          ? ['• אין משאבים שעתיים פעילים כרגע']
+          : services.map(
+              (s) =>
+                `• *${s.titleHe}* — עם ${s.hostName} (${s.timeSlots?.length || 4} משבצות פנויות השבוע)`
+            )),
         ``,
-        `💬 *רוצים להירשם או לעדכן העדפות?* פשוט השיבו לי כאן בוואטסאפ בטקסט חופשי!`,
+        `*בתים וסאבלטים פנויים בקהילה (${rentals.length}):*`,
+        ...(rentals.length === 0
+          ? ['• אין בתים פנויים רשומים כרגע']
+          : rentals.map(
+              (r) =>
+                `• *${r.titleHe}* (${r.bedrooms} חדרים ב-${r.area}) — זמין מ-${r.availableFrom} עד ${r.availableTo} | ₹${r.pricePerNight}/לילה`
+            )),
+        ``,
+        `*רוצים להירשם, לקבוע תור לבעל עסק או לעדכן העדפות?* פשוט השיבו לי כאן בוואטסאפ בטקסט חופשי!`,
       ].join('\n');
     } else {
       return [
-        `🌴 *LUZ Goa — Weekly Community Digest from "Ben"* 🌴`,
+        `*LUZ Goa — Weekly Community Digest from "Ben"*${envTagEn}`,
         `Here is what's happening this week across Colomb, Patnem & Palolem:`,
         ``,
-        `📅 *Events & Youth Center Sessions (${events.length}):*`,
-        ...events.map(
-          (e) =>
-            `• *${e.titleEn}* (${e.area}) — ${e.date || 'Weekly'} at ${e.startTime || '17:00'} | ${
-              e.priceCurrency === 'FREE' ? 'Free' : `${e.priceAmount} ${e.priceCurrency}`
-            }`
-        ),
+        `*Events & Youth Center Sessions (${events.length}):*`,
+        ...(events.length === 0
+          ? ['• No verified events scheduled yet']
+          : events.map(
+              (e) =>
+                `• *${e.titleEn}* (${e.area}) — ${e.date || 'Weekly'} at ${e.startTime || '17:00'} | ${
+                  e.priceCurrency === 'FREE' ? 'Free' : `${e.priceAmount} ${e.priceCurrency}`
+                }`
+            )),
         ``,
-        `⚡ *Hourly Services & Community Spaces (${services.length}):*`,
+        `*Community Businesses & Practitioners (${businesses.length}):*`,
+        ...(businesses.length === 0
+          ? ['• Directory open for verified community businesses']
+          : businesses.map(
+              (b) => `• *${b.businessNameEn}* (${b.specialtyEn}) — ${b.ownerNameEn}, ${b.area}`
+            )),
+        ``,
+        `*Hourly Community Spaces (${services.length}):*`,
         ...services.map((s) => `• *${s.titleEn}* — ${s.hostName} (${s.area})`),
         ``,
-        `🏡 *Community Homes & Sublets (${rentals.length}):*`,
+        `*Community Homes & Sublets (${rentals.length}):*`,
         ...rentals.map(
           (r) =>
             `• *${r.titleEn}* (${r.bedrooms}BHK in ${r.area}) — ${r.availableFrom} to ${r.availableTo} | ₹${r.pricePerNight}/night`
         ),
         ``,
-        `💬 *Reply directly to Ben on WhatsApp in free text to book or update your family profile!*`,
+        `*Reply directly to Ben on WhatsApp in free text to book or update your family profile!*`,
       ].join('\n');
     }
   }
@@ -288,23 +316,25 @@ export function generateWhatsAppDigest(
   ).length;
 
   return [
-    `📊 *LUZ Admin Digest — דוח מצב מערכת ואינטגרציות*`,
+    `*LUZ Admin Digest — דוח מצב מערכת ואינטגרציות*`,
+    `סביבה פעילה: ${appEnv === 'prod' ? 'PROD (נתוני אמת בלבד)' : 'TEST (סביבת בדיקות והדגמה)'}`,
     `תאריך הפקה: ${new Date().toLocaleDateString('he-IL')}`,
     `צוות: נאור, שי אליהו, שי זלוף`,
     ``,
-    `1️⃣ *צבר תוכן וישויות במערכת (${entities.length} סה"כ):*`,
+    `1. *צבר תוכן, אירועים ובעלי עסקים במערכת:*`,
     `• אירועים חד-פעמיים: ${entities.filter((e) => e.type === 'event').length}`,
     `• חוגים ומפגשי מתנ"ס: ${entities.filter((e) => e.type === 'workshop').length}`,
-    `• שירותים שעתיים ומשאבים: ${entities.filter((e) => e.type === 'service').length}`,
+    `• בעלי עסקים בקהילה (לפי קטגוריות): ${businesses.length}`,
+    `• משאבים ושירותים שעתיים: ${entities.filter((e) => e.type === 'service').length}`,
     `• בתים להשכרה (Date Range): ${entities.filter((e) => e.type === 'rental').length}`,
     ``,
-    `2️⃣ *סטטוס אינטגרציות טכנולוגיות:*`,
-    `• בוט וואטסאפ ("בן" - Unofficial API): מחובר ופעיל ✅`,
-    `• Scraper קבוצות וואטסאפ (שי): פעיל ✅ (${entities.filter((e) => e.ingestionSource === 'scraper' || e.ingestionSource === 'whatsapp_dm').length} פריטים נקלטו מהצ'אט)`,
+    `2. *סטטוס אינטגרציות טכנולוגיות:*`,
+    `• בוט וואטסאפ ("בן" - Unofficial API): מחובר ופעיל`,
+    `• Scraper קבוצות וואטסאפ (שי): פעיל (${entities.filter((e) => e.ingestionSource === 'scraper' || e.ingestionSource === 'whatsapp_dm').length} פריטים נקלטו מהצ'אט)`,
     `• חיבורי יומן ספקים (Calendly/Google): ${connectedCalendars} מסונכרנים אוטומטית, ${manualCalendars} בניהול ידני`,
     ``,
-    `3️⃣ *מרכז הנוער והרשמות (Engagement):*`,
-    `• הזמנות ו-RSVPs פעילים: ${bookings.length}`,
+    `3. *מרכז הנוער והרשמות (Engagement):*`,
+    `• הזמנות, תורים לעסקים ו-RSVPs פעילים: ${bookings.length}`,
     `• משפחות רשומות למתנ"ס בקולום: ${families.length} משפחות (${totalKids} ילדים רשומים)`,
     `• אומדן תקציב מתנ"ס חודשי: ₪${totalKids * 200} (כ-$${totalKids * 65})`,
   ].join('\n');

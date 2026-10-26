@@ -1,39 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Send,
-  Sparkles,
   UserCheck,
   Code2,
-  Calendar,
-  MapPin,
   Bot,
-  PlusCircle,
-  CheckCircle2,
+  Briefcase,
 } from 'lucide-react';
 import {
   LuzEntity,
+  CommunityBusiness,
   UserProfile,
   ChatMessage,
   Language,
-  GoaArea,
+  AppEnvironment,
 } from '../types/luz';
 import { parseWhatsAppMessageToDraft } from '../utils/calendarAndParser';
 
 interface BenBotViewProps {
   entities: LuzEntity[];
+  businesses: CommunityBusiness[];
   userProfile: UserProfile;
   lang: Language;
+  appEnv: AppEnvironment;
   onUpdateProfile: (profile: UserProfile) => void;
   onSelectEntity: (entity: LuzEntity) => void;
+  onNavigateToBusinesses: () => void;
   onAddEntityFromDM: (entity: LuzEntity) => void;
 }
 
 export const BenBotView: React.FC<BenBotViewProps> = ({
   entities,
+  businesses,
   userProfile,
   lang,
+  appEnv,
   onUpdateProfile,
   onSelectEntity,
+  onNavigateToBusinesses,
   onAddEntityFromDM,
 }) => {
   const isHe = lang === 'he';
@@ -41,17 +44,26 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
   const [showWebhookSpec, setShowWebhookSpec] = useState(false);
   const [input, setInput] = useState('');
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'm-1',
-      sender: 'ben',
-      text: isHe
-        ? 'אהלן! אני "בן", סוכן האירועים, המתנ"ס והשירותים של קהילת גואה ב-LUZ 🌴\nאפשר לשאול אותי מה קורה השבוע, לעדכן העדפות משפחה בטקסט חופשי (למשל גילאי ילדים ואזור), לחפש בית להשכרה, או להעלות אירוע ב-DM!'
-        : 'Hey! I am "Ben", the LUZ Goa Community Events & Services Agent 🌴\nAsk me what is happening this week, update your family preferences in free text, find a sublet, or DM me as a provider to publish an event!',
-      timestamp: '10:00',
-      recommendedEntityIds: ['evt-kickoff-colomb', 'wks-yc-thursday-makers'],
-    },
-  ]);
+  const buildWelcomeMessage = (): ChatMessage => ({
+    id: `m-welcome-${appEnv}-${lang}`,
+    sender: 'ben',
+    text: isHe
+      ? appEnv === 'prod'
+        ? 'אהלן! אני "בן", סוכן הקהילה של LUZ בגואה (סביבת PROD — נתוני אמת בלבד).\nאפשר לשאול אותי על אירועים, בעלי עסקים בקהילה (שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף, מאמנת ספורט ועוד), בתים להשכרה, או להעלות אירוע אמיתי ב-DM!'
+        : 'אהלן! אני "בן", סוכן הקהילה של LUZ בגואה (סביבת TEST / הדגמה).\nאפשר לשאול אותי מה קורה השבוע, לחפש בעלי עסקים בקהילה (שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף, מאמנת ספורט), לעדכן העדפות משפחה בטקסט חופשי, או להעלות אירוע ב-DM!'
+      : appEnv === 'prod'
+      ? 'Hey! I am "Ben", the LUZ Goa Community Agent (PROD — Verified Data Only).\nAsk me about events, community businesses (Shiatsu, Cosmetician, Tattoo Artist, Boxing, Fitness), sublets, or DM me to publish a real listing!'
+      : 'Hey! I am "Ben", the LUZ Goa Community Agent (TEST Sandbox).\nAsk me what is happening this week, search community businesses (Shiatsu, Cosmetician, Tattoo, Boxing, Fitness), update your profile, or DM me as a provider!',
+    timestamp: '10:00',
+    recommendedEntityIds: entities.slice(0, 2).map((e) => e.id),
+  });
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [buildWelcomeMessage()]);
+
+  useEffect(() => {
+    setMessages([buildWelcomeMessage()]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appEnv, lang]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +96,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
         area: draft.area,
         locationDetailsHe: draft.locationDetailsHe,
         locationDetailsEn: `${draft.area}, Goa`,
-        hostName: userProfile.name,
+        hostName: userProfile.name || (isHe ? 'חבר קהילה' : 'Community Member'),
         hostPhone: draft.hostPhone,
         priceAmount: draft.priceAmount,
         priceCurrency: draft.priceCurrency,
@@ -127,14 +139,14 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
       return;
     }
 
-    // 2. Scope Guard (Non-Event General Group Q&A is Phase 2 per MVP spec!)
+    // 2. Scope Guard (Non-Event General Group Q&A is Phase 2 per MVP spec)
     if (/חיתולים|סופרמרקט|מוסך|ויזה הודית|diapers|supermarket|grocery/i.test(lower)) {
       const reply: ChatMessage = {
         id: `b-${Date.now() + 1}`,
         sender: 'ben',
         text: isHe
-          ? 'בגרסת ה-MVP אני ממוקד אך ורק באירועים, מפגשי מרכז הנוער, שירותים שעתיים והשכרת בתים בקהילה 🎯\n(מענה על מידע כללי מהיסטוריית הקבוצות ייכנס בשלב הבא של ה-Roadmap). תרצה לראות את האירועים הקרובים בקולום?'
-          : 'In the current MVP, I focus exclusively on community events, Youth Center sessions, hourly services, and home rentals 🎯 (General group Q&A is scheduled for Phase 2). Would you like to see upcoming events in Colomb?',
+          ? 'בגרסת ה-MVP אני ממוקד באירועים, מפגשי מרכז הנוער, בעלי עסקים בקהילה והשכרת בתים.\n(מענה על מידע כללי מהיסטוריית הקבוצות ייכנס בשלב הבא). תרצה לראות את בעלי העסקים או האירועים הקרובים?'
+          : 'In the current MVP, I focus exclusively on community events, Youth Center sessions, community businesses, and home rentals. Would you like to browse local businesses or upcoming events?',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, userMsg, reply]);
@@ -142,7 +154,47 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
       return;
     }
 
-    // 3. Free-Text Profiling Detection
+    // 3. Querying Community Businesses by Category / Specialty!
+    if (
+      /שיאצו|עיסוי|דיקור|מטפל|קוסמטיק|פנים|טיפוח|מקעקע|קעקוע|איגרוף|מאמן|מאמנת|ספורט|כושר|פילאטיס|חלות|מחמצת|אפייה|בעלי עסקים|עסקים|עסק|shiatsu|massage|cosmetic|facial|tattoo|boxing|fitness|trainer|bakery|challah|business/i.test(
+        lower
+      )
+    ) {
+      const matchedBiz = businesses.filter((b) => {
+        if (/שיאצו|עיסוי|דיקור|מטפל|shiatsu|massage/i.test(lower))
+          return b.category === 'body_therapy';
+        if (/קוסמטיק|פנים|טיפוח|cosmetic|facial/i.test(lower))
+          return b.category === 'beauty_cosmetics';
+        if (/מקעקע|קעקוע|tattoo/i.test(lower)) return b.category === 'tattoo_art';
+        if (/איגרוף|מאמן|מאמנת|ספורט|כושר|פילאטיס|boxing|fitness|trainer/i.test(lower))
+          return b.category === 'fitness_martial';
+        if (/חלות|מחמצת|אפייה|bakery|challah/i.test(lower)) return b.category === 'food_culinary';
+        return true;
+      });
+
+      const finalBiz = matchedBiz.length > 0 ? matchedBiz : businesses;
+
+      const reply: ChatMessage = {
+        id: `b-${Date.now() + 1}`,
+        sender: 'ben',
+        text:
+          finalBiz.length === 0
+            ? isHe
+              ? 'בסביבת ה-PROD טרם הוזנו בעלי עסקים מאומתים (אפס מידע פיקטיבי). אפשר לעבור לסביבת TEST בראש המסך כדי לראות הדגמה מלאה של שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף ומאמנת ספורט!'
+              : 'No verified businesses have been added to PROD yet. Switch to TEST in the top bar to preview demo listings for Shiatsu, Cosmetician, Tattoo, Boxing, and Fitness!'
+            : isHe
+            ? `מצאתי ${finalBiz.length} בעלי עסקים מתאימים בקהילה שלנו בגואה! לחצו על כרטיס כדי לצפות במחירון המלא ולקבוע תור:`
+            : `Found ${finalBiz.length} matching community businesses in Goa! Tap a card to view prices and book a slot:`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        recommendedBusinessIds: finalBiz.map((b) => b.id),
+      };
+
+      setMessages((prev) => [...prev, userMsg, reply]);
+      setInput('');
+      return;
+    }
+
+    // 4. Free-Text Profiling Detection
     if (/ילד|ילדים|בני|גיל|גרים ב|מחפש רק|אנחנו מ|kids|age|live in|prefer/i.test(lower)) {
       const ageMatches = [...rawText.matchAll(/\b([4-9]|1[0-7])\b/g)].map((m) =>
         parseInt(m[1], 10)
@@ -179,8 +231,8 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
         id: `b-${Date.now() + 1}`,
         sender: 'ben',
         text: isHe
-          ? `עדכנתי את הפרופיל שלך! 📌\n• אזור מועדף: ${updated.preferredArea}\n• גילאי ילדים: ${updated.kidsAges.join(', ')}\n• תחומי עניין: ${updated.interests.join(', ')}\n\nהנה הפעילויות שהכי מתאימות לכם השבוע:`
-          : `Updated your family profile! 📌\n• Preferred Area: ${updated.preferredArea}\n• Kids Ages: ${updated.kidsAges.join(', ')}\n• Interests: ${updated.interests.join(', ')}\n\nHere are the top matches for you this week:`,
+          ? `עדכנתי את הפרופיל שלך:\n• אזור מועדף: ${updated.preferredArea}\n• גילאי ילדים: ${updated.kidsAges.join(', ') || 'לא צוין'}\n• תחומי עניין: ${updated.interests.join(', ') || 'כללי'}`
+          : `Updated your family profile:\n• Preferred Area: ${updated.preferredArea}\n• Kids Ages: ${updated.kidsAges.join(', ') || 'N/A'}\n• Interests: ${updated.interests.join(', ') || 'General'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         profileUpdated: true,
         recommendedEntityIds: matched,
@@ -190,15 +242,20 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
       return;
     }
 
-    // 4. Querying Houses / Rentals
+    // 5. Querying Houses / Rentals
     if (/בית|בתים|וילה|להשכרה|סאבלט|rent|villa|house/i.test(lower)) {
       const rentals = entities.filter((e) => e.type === 'rental').map((e) => e.id);
       const reply: ChatMessage = {
         id: `b-${Date.now() + 1}`,
         sender: 'ben',
-        text: isHe
-          ? `מצאתי ${rentals.length} בתים מאומתים להשכרה בקהילה (עם סיבים אופטיים וגיבוי חשמל). אפשר ללחוץ על כל בית כדי לבדוק תאריכים פנויים ולשריין:`
-          : `I found ${rentals.length} verified community homes available for sublet (with Fiber Wi-Fi & Power Backup). Tap any listing to check dates and reserve:`,
+        text:
+          rentals.length === 0
+            ? isHe
+              ? 'כרגע אין בתים רשומים בסביבת ה-PROD. ניתן לעבור לסביבת TEST להדגמת שריון בתים לפי תאריכים.'
+              : 'No verified homes listed in PROD yet. Switch to TEST to try date-range home booking.'
+            : isHe
+            ? `מצאתי ${rentals.length} בתים מאומתים להשכרה בקהילה (עם סיבים אופטיים וגיבוי חשמל). לחצו לבדיקת תאריכים:`
+            : `I found ${rentals.length} verified community homes available for sublet. Tap to check dates:`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         recommendedEntityIds: rentals,
       };
@@ -207,15 +264,20 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
       return;
     }
 
-    // 5. Querying Hourly Services / Spaces / Studio / Yoga / Doctor
+    // 6. Querying Hourly Community Spaces / Studio / Doctor
     if (/שעתי|אולפן|יוגה|רופא|עבודה|תור|studio|yoga|doctor|hourly|space/i.test(lower)) {
       const services = entities.filter((e) => e.type === 'service').map((e) => e.id);
       const reply: ChatMessage = {
         id: `b-${Date.now() + 1}`,
         sender: 'ben',
-        text: isHe
-          ? 'אלו השירותים השעתיים והמשאבים הקהילתיים (אולפן הקלטות במתנ"ס, מרחב עבודה עם סיבים, יוגה ורפואה) עם משבצות יומן פנויות השבוע:'
-          : 'Here are the hourly services and community spaces (Recording Studio, Fiber Co-Working, Yoga & Medical) with open calendar slots this week:',
+        text:
+          services.length === 0
+            ? isHe
+              ? 'אין כרגע משאבים שעתיים רשומים ב-PROD.'
+              : 'No hourly community spaces listed in PROD yet.'
+            : isHe
+            ? 'אלו המשאבים והשירותים השעתיים הפנויים השבוע:'
+            : 'Here are the hourly community spaces and services with open slots this week:',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         recommendedEntityIds: services,
       };
@@ -233,9 +295,14 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
     const reply: ChatMessage = {
       id: `b-${Date.now() + 1}`,
       sender: 'ben',
-      text: isHe
-        ? 'הנה האירועים הקרובים ופעילויות מרכז הנוער בקולום (ב׳–ה׳) שמחכים לכם השבוע. לחצו על כל כרטיס להרשמה וקבלת תזכורת:'
-        : 'Here are the upcoming community events and Youth Center sessions (Mon–Thu in Colomb) this week. Tap any card to RSVP and set a reminder:',
+      text:
+        topEvents.length === 0
+          ? isHe
+            ? 'סביבת PROD נקייה כרגע מנתוני דמו וממתינה לאירועי אמת. ניתן להעלות אירוע ראשון או לעבור לסביבת TEST בראש המסך כדי להתנסות בכל היכולות!'
+            : 'PROD is currently clean and ready for real data. Publish a real event or switch to TEST in the header to explore demo data!'
+          : isHe
+          ? 'הנה האירועים הקרובים ופעילויות מרכז הנוער בקולום (ב׳–ה׳) שמחכים לכם השבוע:'
+          : 'Here are the upcoming community events and Youth Center sessions this week:',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       recommendedEntityIds: topEvents,
     };
@@ -245,16 +312,16 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
 
   const quickPrompts = isHe
     ? [
+        'מי עושה שיאצו, קוסמטיקה או קעקועים בקהילה?',
+        'יש מאמן איגרוף או מאמנת ספורט בקולום/פטנם?',
         'מה יש השבוע לנוער במתנ"ס בקולום?',
-        'יש לי שני ילדים בני 11 ו-14 ואנחנו גרים בפטנם',
         'אילו בתים עם סיבים אופטיים פנויים להשכרה?',
-        'מתי פנוי אולפן ההקלטות או מורה ליוגה?',
       ]
     : [
+        'Who offers Shiatsu, Cosmetics, or Tattoos in the community?',
+        'Is there a Boxing Coach or Fitness Trainer in Goa?',
         'What is happening at the Youth Center in Colomb?',
-        'We live in Patnem with kids aged 11 and 14',
         'Which homes with Fiber Wi-Fi are available to rent?',
-        'Show available slots for the Recording Studio & Yoga',
       ];
 
   return (
@@ -264,7 +331,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
         {/* WhatsApp-Style Header */}
         <div className="bg-canopy-900 text-sand-50 px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-terracotta-500 flex items-center justify-center text-white font-bold shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-terracotta-500 flex items-center justify-center text-white font-bold">
               <Bot className="w-5 h-5" />
             </div>
             <div>
@@ -274,18 +341,17 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                 </h2>
                 <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-canopy-800 text-ochre-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                  Online
+                  {appEnv === 'prod' ? 'PROD' : 'TEST'}
                 </span>
               </div>
               <p className="text-xs text-sand-300">
                 {isHe
-                  ? 'פרופילינג בטקסט חופשי • המלצות אירועים • קליטת אירועי ספק ב-DM'
-                  : 'Free-text profiling • Smart recommendations • Provider DM ingestion'}
+                  ? 'חיפוש בעלי עסקים • המלצות אירועים • פרופילינג בטקסט חופשי • קליטת DM'
+                  : 'Business directory search • Smart events • Free-text profiling • DM ingestion'}
               </p>
             </div>
           </div>
 
-          {/* Toggle Client vs Provider DM Mode */}
           <div className="inline-flex rounded-xl bg-canopy-950 p-1 text-xs">
             <button
               type="button"
@@ -315,6 +381,9 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
             const recEntities = (msg.recommendedEntityIds || [])
               .map((id) => entities.find((e) => e.id === id))
               .filter(Boolean) as LuzEntity[];
+            const recBusinesses = (msg.recommendedBusinessIds || [])
+              .map((id) => businesses.find((b) => b.id === id))
+              .filter(Boolean) as CommunityBusiness[];
 
             return (
               <div
@@ -322,7 +391,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                 className={`flex flex-col ${isBen ? 'items-start' : 'items-end'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-surface ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     isBen
                       ? 'bg-white text-canopy-900 border border-sand-300'
                       : 'bg-canopy-800 text-sand-50'
@@ -338,6 +407,35 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                   </div>
                 </div>
 
+                {/* Recommended Community Businesses inside Chat */}
+                {recBusinesses.length > 0 && (
+                  <div className="mt-2.5 grid sm:grid-cols-2 gap-2.5 w-full max-w-[88%]">
+                    {recBusinesses.map((biz) => (
+                      <div
+                        key={biz.id}
+                        onClick={onNavigateToBusinesses}
+                        className="p-3 rounded-xl bg-white border border-sand-300 hover:border-terracotta-500 cursor-pointer transition-all flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold text-ochre-600 flex items-center gap-1">
+                            <Briefcase className="w-3 h-3" />
+                            <span>{isHe ? biz.specialtyHe : biz.specialtyEn}</span>
+                          </div>
+                          <div className="font-bold text-xs text-canopy-900 truncate">
+                            {isHe ? biz.businessNameHe : biz.businessNameEn}
+                          </div>
+                          <div className="text-[11px] text-canopy-600">
+                            {isHe ? biz.ownerNameHe : biz.ownerNameEn} • {biz.area}
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg bg-terracotta-500 text-white">
+                          {isHe ? 'לתור' : 'Book'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Recommended Entities Cards inside Chat */}
                 {recEntities.length > 0 && (
                   <div className="mt-2.5 grid sm:grid-cols-2 gap-2.5 w-full max-w-[88%]">
@@ -345,10 +443,10 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                       <div
                         key={item.id}
                         onClick={() => onSelectEntity(item)}
-                        className="p-3 rounded-xl bg-white border border-sand-300 hover:border-terracotta-500 cursor-pointer transition-all flex items-center justify-between gap-3 shadow-sm"
+                        className="p-3 rounded-xl bg-white border border-sand-300 hover:border-terracotta-500 cursor-pointer transition-all flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0">
-                          <div className="text-[11px] font-semibold text-terracotta-600">
+                          <div className="text-[11px] font-semibold text-terracotta-600 tabular-nums">
                             {item.area} • {item.startTime || item.availableFrom || 'Slot'}
                           </div>
                           <div className="font-bold text-xs text-canopy-900 truncate">
@@ -400,8 +498,8 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                   ? 'מצב ספק: כתבו פרטי אירוע או בית להשכרה ו"בן" יפרסם אותו בלוח...'
                   : 'Provider DM: Type event or rental details to publish directly...'
                 : isHe
-                ? 'כתבו ל"בן" בטקסט חופשי (למשל: "יש לי ילד בן 12 ואנחנו מחפשים מוזיקה בקולום")...'
-                : 'Message "Ben" in free text (e.g., "Looking for youth activities in Colomb")...'
+                ? 'כתבו ל"בן" (למשל: "מחפש שיאצו או מאמן איגרוף בקולום")...'
+                : 'Message "Ben" (e.g., "Looking for Shiatsu or a Boxing coach in Colomb")...'
             }
             className="flex-1 rounded-xl border border-sand-300 bg-sand-50 px-4 py-2.5 text-sm text-canopy-900"
           />
@@ -415,9 +513,8 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
         </form>
       </div>
 
-      {/* Right Column: Live User Profiling & Shai Zaluf Webhook API Spec */}
+      {/* Right Column: Live User Profiling & Webhook API Spec */}
       <div className="lg:col-span-4 space-y-5">
-        {/* Live User Profile Card */}
         <div className="bg-sand-50 rounded-2xl border border-sand-300 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-xl font-bold text-canopy-900 flex items-center gap-2">
@@ -438,7 +535,9 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
           <div className="space-y-3 text-xs bg-white p-4 rounded-xl border border-sand-200">
             <div className="flex justify-between">
               <span className="text-canopy-600">{isHe ? 'שם תושב:' : 'Resident:'}</span>
-              <span className="font-semibold text-canopy-900">{userProfile.name}</span>
+              <span className="font-semibold text-canopy-900">
+                {userProfile.name || (isHe ? 'אורח/ת בקהילה' : 'Community Guest')}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-canopy-600">{isHe ? 'אזור מועדף:' : 'Preferred Area:'}</span>
@@ -449,7 +548,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
             <div className="flex justify-between">
               <span className="text-canopy-600">{isHe ? 'גילאי ילדים:' : 'Kids Ages:'}</span>
               <span className="font-semibold text-canopy-900 tabular-nums">
-                {userProfile.kidsAges.join(', ')}
+                {userProfile.kidsAges.length > 0 ? userProfile.kidsAges.join(', ') : '—'}
               </span>
             </div>
             <div>
@@ -457,14 +556,18 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                 {isHe ? 'תחומי עניין מסוננים:' : 'Tracked Interests:'}
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {userProfile.interests.map((tag, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-0.5 rounded-md bg-canopy-100 text-canopy-800 font-medium"
-                  >
-                    {tag}
-                  </span>
-                ))}
+                {userProfile.interests.length === 0 ? (
+                  <span className="text-canopy-500">{isHe ? 'טרם הוגדרו' : 'None yet'}</span>
+                ) : (
+                  userProfile.interests.map((tag, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-0.5 rounded-md bg-canopy-100 text-canopy-800 font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -498,6 +601,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
             <pre className="p-3 rounded-xl bg-canopy-950 text-[11px] font-mono text-ochre-400 overflow-x-auto leading-relaxed" dir="ltr">
 {`POST /api/v1/whatsapp/webhook
 {
+  "env": "${appEnv}",
   "from": "+972524780033@c.us",
   "senderName": "Naor",
   "messageType": "text",

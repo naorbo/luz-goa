@@ -1,11 +1,13 @@
 {
   "name": "luz-goa-community-os",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/build-environments.mjs",
+    "build:prod": "tsc -b && vite build --outDir docs --emptyOutDir",
+    "build:test": "tsc -b && vite build --outDir docs/test --emptyOutDir",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -194,11 +194,13 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
           </p>
 
           <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-sand-100">
-            <span className="px-3 py-1.5 rounded-lg bg-canopy-800 border border-canopy-700 font-medium">
-              📍 {isHe ? 'מיקום: קולום, ליד שייליש' : 'Location: Colomb, near Shailish'}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-canopy-800 border border-canopy-700 font-medium">
+              <MapPin className="w-3.5 h-3.5 text-terracotta-400" />
+              {isHe ? 'מיקום: קולום, ליד שייליש' : 'Location: Colomb, near Shailish'}
             </span>
-            <span className="px-3 py-1.5 rounded-lg bg-canopy-800 border border-canopy-700 font-medium">
-              🗓️ {isHe ? 'פתיחה: 1 בנובמבר (ב׳–ה׳)' : 'Target Opening: Nov 1 (Mon–Thu)'}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-canopy-800 border border-canopy-700 font-medium">
+              <Calendar className="w-3.5 h-3.5 text-ochre-400" />
+              {isHe ? 'פתיחה: 1 בנובמבר (ב׳–ה׳)' : 'Target Opening: Nov 1 (Mon–Thu)'}
             </span>
             <span className="px-3 py-1.5 rounded-lg bg-ochre-500 text-canopy-950 font-bold tabular-nums">
               ₪200 / $65 {isHe ? 'לילד לחודש + משמרת הורה חודשית' : 'per child/mo + 1 parent shift'}
@@ -606,35 +608,51 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
             </div>
 
             <div className="space-y-3 max-h-[520px] overflow-y-auto pe-1">
-              {families.map((fam) => (
-                <div
-                  key={fam.id}
-                  className="p-4 rounded-xl bg-white border border-sand-300 space-y-2.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-canopy-900">{fam.parentName}</span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-sand-100 text-canopy-700 font-medium">
-                      {fam.area}
-                    </span>
-                  </div>
-                  <div className="text-xs text-canopy-600 tabular-nums">
-                    {fam.parentPhone} • {fam.parentEmail}
-                  </div>
-                  <div className="space-y-1 pt-1 border-t border-sand-100">
-                    {fam.children.map((c) => (
-                      <div
-                        key={c.id}
-                        className="flex items-center justify-between text-xs bg-sand-50 px-2.5 py-1.5 rounded-lg"
-                      >
-                        <span className="font-semibold text-canopy-900">
-                          {c.name} ({isHe ? 'גיל' : 'Age'} {c.age}, {c.grade})
-                        </span>
-                        <span className="text-canopy-600 truncate max-w-[45%]">{c.interests}</span>
-                      </div>
-                    ))}
-                  </div>
+              {families.length === 0 ? (
+                <div className="p-6 rounded-xl bg-white border border-sand-300 text-center space-y-2">
+                  <Users className="w-6 h-6 text-canopy-600 mx-auto" />
+                  <p className="text-sm font-semibold text-canopy-900">
+                    {isHe
+                      ? 'טרם נרשמו משפחות בסביבה זו'
+                      : 'No families registered in this environment yet'}
+                  </p>
+                  <p className="text-xs text-canopy-600 leading-relaxed">
+                    {isHe
+                      ? 'טופס הרישום מוכן לקליטת משפחות אמת של הקהילה וייצוא ישיר ל-Google Sheets.'
+                      : 'Use the registration form to enroll real community families and export directly to Google Sheets.'}
+                  </p>
                 </div>
-              ))}
+              ) : (
+                families.map((fam) => (
+                  <div
+                    key={fam.id}
+                    className="p-4 rounded-xl bg-white border border-sand-300 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-canopy-900">{fam.parentName}</span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-sand-100 text-canopy-700 font-medium">
+                        {fam.area}
+                      </span>
+                    </div>
+                    <div className="text-xs text-canopy-600 tabular-nums">
+                      {fam.parentPhone} • {fam.parentEmail}
+                    </div>
+                    <div className="space-y-1 pt-1 border-t border-sand-100">
+                      {fam.children.map((c) => (
+                        <div
+                          key={c.id}
+                          className="flex items-center justify-between text-xs bg-sand-50 px-2.5 py-1.5 rounded-lg"
+                        >
+                          <span className="font-semibold text-canopy-900">
+                            {c.name} ({isHe ? 'גיל' : 'Age'} {c.age}, {c.grade})
+                          </span>
+                          <span className="text-canopy-600 truncate max-w-[45%]">{c.interests}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

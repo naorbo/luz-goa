@@ -1,5 +1,7 @@
 export type Language = 'he' | 'en';
 
+export type AppEnvironment = 'prod' | 'test';
+
 export type EntityType = 'event' | 'workshop' | 'service' | 'rental';
 
 export type ServiceSubtype = 'provider' | 'space' | 'medical';
@@ -19,6 +21,50 @@ export type VolunteerRole =
   | 'logistics'
   | 'finance'
   | 'ideas';
+
+export type BusinessCategory =
+  | 'body_therapy'      // שיאצו, עיסוי, דיקור וטיפולי גוף
+  | 'beauty_cosmetics'  // קוסמטיקאית, טיפוח ויופי
+  | 'tattoo_art'        // מקעקעת / קעקועים ואומנות
+  | 'fitness_martial'   // מאמן איגרוף, מאמנת ספורט, כושר וגלישה
+  | 'food_culinary'     // אוכל ביתי, אפייה ושף פרטי
+  | 'kids_education'    // שיעורים פרטיים, מוזיקה וילדים
+  | 'pro_services';     // צילום, עיצוב ושירותים מקצועיים
+
+export interface BusinessServiceOffer {
+  id: string;
+  nameHe: string;
+  nameEn: string;
+  durationMinutes?: number;
+  priceAmount: number;
+  priceCurrency: 'INR' | 'ILS' | 'USD';
+}
+
+export interface CommunityBusiness {
+  id: string;
+  category: BusinessCategory;
+  specialtyHe: string; // e.g. "מטפל שיאצו ורפואה סינית", "קוסמטיקאית טבעית", "מקעקעת", "מאמן איגרוף", "מאמנת ספורט"
+  specialtyEn: string;
+  businessNameHe: string;
+  businessNameEn: string;
+  ownerNameHe: string;
+  ownerNameEn: string;
+  bioHe: string;
+  bioEn: string;
+  area: GoaArea;
+  locationDetailsHe: string;
+  locationDetailsEn: string;
+  homeVisitAvailable: boolean;
+  phone: string;
+  instagramHandle?: string;
+  imageUrl: string;
+  availableDays: number[]; // 0..6
+  timeSlots: string[];
+  bookedSlots: Record<string, string[]>;
+  servicesMenu: BusinessServiceOffer[];
+  tags: string[];
+  verifiedCommunityMember: boolean;
+}
 
 export interface BookedRange {
   from: string; // YYYY-MM-DD
@@ -65,7 +111,7 @@ export interface LuzEntity {
   slotDurationMinutes?: number;
   availableDays?: number[]; // e.g., [1, 2, 3, 4, 5]
   timeSlots?: string[]; // e.g., ["09:00", "10:30", "14:00", "16:30"]
-  bookedSlots?: Record<string, string[]>; // { "2026-10-20": ["10:30"] }
+  bookedSlots?: Record<string, string[]>; // { "2026-10-28": ["10:30"] }
   calendarSyncStatus?: CalendarSyncStatus;
   bookingMode?: 'instant' | 'request';
 
@@ -86,12 +132,13 @@ export interface BookingRecord {
   entityId: string;
   entityTitleHe: string;
   entityTitleEn: string;
-  entityType: EntityType;
+  entityType: EntityType | 'business';
   customerName: string;
   customerPhone: string;
   participantsCount: number;
   selectedDate?: string;
   selectedSlot?: string;
+  selectedServiceOffer?: string;
   rentalFrom?: string;
   rentalTo?: string;
   totalPrice?: number;
@@ -140,6 +187,7 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   recommendedEntityIds?: string[];
+  recommendedBusinessIds?: string[];
   createdEntityId?: string;
   profileUpdated?: boolean;
 }
