@@ -13,12 +13,15 @@ import {
   Dumbbell,
   UtensilsCrossed,
   GraduationCap,
+  Car,
   Briefcase,
   Home,
   X,
   Download,
   ExternalLink,
   FlaskConical,
+  Globe,
+  Users,
 } from 'lucide-react';
 import {
   CommunityBusiness,
@@ -55,63 +58,72 @@ export const BUSINESS_CATEGORIES: Array<{
 }> = [
   {
     id: 'body_therapy',
-    labelHe: 'טיפולי גוף ושיאצו',
-    labelEn: 'Shiatsu & Bodywork',
-    examplesHe: 'שיאצו, דיקור, עיסוי רפואי',
-    examplesEn: 'Shiatsu, Acupuncture, Massage',
+    labelHe: 'טיפולי גוף, מים ונשימה',
+    labelEn: 'Bodywork & Healing',
+    examplesHe: 'ריברסינג, טיפול במים, עיסוי, סאונד',
+    examplesEn: 'Rebirthing, Water Therapy, Massage',
     icon: HeartPulse,
   },
   {
     id: 'beauty_cosmetics',
-    labelHe: 'קוסמטיקה וטיפוח',
-    labelEn: 'Cosmetics & Beauty',
-    examplesHe: 'קוסמטיקאית, טיפולי פנים, גבות',
-    examplesEn: 'Cosmetician, Facials, Brows',
+    labelHe: 'קוסמטיקה, שיער ורוקחות',
+    labelEn: 'Beauty, Hair & Botanicals',
+    examplesHe: 'תספורות טבעיות, ראסטות, ארומתרפיה',
+    examplesEn: 'Natural Haircuts, Dreadlocks, Cosmetics',
     icon: Sparkles,
   },
   {
     id: 'tattoo_art',
-    labelHe: 'קעקועים ואומנות',
-    labelEn: 'Tattoo & Body Art',
-    examplesHe: 'מקעקעת, Fine-Line, איור אישי',
-    examplesEn: 'Tattoo Artist, Custom Ink',
+    labelHe: 'אומנות, יצירה וקעקועים',
+    labelEn: 'Art, Therapy & Tattoo',
+    examplesHe: 'טיפול באומנות, הדפס בוטני, איור',
+    examplesEn: 'Art Therapy, Botanical Print, Tattoo',
     icon: Palette,
   },
   {
     id: 'fitness_martial',
-    labelHe: 'איגרוף, ספורט וכושר',
-    labelEn: 'Boxing & Fitness',
-    examplesHe: 'מאמן איגרוף, מאמנת ספורט, כוח',
-    examplesEn: 'Boxing Coach, Fitness Trainer',
+    labelHe: 'ספורט, פילאטיס ושחייה',
+    labelEn: 'Fitness, Pilates & Swim',
+    examplesHe: 'פילאטיס, פלדנקרייז, שחייה, כוח',
+    examplesEn: 'Pilates, Feldenkrais, Swim, Boxing',
     icon: Dumbbell,
   },
   {
     id: 'food_culinary',
-    labelHe: 'אוכל ביתי ואפייה',
-    labelEn: 'Home Food & Bakery',
-    examplesHe: 'חלות לשבת, מחמצת, קייטרינג',
-    examplesEn: 'Challah, Sourdough, Catering',
+    labelHe: 'אוכל ביתי, מאפים ומשלוחים',
+    labelEn: 'Home Food & Delivery',
+    examplesHe: 'טאלי, חלות לשבת, ג׳חנון, ירקן',
+    examplesEn: 'Mama Thali, Challah, Jachnun, Produce',
     icon: UtensilsCrossed,
   },
   {
     id: 'kids_education',
-    labelHe: 'חוגים, מוזיקה והוראה',
-    labelEn: 'Music & Tutoring',
-    examplesHe: 'מורים פרטיים, גיטרה, שפות',
-    examplesEn: 'Tutors, Guitar, Kids',
+    labelHe: 'חינוך, ילדים והוראה',
+    labelEn: 'Kids, Dance & Tutoring',
+    examplesHe: 'נאראניה, מחול, ליווי הורים, מורה פרטי',
+    examplesEn: 'Narania, Kids Dance, Parenting, Tutor',
     icon: GraduationCap,
   },
   {
+    id: 'transport_local',
+    labelHe: 'מוניות וריקשות מקומיות',
+    labelEn: 'Taxis & Auto-Rickshaws',
+    examplesHe: 'טאנווי מונית, דאיה, אניל, גורו',
+    examplesEn: 'Tanvi Taxi, Daya, Anil, Guru',
+    icon: Car,
+  },
+  {
     id: 'pro_services',
-    labelHe: 'שירותים מקצועיים',
-    labelEn: 'Pro & Creative Services',
-    examplesHe: 'צילום, עיצוב, ייעוץ ותחזוקה',
-    examplesEn: 'Photo, Design, Consulting',
+    labelHe: 'ויזות, עיצוב ושירותים',
+    labelEn: 'Visas, Design & Pro',
+    examplesHe: 'ליאת ויזות וטיסות, עיצוב ספרים',
+    examplesEn: 'Visas & Flights, Book & Digital Design',
     icon: Briefcase,
   },
 ];
 
 const UPCOMING_DATES = [
+  { date: '2026-10-26', labelHe: 'ב׳ 26/10', labelEn: 'Mon Oct 26' },
   { date: '2026-10-27', labelHe: 'ג׳ 27/10', labelEn: 'Tue Oct 27' },
   { date: '2026-10-28', labelHe: 'ד׳ 28/10', labelEn: 'Wed Oct 28' },
   { date: '2026-10-29', labelHe: 'ה׳ 29/10', labelEn: 'Thu Oct 29' },
@@ -235,6 +247,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
       fitness_martial: 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&q=80&w=1000',
       food_culinary: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=1000',
       kids_education: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
+      transport_local: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1000',
       pro_services: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1000',
     };
 
@@ -288,6 +301,17 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   const getCategoryMeta = (catId: BusinessCategory) =>
     BUSINESS_CATEGORIES.find((c) => c.id === catId) || BUSINESS_CATEGORIES[0];
 
+  const formatServiceOfferPrice = (srv: BusinessServiceOffer) => {
+    if (srv.priceCurrency === 'CONTACT') {
+      return isHe ? 'בתיאום בפרטי' : 'Contact via WA';
+    }
+    if (srv.priceCurrency === 'FREE' || srv.priceAmount === 0) {
+      return isHe ? 'ללא עלות' : 'Free';
+    }
+    const sym = srv.priceCurrency === 'ILS' ? '₪' : srv.priceCurrency === 'USD' ? '$' : '₹';
+    return `${sym}${srv.priceAmount.toLocaleString()}`;
+  };
+
   return (
     <div className="space-y-6 animate-reveal">
       {/* Header & Add Business Action */}
@@ -295,13 +319,13 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
         <div className="space-y-1.5 max-w-2xl">
           <h2 className="font-display text-2xl md:text-3xl font-bold">
             {isHe
-              ? 'אינדקס בעלי עסקים ומטפלים בקהילת גואה'
-              : 'Goa Community Businesses & Practitioners Directory'}
+              ? 'אינדקס בעלי עסקים, מטפלים ונותני שירות בקהילת גואה'
+              : 'Goa Community Businesses & Local Services Directory'}
           </h2>
           <p className="text-xs md:text-sm text-sand-200 leading-relaxed">
             {isHe
-              ? 'כל נותני השירות בקהילה לפי קטגוריות — שיאצו וטיפולי גוף, קוסמטיקאיות, קעקועים, מאמני איגרוף וספורט, אוכל ביתי ושיעורים פרטיים — כולל מחירון שקוף ותיאום תור ישיר.'
-              : 'Discover trusted community practitioners across South Goa — Shiatsu, Cosmeticians, Tattoo Artists, Boxing & Fitness Coaches, Home Bakers, and Tutors — with transparent pricing and slot booking.'}
+              ? 'כל נותני השירות בקהילה לפי קטגוריות — טיפולי גוף ומים, תספורות ורוקחות, אומנות, פילאטיס ושחייה, אוכל ביתי, חינוך, מוניות וריקשות, וויזות — כולל פנייה ישירה ותיאום תור.'
+              : 'Verified community practitioners and trusted local contacts across South Goa — Bodywork, Beauty, Art, Fitness, Home Food, Kids, Taxis/Rickshaws, and Visas.'}
           </p>
         </div>
 
@@ -316,7 +340,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
       </div>
 
       {/* Category Filter Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2.5">
         <button
           type="button"
           onClick={() => setSelectedCategory('all')}
@@ -532,6 +556,46 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                       {isHe ? biz.bioHe : biz.bioEn}
                     </p>
 
+                    {(biz.websiteUrl || biz.whatsappGroupUrl || biz.instagramHandle) && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {biz.websiteUrl && (
+                          <a
+                            href={biz.websiteUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
+                          >
+                            <Globe className="w-3 h-3 text-terracotta-500" />
+                            <span>{isHe ? 'אתר / מידע' : 'Website'}</span>
+                            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                          </a>
+                        )}
+                        {biz.whatsappGroupUrl && (
+                          <a
+                            href={biz.whatsappGroupUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
+                          >
+                            <Users className="w-3 h-3 text-canopy-600" />
+                            <span>{isHe ? 'קבוצת עדכונים' : 'WA Group'}</span>
+                            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                          </a>
+                        )}
+                        {biz.instagramHandle && (
+                          <a
+                            href={`https://instagram.com/${biz.instagramHandle.replace(/^@/, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-medium text-canopy-700 hover:border-canopy-700 transition-colors"
+                          >
+                            <span>{biz.instagramHandle}</span>
+                            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+
                     {/* Services Menu Preview */}
                     <div className="space-y-1.5 pt-2 border-t border-sand-200">
                       {biz.servicesMenu.map((srv) => (
@@ -543,11 +607,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                             {isHe ? srv.nameHe : srv.nameEn}
                           </span>
                           <span className="font-bold text-canopy-900 shrink-0 tabular-nums">
-                            {srv.priceAmount === 0
-                              ? isHe
-                                ? 'ללא עלות'
-                                : 'Free'
-                              : `₹${srv.priceAmount.toLocaleString()}`}
+                            {formatServiceOfferPrice(srv)}
                           </span>
                         </div>
                       ))}
@@ -697,7 +757,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                             </span>
                           </div>
                           <span className="font-bold tabular-nums">
-                            {offer.priceAmount === 0 ? 'Free' : `₹${offer.priceAmount}`}
+                            {formatServiceOfferPrice(offer)}
                           </span>
                         </label>
                       ))}
@@ -709,7 +769,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                     <label className="block text-xs font-semibold text-canopy-800 mb-1.5">
                       {isHe ? 'בחירת יום:' : 'Select Day:'}
                     </label>
-                    <div className="grid grid-cols-5 gap-1.5">
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                       {UPCOMING_DATES.map((d) => (
                         <button
                           key={d.date}

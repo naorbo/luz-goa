@@ -20,7 +20,7 @@ export function detectInitialEnvironment(): AppEnvironment {
 }
 
 export function getStorageKeys(env: AppEnvironment) {
-  const prefix = env === 'prod' ? 'luz_prod_v2' : 'luz_test_v2';
+  const prefix = env === 'prod' ? 'luz_prod_v3' : 'luz_test_v2';
   return {
     entities: `${prefix}_entities`,
     businesses: `${prefix}_businesses`,

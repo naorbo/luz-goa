@@ -197,11 +197,11 @@ export function parseWhatsAppMessageToDraft(rawText: string): ParsedWhatsAppDraf
     hostPhone,
     priceAmount,
     priceCurrency,
-    date: '2026-10-22',
+    date: '2026-10-30',
     startTime,
     endTime,
-    availableFrom: '2026-10-20',
-    availableTo: '2026-11-15',
+    availableFrom: '2026-11-01',
+    availableTo: '2026-11-30',
     bedrooms,
     hasFiberWifi,
     hasPowerBackup,
@@ -240,7 +240,11 @@ export function generateWhatsAppDigest(
           : events.map(
               (e) =>
                 `• *${e.titleHe}* (${e.area}) — ${e.date ? e.date : 'קבוע שבועי'} בשעה ${e.startTime || '17:00'} | ${
-                  e.priceCurrency === 'FREE' ? 'כניסה חופשית' : `${e.priceAmount} ${e.priceCurrency}`
+                  e.priceCurrency === 'CONTACT'
+                    ? 'פרטים בהרשמה'
+                    : e.priceCurrency === 'FREE'
+                    ? 'כניסה חופשית'
+                    : `${e.priceAmount} ${e.priceCurrency}`
                 }`
             )),
         ``,
@@ -265,7 +269,9 @@ export function generateWhatsAppDigest(
           ? ['• אין בתים פנויים רשומים כרגע']
           : rentals.map(
               (r) =>
-                `• *${r.titleHe}* (${r.bedrooms} חדרים ב-${r.area}) — זמין מ-${r.availableFrom} עד ${r.availableTo} | ₹${r.pricePerNight}/לילה`
+                `• *${r.titleHe}* (${r.bedrooms} חדרים ב-${r.area}) — זמין מ-${r.availableFrom} עד ${r.availableTo} | ${
+                  r.pricePerMonth ? `₹${r.pricePerMonth.toLocaleString()}/חודש` : `₹${r.pricePerNight}/לילה`
+                }`
             )),
         ``,
         `*רוצים להירשם, לקבוע תור לבעל עסק או לעדכן העדפות?* פשוט השיבו לי כאן בוואטסאפ בטקסט חופשי!`,
@@ -281,7 +287,11 @@ export function generateWhatsAppDigest(
           : events.map(
               (e) =>
                 `• *${e.titleEn}* (${e.area}) — ${e.date || 'Weekly'} at ${e.startTime || '17:00'} | ${
-                  e.priceCurrency === 'FREE' ? 'Free' : `${e.priceAmount} ${e.priceCurrency}`
+                  e.priceCurrency === 'CONTACT'
+                    ? 'Contact for details'
+                    : e.priceCurrency === 'FREE'
+                    ? 'Free'
+                    : `${e.priceAmount} ${e.priceCurrency}`
                 }`
             )),
         ``,
@@ -298,7 +308,9 @@ export function generateWhatsAppDigest(
         `*Community Homes & Sublets (${rentals.length}):*`,
         ...rentals.map(
           (r) =>
-            `• *${r.titleEn}* (${r.bedrooms}BHK in ${r.area}) — ${r.availableFrom} to ${r.availableTo} | ₹${r.pricePerNight}/night`
+            `• *${r.titleEn}* (${r.bedrooms}BHK in ${r.area}) — ${r.availableFrom} to ${r.availableTo} | ${
+              r.pricePerMonth ? `₹${r.pricePerMonth.toLocaleString()}/mo` : `₹${r.pricePerNight}/night`
+            }`
         ),
         ``,
         `*Reply directly to Ben on WhatsApp in free text to book or update your family profile!*`,

@@ -74,22 +74,32 @@ function readJsonOrFallback<T>(key: string, fallback: T): T {
   }
 }
 
+function mergeWithSeedById<T extends { id: string }>(saved: T[], seed: T[]): T[] {
+  const savedIds = new Set(saved.map((item) => item.id));
+  const missingSeeds = seed.filter((item) => !savedIds.has(item.id));
+  return [...saved, ...missingSeeds];
+}
+
 function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
   const keys = getStorageKeys(env);
   if (env === 'prod') {
+    const savedEntities = readJsonOrFallback(keys.entities, PROD_ENTITIES);
+    const savedBusinesses = readJsonOrFallback(keys.businesses, PROD_BUSINESSES);
     return {
       env: 'prod',
-      entities: readJsonOrFallback(keys.entities, PROD_ENTITIES),
-      businesses: readJsonOrFallback(keys.businesses, PROD_BUSINESSES),
+      entities: mergeWithSeedById(savedEntities, PROD_ENTITIES),
+      businesses: mergeWithSeedById(savedBusinesses, PROD_BUSINESSES),
       bookings: readJsonOrFallback(keys.bookings, PROD_BOOKINGS),
       families: readJsonOrFallback(keys.families, PROD_FAMILIES),
       userProfile: readJsonOrFallback(keys.profile, PROD_USER_PROFILE),
     };
   }
+  const savedEntities = readJsonOrFallback(keys.entities, TEST_ENTITIES);
+  const savedBusinesses = readJsonOrFallback(keys.businesses, TEST_BUSINESSES);
   return {
     env: 'test',
-    entities: readJsonOrFallback(keys.entities, TEST_ENTITIES),
-    businesses: readJsonOrFallback(keys.businesses, TEST_BUSINESSES),
+    entities: mergeWithSeedById(savedEntities, TEST_ENTITIES),
+    businesses: mergeWithSeedById(savedBusinesses, TEST_BUSINESSES),
     bookings: readJsonOrFallback(keys.bookings, TEST_BOOKINGS),
     families: readJsonOrFallback(keys.families, TEST_FAMILIES),
     userProfile: readJsonOrFallback(keys.profile, TEST_USER_PROFILE),

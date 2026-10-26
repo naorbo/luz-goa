@@ -131,10 +131,16 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   };
 
   const formatPrice = (e: LuzEntity) => {
+    if (e.priceCurrency === 'CONTACT') {
+      return isHe ? 'פרטים בהרשמה' : 'Contact for details';
+    }
     if (e.priceCurrency === 'FREE' || e.priceAmount === 0) {
       return isHe ? 'כניסה חופשית' : 'Free Entry';
     }
     if (e.type === 'rental') {
+      if (e.pricePerMonth && e.priceAmount === e.pricePerMonth) {
+        return `₹${e.pricePerMonth.toLocaleString()} / ${isHe ? 'חודש' : 'mo'}`;
+      }
       return `₹${(e.pricePerNight || e.priceAmount).toLocaleString()} / ${isHe ? 'לילה' : 'night'}`;
     }
     if (e.isYouthCenter) {

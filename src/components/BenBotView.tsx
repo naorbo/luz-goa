@@ -140,7 +140,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
     }
 
     // 2. Scope Guard (Non-Event General Group Q&A is Phase 2 per MVP spec)
-    if (/חיתולים|סופרמרקט|מוסך|ויזה הודית|diapers|supermarket|grocery/i.test(lower)) {
+    if (/חיתולים|סופרמרקט|מוסך|diapers|supermarket|grocery/i.test(lower)) {
       const reply: ChatMessage = {
         id: `b-${Date.now() + 1}`,
         sender: 'ben',
@@ -154,21 +154,31 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
       return;
     }
 
-    // 3. Querying Community Businesses by Category / Specialty!
+    // 3. Querying Community Businesses by Category / Specialty / Provider Name!
     if (
-      /שיאצו|עיסוי|דיקור|מטפל|קוסמטיק|פנים|טיפוח|מקעקע|קעקוע|איגרוף|מאמן|מאמנת|ספורט|כושר|פילאטיס|חלות|מחמצת|אפייה|בעלי עסקים|עסקים|עסק|shiatsu|massage|cosmetic|facial|tattoo|boxing|fitness|trainer|bakery|challah|business/i.test(
+      /שיאצו|עיסוי|דיקור|מטפל|ריברסינג|רייקי|קונסטלציה|טיפול במים|סאונד|קוסמטיק|פנים|טיפוח|תספורת|ספרית|אפרת|ראסטות|רוקחות|מקעקע|קעקוע|אומנות|מאיה|איגרוף|מאמן|מאמנת|ספורט|כושר|פילאטיס|פלדנקרייז|שחייה|הידרותרפיה|חלות|מחמצת|אפייה|טאלי|ג'חנון|ג׳חנון|ירקן|שף|מונית|ריקשה|נהג|נהגת|טאנווי|דאיה|אניל|גורו|ויזה|ויזות|טיסות|ליאת|עיצוב|מורה|נאראניה|מחול|תינוקות|הנקה|בעלי עסקים|עסקים|עסק|shiatsu|massage|rebirthing|water|cosmetic|haircut|dreadlocks|tattoo|art|boxing|fitness|pilates|swim|bakery|challah|thali|taxi|rickshaw|driver|visa|flights|tutor|business/i.test(
         lower
       )
     ) {
       const matchedBiz = businesses.filter((b) => {
-        if (/שיאצו|עיסוי|דיקור|מטפל|shiatsu|massage/i.test(lower))
+        if (
+          /מונית|ריקשה|נהג|נהגת|טאנווי|דאיה|אניל|גורו|taxi|rickshaw|driver/i.test(lower)
+        )
+          return b.category === 'transport_local';
+        if (/ויזה|ויזות|טיסות|ליאת|עיצוב|ספרים|visa|flights|design/i.test(lower))
+          return b.category === 'pro_services';
+        if (/שיאצו|עיסוי|דיקור|מטפל|ריברסינג|רייקי|קונסטלציה|טיפול במים|סאונד|shiatsu|massage|rebirthing|water/i.test(lower))
           return b.category === 'body_therapy';
-        if (/קוסמטיק|פנים|טיפוח|cosmetic|facial/i.test(lower))
+        if (/קוסמטיק|פנים|טיפוח|תספורת|ספרית|אפרת|ראסטות|רוקחות|cosmetic|haircut|dreadlocks/i.test(lower))
           return b.category === 'beauty_cosmetics';
-        if (/מקעקע|קעקוע|tattoo/i.test(lower)) return b.category === 'tattoo_art';
-        if (/איגרוף|מאמן|מאמנת|ספורט|כושר|פילאטיס|boxing|fitness|trainer/i.test(lower))
+        if (/מקעקע|קעקוע|אומנות|מאיה|tattoo|art/i.test(lower))
+          return b.category === 'tattoo_art';
+        if (/איגרוף|מאמן|מאמנת|ספורט|כושר|פילאטיס|פלדנקרייז|שחייה|הידרותרפיה|boxing|fitness|pilates|swim/i.test(lower))
           return b.category === 'fitness_martial';
-        if (/חלות|מחמצת|אפייה|bakery|challah/i.test(lower)) return b.category === 'food_culinary';
+        if (/חלות|מחמצת|אפייה|טאלי|ג'חנון|ג׳חנון|ירקן|שף|bakery|challah|thali/i.test(lower))
+          return b.category === 'food_culinary';
+        if (/מורה|נאראניה|מחול|תינוקות|הנקה|tutor/i.test(lower))
+          return b.category === 'kids_education';
         return true;
       });
 
@@ -180,11 +190,11 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
         text:
           finalBiz.length === 0
             ? isHe
-              ? 'בסביבת ה-PROD טרם הוזנו בעלי עסקים מאומתים (אפס מידע פיקטיבי). אפשר לעבור לסביבת TEST בראש המסך כדי לראות הדגמה מלאה של שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף ומאמנת ספורט!'
-              : 'No verified businesses have been added to PROD yet. Switch to TEST in the top bar to preview demo listings for Shiatsu, Cosmetician, Tattoo, Boxing, and Fitness!'
+              ? 'טרם נמצאו בעלי עסקים תואמים.'
+              : 'No matching businesses found.'
             : isHe
-            ? `מצאתי ${finalBiz.length} בעלי עסקים מתאימים בקהילה שלנו בגואה! לחצו על כרטיס כדי לצפות במחירון המלא ולקבוע תור:`
-            : `Found ${finalBiz.length} matching community businesses in Goa! Tap a card to view prices and book a slot:`,
+            ? `מצאתי ${finalBiz.length} נותני שירות ובעלי עסקים מתאימים בדרום גואה! לחצו על כרטיס למעבר למחירון ותיאום ישיר:`
+            : `Found ${finalBiz.length} matching community providers in South Goa! Tap a card to view details and book:`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         recommendedBusinessIds: finalBiz.map((b) => b.id),
       };
@@ -210,8 +220,8 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
         newInterests.push('מוזיקה');
       if (/יוגה|yoga/i.test(lower) && !newInterests.includes('יוגה'))
         newInterests.push('יוגה');
-      if (/משחק|board/i.test(lower) && !newInterests.includes('משחקי קופסה'))
-        newInterests.push('משחקי קופסה');
+      if (/משחק|שחמט|board|chess/i.test(lower) && !newInterests.includes('משחקי חשיבה'))
+        newInterests.push('משחקי חשיבה');
 
       const updated: UserProfile = {
         ...userProfile,
@@ -243,7 +253,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
     }
 
     // 5. Querying Houses / Rentals
-    if (/בית|בתים|וילה|להשכרה|סאבלט|rent|villa|house/i.test(lower)) {
+    if (/בית|בתים|וילה|דירה|להשכרה|סאבלט|rent|villa|house|1bhk/i.test(lower)) {
       const rentals = entities.filter((e) => e.type === 'rental').map((e) => e.id);
       const reply: ChatMessage = {
         id: `b-${Date.now() + 1}`,
@@ -251,11 +261,11 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
         text:
           rentals.length === 0
             ? isHe
-              ? 'כרגע אין בתים רשומים בסביבת ה-PROD. ניתן לעבור לסביבת TEST להדגמת שריון בתים לפי תאריכים.'
-              : 'No verified homes listed in PROD yet. Switch to TEST to try date-range home booking.'
+              ? 'כרגע אין בתים רשומים בסביבה זו.'
+              : 'No verified homes listed yet.'
             : isHe
-            ? `מצאתי ${rentals.length} בתים מאומתים להשכרה בקהילה (עם סיבים אופטיים וגיבוי חשמל). לחצו לבדיקת תאריכים:`
-            : `I found ${rentals.length} verified community homes available for sublet. Tap to check dates:`,
+            ? `מצאתי ${rentals.length} נכסים מאומתים להשכרה בקהילה. לחצו לבדיקת פרטים ותאריכים:`
+            : `I found ${rentals.length} verified community rentals available. Tap to check details & dates:`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         recommendedEntityIds: rentals,
       };
@@ -265,25 +275,22 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
     }
 
     // 6. Querying Hourly Community Spaces / Studio / Doctor
-    if (/שעתי|אולפן|יוגה|רופא|עבודה|תור|studio|yoga|doctor|hourly|space/i.test(lower)) {
+    if (/שעתי|אולפן|רופא|עבודה|תור|studio|doctor|hourly|space/i.test(lower)) {
       const services = entities.filter((e) => e.type === 'service').map((e) => e.id);
-      const reply: ChatMessage = {
-        id: `b-${Date.now() + 1}`,
-        sender: 'ben',
-        text:
-          services.length === 0
-            ? isHe
-              ? 'אין כרגע משאבים שעתיים רשומים ב-PROD.'
-              : 'No hourly community spaces listed in PROD yet.'
-            : isHe
+      if (services.length > 0) {
+        const reply: ChatMessage = {
+          id: `b-${Date.now() + 1}`,
+          sender: 'ben',
+          text: isHe
             ? 'אלו המשאבים והשירותים השעתיים הפנויים השבוע:'
             : 'Here are the hourly community spaces and services with open slots this week:',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        recommendedEntityIds: services,
-      };
-      setMessages((prev) => [...prev, userMsg, reply]);
-      setInput('');
-      return;
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          recommendedEntityIds: services,
+        };
+        setMessages((prev) => [...prev, userMsg, reply]);
+        setInput('');
+        return;
+      }
     }
 
     // Default: Recommend Youth Center + Upcoming Events
@@ -298,11 +305,11 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
       text:
         topEvents.length === 0
           ? isHe
-            ? 'סביבת PROD נקייה כרגע מנתוני דמו וממתינה לאירועי אמת. ניתן להעלות אירוע ראשון או לעבור לסביבת TEST בראש המסך כדי להתנסות בכל היכולות!'
-            : 'PROD is currently clean and ready for real data. Publish a real event or switch to TEST in the header to explore demo data!'
+            ? 'אין כרגע אירועים פעילים בלוח.'
+            : 'No active events in the schedule yet.'
           : isHe
-          ? 'הנה האירועים הקרובים ופעילויות מרכז הנוער בקולום (ב׳–ה׳) שמחכים לכם השבוע:'
-          : 'Here are the upcoming community events and Youth Center sessions this week:',
+          ? 'הנה הפעילויות, החוגים והאירועים הקרובים בדרום גואה שמחכים לכם:'
+          : 'Here are the upcoming South Goa community workshops, classes, and events:',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       recommendedEntityIds: topEvents,
     };
@@ -311,17 +318,24 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
   };
 
   const quickPrompts = isHe
-    ? [
-        'מי עושה שיאצו, קוסמטיקה או קעקועים בקהילה?',
-        'יש מאמן איגרוף או מאמנת ספורט בקולום/פטנם?',
-        'מה יש השבוע לנוער במתנ"ס בקולום?',
-        'אילו בתים עם סיבים אופטיים פנויים להשכרה?',
-      ]
+    ? appEnv === 'prod'
+      ? [
+          'אילו מטפלים, ריברסינג או טיפול במים יש בפטנם ופאלולם?',
+          'יש טלפון של מונית (טאנווי) או ריקשה מקומית?',
+          'מי מכין חלות לשבת, ג׳חנון או טאלי ביתי?',
+          'אילו חוגים ואירועים מתקיימים השבוע בדרום גואה?',
+        ]
+      : [
+          'מי עושה שיאצו, קוסמטיקה או קעקועים בקהילה?',
+          'יש מאמן איגרוף או מאמנת ספורט בקולום/פטנם?',
+          'מה יש השבוע לנוער במתנ"ס בקולום?',
+          'אילו בתים עם סיבים אופטיים פנויים להשכרה?',
+        ]
     : [
-        'Who offers Shiatsu, Cosmetics, or Tattoos in the community?',
-        'Is there a Boxing Coach or Fitness Trainer in Goa?',
-        'What is happening at the Youth Center in Colomb?',
-        'Which homes with Fiber Wi-Fi are available to rent?',
+        'Which therapists, Rebirthing, or Water Healing practitioners are in Goa?',
+        'Do you have a trusted local taxi (Tanvi) or rickshaw driver?',
+        'Who makes Shabbat Challah, Jachnun, or home Thali?',
+        'What workshops and Youth Center activities are happening this week?',
       ];
 
   return (

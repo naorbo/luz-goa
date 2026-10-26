@@ -23,13 +23,14 @@ export type VolunteerRole =
   | 'ideas';
 
 export type BusinessCategory =
-  | 'body_therapy'      // שיאצו, עיסוי, דיקור וטיפולי גוף
-  | 'beauty_cosmetics'  // קוסמטיקאית, טיפוח ויופי
-  | 'tattoo_art'        // מקעקעת / קעקועים ואומנות
-  | 'fitness_martial'   // מאמן איגרוף, מאמנת ספורט, כושר וגלישה
-  | 'food_culinary'     // אוכל ביתי, אפייה ושף פרטי
-  | 'kids_education'    // שיעורים פרטיים, מוזיקה וילדים
-  | 'pro_services';     // צילום, עיצוב ושירותים מקצועיים
+  | 'body_therapy'      // טיפולי גוף, מים, נשימה ורפואה משלימה
+  | 'beauty_cosmetics'  // שיער, תספורות, ראסטות, רוקחות טבעית וטיפוח
+  | 'tattoo_art'        // טיפול באומנות, יצירה, עיצוב ואיור
+  | 'fitness_martial'   // תנועה, פילאטיס, יוגה, שחייה וכושר
+  | 'food_culinary'     // אוכל ביתי, טאלי, ג׳חנון, חלות וירקן במשלוח
+  | 'kids_education'    // חינוך, חוגי ילדים, שחמט, מחול והדרכת הורים
+  | 'transport_local'   // מוניות, ריקשות ושירותי דרך מקומיים
+  | 'pro_services';     // ויזות וטיסות, עיצוב ושירותים מקצועיים
 
 export interface BusinessServiceOffer {
   id: string;
@@ -37,13 +38,13 @@ export interface BusinessServiceOffer {
   nameEn: string;
   durationMinutes?: number;
   priceAmount: number;
-  priceCurrency: 'INR' | 'ILS' | 'USD';
+  priceCurrency: 'INR' | 'ILS' | 'USD' | 'FREE' | 'CONTACT';
 }
 
 export interface CommunityBusiness {
   id: string;
   category: BusinessCategory;
-  specialtyHe: string; // e.g. "מטפל שיאצו ורפואה סינית", "קוסמטיקאית טבעית", "מקעקעת", "מאמן איגרוף", "מאמנת ספורט"
+  specialtyHe: string;
   specialtyEn: string;
   businessNameHe: string;
   businessNameEn: string;
@@ -57,6 +58,8 @@ export interface CommunityBusiness {
   homeVisitAvailable: boolean;
   phone: string;
   instagramHandle?: string;
+  websiteUrl?: string;
+  whatsappGroupUrl?: string;
   imageUrl: string;
   availableDays: number[]; // 0..6
   timeSlots: string[];
@@ -83,12 +86,14 @@ export interface LuzEntity {
   locationDetailsHe: string;
   locationDetailsEn: string;
   mapUrl?: string;
+  websiteUrl?: string;
+  whatsappGroupUrl?: string;
   hostName: string;
   hostRoleHe?: string;
   hostRoleEn?: string;
   hostPhone: string;
   priceAmount: number;
-  priceCurrency: 'INR' | 'ILS' | 'USD' | 'FREE';
+  priceCurrency: 'INR' | 'ILS' | 'USD' | 'FREE' | 'CONTACT';
   audience: AudienceGroup;
   ingestionSource: IngestionSource;
   imageUrl: string;

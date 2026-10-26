@@ -14,6 +14,7 @@ import {
   Home,
   AlertCircle,
   Users,
+  Globe,
 } from 'lucide-react';
 import { LuzEntity, BookingRecord, Language } from '../types/luz';
 import { downloadIcsFile, buildGoogleCalendarUrl } from '../utils/calendarAndParser';
@@ -28,12 +29,12 @@ interface BookingModalProps {
 }
 
 const UPCOMING_DATES = [
-  { date: '2026-10-19', labelHe: 'ב׳ 19/10', labelEn: 'Mon Oct 19' },
-  { date: '2026-10-20', labelHe: 'ג׳ 20/10', labelEn: 'Tue Oct 20' },
-  { date: '2026-10-21', labelHe: 'ד׳ 21/10', labelEn: 'Wed Oct 21' },
-  { date: '2026-10-22', labelHe: 'ה׳ 22/10', labelEn: 'Thu Oct 22' },
-  { date: '2026-10-23', labelHe: 'ו׳ 23/10', labelEn: 'Fri Oct 23' },
-  { date: '2026-10-24', labelHe: 'ש׳ 24/10', labelEn: 'Sat Oct 24' },
+  { date: '2026-10-26', labelHe: 'ב׳ 26/10', labelEn: 'Mon Oct 26' },
+  { date: '2026-10-27', labelHe: 'ג׳ 27/10', labelEn: 'Tue Oct 27' },
+  { date: '2026-10-28', labelHe: 'ד׳ 28/10', labelEn: 'Wed Oct 28' },
+  { date: '2026-10-29', labelHe: 'ה׳ 29/10', labelEn: 'Thu Oct 29' },
+  { date: '2026-10-30', labelHe: 'ו׳ 30/10', labelEn: 'Fri Oct 30' },
+  { date: '2026-10-31', labelHe: 'ש׳ 31/10', labelEn: 'Sat Oct 31' },
 ];
 
 export const BookingModal: React.FC<BookingModalProps> = ({
@@ -54,12 +55,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [customerName, setCustomerName] = useState(defaultUserName);
   const [customerPhone, setCustomerPhone] = useState(defaultUserPhone);
   const [participantsCount, setParticipantsCount] = useState(1);
-  const [selectedDate, setSelectedDate] = useState(entity.date || UPCOMING_DATES[1].date);
+  const [selectedDate, setSelectedDate] = useState(entity.date || UPCOMING_DATES[0].date);
   const [selectedSlot, setSelectedSlot] = useState(
     entity.timeSlots && entity.timeSlots.length > 0 ? entity.timeSlots[0] : entity.startTime || '17:00'
   );
-  const [rentalFrom, setRentalFrom] = useState('2026-10-20');
-  const [rentalTo, setRentalTo] = useState('2026-10-24');
+  const [rentalFrom, setRentalFrom] = useState('2026-11-01');
+  const [rentalTo, setRentalTo] = useState('2026-11-08');
   const [reminderChannel, setReminderChannel] = useState<'whatsapp' | 'calendar_ics' | 'both'>('both');
   const [notes, setNotes] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -268,7 +269,61 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-              <p className="text-sm text-canopy-700 leading-relaxed">{description}</p>
+              <div className="space-y-3">
+                <p className="text-sm text-canopy-700 leading-relaxed">{description}</p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {entity.websiteUrl && (
+                    <a
+                      href={entity.websiteUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-sand-300 text-xs font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-terracotta-500" />
+                      <span>{isHe ? 'אתר רשמי / הרשמה' : 'Official Website'}</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+                  {entity.whatsappGroupUrl && (
+                    <a
+                      href={entity.whatsappGroupUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-sand-300 text-xs font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
+                    >
+                      <Users className="w-3.5 h-3.5 text-canopy-600" />
+                      <span>{isHe ? 'הצטרפות לקבוצת הוואטסאפ' : 'Join WhatsApp Group'}</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+                  {entity.mapUrl && (
+                    <a
+                      href={entity.mapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-sand-300 text-xs font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-ochre-600" />
+                      <span>{isHe ? 'מיקום ב-Google Maps' : 'Google Maps Pin'}</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  )}
+                  <a
+                    href={`https://wa.me/${entity.hostPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                      isHe
+                        ? `היי, ראיתי בלוח LUZ גואה את "${entity.titleHe}" ואשמח לפרטים.`
+                        : `Hi, reaching out via LUZ Goa regarding "${entity.titleEn}".`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sand-100 border border-sand-300 text-xs font-semibold text-canopy-900 hover:border-terracotta-500 transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-terracotta-500" />
+                    <span>{isHe ? 'פנייה ישירה למארגן בוואטסאפ' : 'Direct WhatsApp'}</span>
+                  </a>
+                </div>
+              </div>
 
               {/* ENTITY-SPECIFIC SCHEDULING CONTROLS */}
               {entity.type === 'service' && (

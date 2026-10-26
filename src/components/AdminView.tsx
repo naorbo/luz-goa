@@ -76,6 +76,7 @@ create table public.luz_businesses (
     'fitness_martial',
     'food_culinary',
     'kids_education',
+    'transport_local',
     'pro_services'
   )),
   specialty_he text not null,
