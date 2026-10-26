@@ -2,39 +2,46 @@
  * ============================================================================
  * LUZ GOA — Google Apps Script Backend (Leads CRM + Gmail + Telegram + Bot)
  * ============================================================================
+ * חשוב: יש להריץ ולפרוס את הסקריפט מתוך חשבון הגוגל הרשמי של המערכת:
+ * Account / Sender: luzschedu@gmail.com
+ *
  * הוראות התקנה מהירות (2 דקות):
- * 1. היכנסו ל-Google Sheets ופתחו גיליון חדש (למשל: "לידים ופניות LUZ גואה"),
- *    או היכנסו ישירות לכתובת: https://script.new
- * 2. בתפריט העליון לחצו על: Extensions (תוספים) -> Apps Script
+ * 1. התחברו לחשבון luzschedu@gmail.com ופתחו Google Sheet חדש (או https://script.new)
+ * 2. בתפריט העליון לחצו על: Extensions -> Apps Script
  * 3. מחקו את הקוד הקיים והדביקו את כל הקובץ הזה. שמרו (Ctrl+S).
- * 4. למעלה בסרגל הכלים בחרו בפונקציה `setupAndTestLuzAlerts` ולחצו על **Run (הפעלה)**
+ * 4. בסרגל הכלים בחרו בפונקציה `setupAndTestLuzAlerts` ולחצו על **Run**
  *    אשרו הרשאות חד-פעמיות (Review Permissions -> Advanced -> Go to project -> Allow).
- *    הבדיקה תיצור את הלשונית בגיליון ותשלח אליכם מייל בדיקה מיידי!
- * 5. לחצו למעלה בצד ימין על **Deploy (פריסה) -> New deployment (פריסה חדשה)**:
- *    - לחצו על גלגל השיניים ובחרו: **Web app (אפליקציית אינטרנט)**
- *    - Execute as (הפעלה בתור): **Me (אני - naorbo@gmail.com)**
- *    - Who has access (למי יש גישה): **Anyone (כל אחד)**  <-- קריטי כדי שהאתר יוכל לשלוח!
+ *    הבדיקה תיצור את הלשונית בגיליון ותשלח מייל בדיקה מ-luzschedu@gmail.com!
+ * 5. לחצו למעלה על **Deploy -> New deployment**:
+ *    - סוג: **Web app**
+ *    - Execute as: **Me (luzschedu@gmail.com)**
+ *    - Who has access: **Anyone**  <-- קריטי כדי שהאתר יוכל לשלוח מכל מכשיר!
  *    - לחצו **Deploy** והעתיקו את כתובת ה-Web App URL (מסתיימת ב-`/exec`).
- * 6. הדביקו את הכתובת בלשונית "אדמין ולידים" באתר (או שלחו אותה כאן בצ'אט כדי שנצרוב אותה קבוע בקוד הפרודקשן לכל המשתמשים!).
+ * 6. הדביקו את הכתובת בלשונית Admin & Leads באתר או שלחו אותה בצ'אט לצריבה קבועה!
  * ============================================================================
  */
 
 const CONFIG = {
-  ADMIN_EMAIL: 'naorbo@gmail.com',
+  // החשבון שממנו רץ הסקריפט וממנו נשלחים המיילים:
+  SENDER_EMAIL: 'luzschedu@gmail.com',
+  SENDER_NAME: 'LUZ Goa Platform',
+
+  // כתובת המייל לקבלת התראות הלידים (ניתן להוסיף כתובות נוספות מופרדות בפסיק):
+  ADMIN_EMAIL: 'luzschedu@gmail.com',
   SEND_EMAIL_ALERTS: true,
 
-  // אופציונלי: התראה מיידית גם לטלגרם (הטוקן נשאר פרטי ומוגן בתוך חשבון גוגל שלך!)
+  // אופציונלי: התראה מיידית גם לטלגרם (הטוקן נשאר פרטי ומוגן בתוך חשבון גוגל!)
   TELEGRAM_BOT_TOKEN: '', // למשל: '123456789:ABCdefGHIjklMNO...'
   TELEGRAM_CHAT_ID: '',   // למשל: '987654321' או '-100123456789'
 
-  // אופציונלי: העברה אוטומטית גם לבוט הוואטסאפ "בן" (שי)
+  // אופציונלי: העברה אוטומטית גם לבוט הוואטסאפ "בן"
   BEN_WHATSAPP_WEBHOOK_URL: '',
 
-  SHEET_TAB_NAME: 'פניות_ספקים_LUZ',
+  SHEET_TAB_NAME: 'LUZ_Referrals',
 };
 
 /**
- * הרץ פונקציה זו פעם אחת מתוך עורך ה-Apps Script כדי לאשר הרשאות ולבדוק שהכל עובד!
+ * הרץ פונקציה זו פעם אחת מתוך עורך ה-Apps Script ( תחת luzschedu@gmail.com ) כדי לאשר הרשאות ולבדוק!
  */
 function setupAndTestLuzAlerts() {
   const { spreadsheet, sheet } = getOrCreateLeadsSheet_();
@@ -43,53 +50,47 @@ function setupAndTestLuzAlerts() {
     referralCode: 'LUZ-TEST-GAS',
     environment: 'prod',
     createdAt: new Date().toISOString(),
-    timestampLocal: new Date().toLocaleString('he-IL', { timeZone: 'Asia/Kolkata' }),
+    timestampLocal: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kolkata' }),
     actionType: 'whatsapp_click',
     actionLabelHe: 'בדיקת חיבור Google Apps Script',
     provider: {
       id: 'prod-biz-soli-rebirthing',
       nameHe: 'סולי — ריברסינג וטיפול רגשי (CBT)',
       nameEn: 'Soli — Rebirthing & CBT',
-      ownerOrHost: 'סולי',
+      ownerOrHost: 'Soli / סולי',
       phone: '+66 64 094 9859',
-      categoryOrType: 'טיפולי גוף, מים ונשימה',
+      categoryOrType: 'Bodywork & Healing',
       area: 'Patnem',
       contactLang: 'he',
     },
     customer: {
-      name: 'נאור (בדיקת מערכת)',
+      name: 'LUZ System Test',
       phone: '+972-52-000-0000',
     },
-    serviceOrDateSummary: 'בדיקת שמירה אוטומטית ל-Google Sheets ושליחת מייל/טלגרם',
+    serviceOrDateSummary: 'Verification test from luzschedu@gmail.com (Google Sheets + Gmail)',
   };
 
   processReferralEvent_(samplePayload, spreadsheet, sheet);
-  Logger.log('הבדיקה הצליחה! קישור לגיליון הלידים: ' + spreadsheet.getUrl());
+  Logger.log('Test succeeded! Leads Google Sheet URL: ' + spreadsheet.getUrl());
 }
 
-/**
- * נקודת קצה לבדיקת תקינות בדפדפן (GET)
- */
 function doGet() {
   return ContentService.createTextOutput(
     JSON.stringify({
       ok: true,
       service: 'LUZ Goa Google Apps Script Webhook',
+      senderAccount: CONFIG.SENDER_EMAIL,
       status: 'active',
       timestamp: new Date().toISOString(),
     })
   ).setMimeType(ContentService.MimeType.JSON);
 }
 
-/**
- * נקודת קצה לקבלת התראות בזמן אמת מאתר LUZ גואה (POST)
- */
 function doPost(e) {
   try {
     const rawBody = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
     const data = JSON.parse(rawBody);
 
-    // מניעת כפילויות במקרה של שליחה חוזרת מהדפדפן תוך 15 שניות
     const dedupKey = 'luz_' + (data.referralCode || '') + '_' + (data.actionType || '');
     const cache = CacheService.getScriptCache();
     if (data.referralCode && data.referralCode !== 'LUZ-TEST-001' && cache.get(dedupKey)) {
@@ -124,28 +125,29 @@ function processReferralEvent_(data, spreadsheet, sheet) {
   const provider = data.provider || {};
   const customer = data.customer || {};
 
-  // 1. תיעוד שורה חדשה בגיליון Google Sheets
+  // 1. Append lead row to Google Sheets
   sheet.appendRow([
     goaTime,
     '#' + (data.referralCode || 'LUZ'),
     String(data.environment || 'prod').toUpperCase(),
-    data.actionLabelHe || data.actionType || 'פנייה לספק',
+    data.actionLabelHe || data.actionType || 'Provider Referral',
+    provider.nameEn || provider.nameHe || '',
     provider.nameHe || '',
     provider.ownerOrHost || '',
     provider.phone || '',
     provider.categoryOrType || '',
     provider.area || '',
-    provider.contactLang === 'en' ? 'English' : 'עברית',
-    customer.name || 'מבקר/ת באתר',
-    customer.phone || 'לחיצה ישירה',
+    provider.contactLang === 'en' ? 'English' : 'Hebrew',
+    customer.name || 'Website Visitor',
+    customer.phone || 'Direct Click',
     data.serviceOrDateSummary || '—',
   ]);
 
-  // 2. שליחת התראת אימייל מעוצבת בעברית (RTL) מ-Gmail שלך
+  // 2. Send formatted Gmail alert from luzschedu@gmail.com
   if (CONFIG.SEND_EMAIL_ALERTS && CONFIG.ADMIN_EMAIL) {
     const subject =
-      'פנייה חדשה מ-LUZ גואה אל: ' +
-      (provider.nameHe || 'ספק') +
+      'LUZ Goa Lead: ' +
+      (provider.nameEn || provider.nameHe || 'Provider') +
       ' [#' +
       (data.referralCode || 'LUZ') +
       ']';
@@ -162,7 +164,7 @@ function processReferralEvent_(data, spreadsheet, sheet) {
         '</span></div>',
       '<div><strong>סוג פעולה:</strong> ' + (data.actionLabelHe || data.actionType || '') + '</div>',
       '<div><strong>ספק / שירות:</strong> ' +
-        (provider.nameHe || '') +
+        (provider.nameHe || provider.nameEn || '') +
         ' (' +
         (provider.ownerOrHost || '') +
         ')</div>',
@@ -173,7 +175,7 @@ function processReferralEvent_(data, spreadsheet, sheet) {
         '</div>',
       '<div><strong>טלפון ספק:</strong> <span dir="ltr">' + (provider.phone || '') + '</span></div>',
       '<div><strong>שפת הודעת השיוך לספק:</strong> ' +
-        (provider.contactLang === 'en' ? 'English (ספק מקומי/בינ"ל)' : 'עברית') +
+        (provider.contactLang === 'en' ? 'English' : 'עברית') +
         '</div>',
       '<hr style="border:none;border-top:1px solid #EEE5D5;margin:10px 0;" />',
       '<div><strong>פרטי הפונה:</strong> ' +
@@ -190,7 +192,7 @@ function processReferralEvent_(data, spreadsheet, sheet) {
       '<div style="margin-top:16px;">',
       '<a href="' +
         spreadsheet.getUrl() +
-        '" style="display:inline-block;background:#163024;color:#FAF6EE;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;margin-left:8px;">פתיחת גיליון הלידים המלא (Google Sheets)</a>',
+        '" style="display:inline-block;background:#163024;color:#FAF6EE;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;margin-left:8px;">פתיחת גיליון הלידים (Google Sheets)</a>',
       providerDigits
         ? '<a href="https://wa.me/' +
           providerDigits +
@@ -207,18 +209,20 @@ function processReferralEvent_(data, spreadsheet, sheet) {
 
     MailApp.sendEmail({
       to: CONFIG.ADMIN_EMAIL,
+      replyTo: CONFIG.SENDER_EMAIL,
+      name: CONFIG.SENDER_NAME,
       subject: subject,
       htmlBody: htmlBody,
     });
   }
 
-  // 3. שליחת התראה מיידית לטלגרם (אם הוגדר למעלה ב-CONFIG)
+  // 3. Optional Telegram Bot Push
   if (CONFIG.TELEGRAM_BOT_TOKEN && CONFIG.TELEGRAM_CHAT_ID) {
     const tgText = [
       'פנייה חדשה לספק מתוך LUZ גואה!',
       '• מזהה: #' + (data.referralCode || ''),
       '• פעולה: ' + (data.actionLabelHe || data.actionType || ''),
-      '• ספק: ' + (provider.nameHe || '') + ' (' + (provider.ownerOrHost || '') + ')',
+      '• ספק: ' + (provider.nameHe || provider.nameEn || '') + ' (' + (provider.ownerOrHost || '') + ')',
       '• אזור וטלפון: ' + (provider.area || '') + ' | ' + (provider.phone || ''),
       '• פונה: ' + (customer.name || 'מבקר/ת באתר') + (customer.phone ? ' (' + customer.phone + ')' : ''),
       data.serviceOrDateSummary ? '• פירוט: ' + data.serviceOrDateSummary : '',
@@ -241,7 +245,7 @@ function processReferralEvent_(data, spreadsheet, sheet) {
     );
   }
 
-  // 4. העברה אופציונלית לבוט "בן" בוואטסאפ
+  // 4. Optional forward to "Ben" WhatsApp Bot
   if (CONFIG.BEN_WHATSAPP_WEBHOOK_URL) {
     UrlFetchApp.fetch(CONFIG.BEN_WHATSAPP_WEBHOOK_URL, {
       method: 'post',
@@ -252,9 +256,6 @@ function processReferralEvent_(data, spreadsheet, sheet) {
   }
 }
 
-/**
- * מאתר את הגיליון הפעיל או יוצר אוטומטית גיליון Google Sheets חדש אם הסקריפט נוצר כקובץ עצמאי!
- */
 function getOrCreateLeadsSheet_() {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) {
@@ -268,7 +269,7 @@ function getOrCreateLeadsSheet_() {
       }
     }
     if (!ss) {
-      ss = SpreadsheetApp.create('LUZ Goa — יומן לידים ופניות לספקים');
+      ss = SpreadsheetApp.create('LUZ Goa — Provider Referrals & Leads CRM');
       props.setProperty('LUZ_GOA_SPREADSHEET_ID', ss.getId());
     }
   }
@@ -276,21 +277,21 @@ function getOrCreateLeadsSheet_() {
   let sheet = ss.getSheetByName(CONFIG.SHEET_TAB_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(CONFIG.SHEET_TAB_NAME);
-    sheet.setRightToLeft(true);
     const headers = [
-      'זמן פנייה (גואה)',
-      'מזהה הפניה (#LUZ)',
-      'סביבה',
-      'סוג פעולה',
-      'שם העסק / פעילות',
-      'בעלים / מארח',
-      'טלפון ספק',
-      'קטגוריה',
-      'אזור בגואה',
-      'שפת שיוך לספק',
-      'שם הפונה',
-      'טלפון הפונה',
-      'פירוט תור / מועד',
+      'Goa Timestamp',
+      'LUZ Referral Code',
+      'Environment',
+      'Action',
+      'Provider (EN)',
+      'Provider (HE)',
+      'Owner / Host',
+      'Provider Phone',
+      'Category',
+      'Area',
+      'Provider Msg Lang',
+      'Customer Name',
+      'Customer Phone',
+      'Service / Schedule Details',
     ];
     sheet.appendRow(headers);
     sheet.setFrozenRows(1);

@@ -310,16 +310,17 @@ export interface ChannelDispatchResult {
 export async function dispatchLeadReferralAlerts(
   event: LeadReferralEvent,
   config: NotificationChannelsConfig,
-  options?: { forceSend?: boolean }
+  options?: { forceSend?: boolean; lang?: Language }
 ): Promise<ChannelDispatchResult[]> {
   if (event.environment === 'test' && !config.sendRealAlertsInTestEnv && !options?.forceSend) {
     return [];
   }
 
+  const isHe = options?.lang === 'he';
   const results: ChannelDispatchResult[] = [];
   const formattedAlertHe = formatAlertSummaryHe(event);
   const actionLabelHe = getActionTypeLabel(event.actionType, 'he');
-  const localTime = new Date(event.createdAt).toLocaleString('he-IL');
+  const localTime = new Date(event.createdAt).toLocaleString(isHe ? 'he-IL' : 'en-US');
 
   const tasks: Promise<void>[] = [];
 
@@ -346,14 +347,14 @@ export async function dispatchLeadReferralAlerts(
         contactLang: event.providerContactLang,
       },
       customer: {
-        name: event.customerName || 'אורח/ת בקהילה',
+        name: event.customerName || (isHe ? 'אורח/ת בקהילה' : 'Community Visitor'),
         phone: event.customerPhone || '',
       },
       serviceOrDateSummary: event.serviceOrDateSummary || '',
       formattedAlertHe,
     };
 
-    tasks.push(
+  tasks.push(
       (async () => {
         // Google Apps Script rejects CORS OPTIONS preflight if Content-Type is application/json,
         // so send text/plain;charset=utf-8 immediately on the first shot (still parsed via JSON.parse(e.postData.contents)).
@@ -377,8 +378,12 @@ export async function dispatchLeadReferralAlerts(
               channel: 'webhook',
               ok,
               detail: ok
-                ? 'נשלח ל-Google Apps Script — נרשם ב-Google Sheets ונשלח מייל/טלגרם!'
-                : `שגיאת Apps Script: ${gasJson?.error || `HTTP ${res.status}`}`,
+                ? isHe
+                  ? 'נשלח ל-Google Apps Script — נרשם ב-Google Sheets ונשלח מייל מ-luzschedu@gmail.com!'
+                  : 'Dispatched to Google Apps Script — recorded in Google Sheets & alert email sent via luzschedu@gmail.com!'
+                : isHe
+                ? `שגיאת Apps Script: ${gasJson?.error || `HTTP ${res.status}`}`
+                : `Apps Script error: ${gasJson?.error || `HTTP ${res.status}`}`,
             });
             return;
           }
@@ -386,7 +391,13 @@ export async function dispatchLeadReferralAlerts(
           results.push({
             channel: 'webhook',
             ok: res.ok,
-            detail: res.ok ? `נשלח ל-Webhook (HTTP ${res.status})` : `שגיאת HTTP ${res.status}`,
+            detail: res.ok
+              ? isHe
+                ? `נשלח ל-Webhook (HTTP ${res.status})`
+                : `Dispatched to Webhook (HTTP ${res.status})`
+              : isHe
+              ? `שגיאת HTTP ${res.status}`
+              : `HTTP Error ${res.status}`,
           });
         } catch {
           // Fallback to CORS-opaque simple request if browser blocks reading cross-origin redirect
@@ -402,14 +413,20 @@ export async function dispatchLeadReferralAlerts(
               channel: 'webhook',
               ok: true,
               detail: isAppsScript
-                ? 'נשלח ל-Google Apps Script (Google Sheets + Gmail)'
-                : 'נשלח ל-Webhook (מצב no-cors)',
+                ? isHe
+                  ? 'נשלח ל-Google Apps Script (Google Sheets + Gmail via luzschedu@gmail.com)'
+                  : 'Dispatched to Google Apps Script (Google Sheets + Gmail via luzschedu@gmail.com)'
+                : isHe
+                ? 'נשלח ל-Webhook (מצב no-cors)'
+                : 'Dispatched to Webhook (no-cors mode)',
             });
           } catch (err2) {
             results.push({
               channel: 'webhook',
               ok: false,
-              detail: `כשל בשליחה ל-Webhook: ${err2 instanceof Error ? err2.message : 'שגיאת רשת'}`,
+              detail: isHe
+                ? `כשל בשליחה ל-Webhook: ${err2 instanceof Error ? err2.message : 'שגיאת רשת'}`
+                : `Webhook dispatch failed: ${err2 instanceof Error ? err2.message : 'Network error'}`,
             });
           }
         }
@@ -443,14 +460,20 @@ export async function dispatchLeadReferralAlerts(
             ok: tgRes.ok && tgData?.ok !== false,
             detail:
               tgRes.ok && tgData?.ok !== false
-                ? 'נשלחה הודעה מיידית לטלגרם!'
-                : `שגיאת טלגרם: ${tgData?.description || tgRes.status}`,
+                ? isHe
+                  ? 'נשלחה הודעה מיידית לטלגרם!'
+                  : 'Instant alert sent to Telegram!'
+                : isHe
+                ? `שגיאת טלגרם: ${tgData?.description || tgRes.status}`
+                : `Telegram error: ${tgData?.description || tgRes.status}`,
           });
         } catch (err) {
           results.push({
             channel: 'telegram',
             ok: false,
-            detail: `שגיאת רשת מול טלגרם: ${err instanceof Error ? err.message : 'Network error'}`,
+            detail: isHe
+              ? `שגיאת רשת מול טלגרם: ${err instanceof Error ? err.message : 'Network error'}`
+              : `Telegram network error: ${err instanceof Error ? err.message : 'Network error'}`,
           });
         }
       })()
@@ -460,7 +483,9 @@ export async function dispatchLeadReferralAlerts(
   // 3. Email Notification (Web3Forms or FormSubmit AJAX)
   if (config.enableEmail && config.adminEmail.trim()) {
     const email = config.adminEmail.trim();
-    const subject = `פנייה חדשה מ-LUZ גואה: ${event.providerNameHe} [#${event.referralCode}]`;
+    const subject = isHe
+      ? `פנייה חדשה מ-LUZ גואה: ${event.providerNameHe} [#${event.referralCode}]`
+      : `New LUZ Goa Lead: ${event.providerNameEn || event.providerNameHe} [#${event.referralCode}]`;
 
     tasks.push(
       (async () => {
@@ -478,8 +503,8 @@ export async function dispatchLeadReferralAlerts(
                 provider: `${event.providerNameHe} (${event.ownerOrHostName})`,
                 provider_phone: event.providerPhone,
                 area: event.area,
-                customer_name: event.customerName || 'אורח/ת באתר',
-                customer_phone: event.customerPhone || 'לחיצה ישירה',
+                customer_name: event.customerName || (isHe ? 'אורח/ת באתר' : 'Community Visitor'),
+                customer_phone: event.customerPhone || (isHe ? 'לחיצה ישירה' : 'Direct click'),
                 details: event.serviceOrDateSummary || '—',
                 environment: event.environment.toUpperCase(),
                 time: localTime,
@@ -489,7 +514,13 @@ export async function dispatchLeadReferralAlerts(
             results.push({
               channel: 'email',
               ok: w3Res.ok,
-              detail: w3Res.ok ? `נשלח מייל ל-${email} (Web3Forms)` : `שגיאה ${w3Res.status}`,
+              detail: w3Res.ok
+                ? isHe
+                  ? `נשלח מייל ל-${email} (Web3Forms)`
+                  : `Email sent to ${email} (Web3Forms)`
+                : isHe
+                ? `שגיאה ${w3Res.status}`
+                : `Error ${w3Res.status}`,
             });
             return;
           }
@@ -511,7 +542,7 @@ export async function dispatchLeadReferralAlerts(
                 ספק_או_פעילות: `${event.providerNameHe} (${event.ownerOrHostName})`,
                 קטגוריה_ואזור: `${event.providerCategoryOrType} | ${event.area}`,
                 טלפון_ספק: event.providerPhone,
-                שם_הפונה: event.customerName || 'מבקר/ת באתר (לחיצה ישירה)',
+                שם_הפונה: event.customerName || (isHe ? 'מבקר/ת באתר (לחיצה ישירה)' : 'Site Visitor (Direct click)'),
                 טלפון_הפונה: event.customerPhone || '—',
                 פירוט_שירות_או_תור: event.serviceOrDateSummary || '—',
                 סביבה: event.environment.toUpperCase(),
@@ -527,16 +558,22 @@ export async function dispatchLeadReferralAlerts(
             channel: 'email',
             ok: fsRes.ok,
             detail: needsActivation
-              ? `נשלח מייל הפעלה חד-פעמי ל-${email} — אשר אותו בתיבת הדואר ("Activate Form") כדי לקבל את כל ההתראות הבאות אוטומטית!`
+              ? isHe
+                ? `נשלח מייל הפעלה חד-פעמי ל-${email} — אשר אותו בתיבת הדואר ("Activate Form") כדי לקבל את כל ההתראות הבאות אוטומטית!`
+                : `One-time activation email sent to ${email} — please click "Activate Form" in your inbox to enable automated delivery!`
               : fsRes.ok
-              ? `נשלחה התראת אימייל אל ${email}`
-              : rawMsg || `שגיאת אימייל (${fsRes.status})`,
+              ? isHe
+                ? `נשלחה התראת אימייל אל ${email}`
+                : `Email alert dispatched to ${email}`
+              : rawMsg || (isHe ? `שגיאת אימייל (${fsRes.status})` : `Email error (${fsRes.status})`),
           });
         } catch (err) {
           results.push({
             channel: 'email',
             ok: false,
-            detail: `שגיאה בשליחת אימייל: ${err instanceof Error ? err.message : 'Network error'}`,
+            detail: isHe
+              ? `שגיאה בשליחת אימייל: ${err instanceof Error ? err.message : 'Network error'}`
+              : `Email dispatch error: ${err instanceof Error ? err.message : 'Network error'}`,
           });
         }
       })()
@@ -549,8 +586,10 @@ export async function dispatchLeadReferralAlerts(
 
 export async function sendTestAlertAllChannels(
   config: NotificationChannelsConfig,
-  env: AppEnvironment
+  env: AppEnvironment,
+  lang: Language = 'en'
 ): Promise<ChannelDispatchResult[]> {
+  const isHe = lang === 'he';
   const testEvent: LeadReferralEvent = {
     id: `ref-test-${Date.now()}`,
     referralCode: 'LUZ-TEST-001',
@@ -559,17 +598,19 @@ export async function sendTestAlertAllChannels(
     providerId: 'test-ping',
     providerNameHe: 'בדיקת מערכת התראות LUZ גואה',
     providerNameEn: 'LUZ Goa Notification Test',
-    ownerOrHostName: 'נאור (בדיקה)',
+    ownerOrHostName: isHe ? 'נאור (בדיקה)' : 'Naor (Test)',
     providerPhone: '+972-52-478-0033',
-    providerCategoryOrType: 'בדיקת חיבור ערוצים',
+    providerCategoryOrType: isHe ? 'בדיקת חיבור ערוצים' : 'Channel Connection Test',
     area: 'Colomb',
-    providerContactLang: 'he',
-    customerName: 'בדיקת אדמין',
+    providerContactLang: isHe ? 'he' : 'en',
+    customerName: isHe ? 'בדיקת אדמין' : 'Admin Alert Test',
     customerPhone: '+972-50-000-0000',
-    serviceOrDateSummary: 'בדיקת תקינות שליחת התראות בזמן אמת (Email / Webhook / Telegram)',
+    serviceOrDateSummary: isHe
+      ? 'בדיקת תקינות שליחת התראות בזמן אמת (Google Sheets CRM, Gmail, Telegram)'
+      : 'Real-time multi-channel lead alert verification (Google Sheets CRM, Gmail, Telegram)',
     channelsDispatched: [],
     createdAt: new Date().toISOString(),
   };
 
-  return dispatchLeadReferralAlerts(testEvent, config, { forceSend: true });
+  return dispatchLeadReferralAlerts(testEvent, config, { forceSend: true, lang });
 }

@@ -91,6 +91,7 @@ export interface LuzEntity {
   whatsappGroupUrl?: string;
   preferredContactLang?: Language;
   hostName: string;
+  hostNameEn?: string;
   hostRoleHe?: string;
   hostRoleEn?: string;
   hostPhone: string;

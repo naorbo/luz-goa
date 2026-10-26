@@ -44,7 +44,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   const [showSheetSetup, setShowSheetSetup] = useState(false);
 
   const [children, setChildren] = useState<ChildDetail[]>([
-    { id: 'c-init-1', name: '', age: 12, grade: 'ו׳ / 6th', interests: '' },
+    { id: 'c-init-1', name: '', age: 12, grade: isHe ? 'ו׳ / 6th' : '6th Grade', interests: '' },
   ]);
 
   const [submitted, setSubmitted] = useState(false);
@@ -57,7 +57,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         id: `c-${Date.now()}`,
         name: '',
         age: 11,
-        grade: 'ה׳ / 5th',
+        grade: isHe ? 'ה׳ / 5th' : '5th Grade',
         interests: '',
       },
     ]);

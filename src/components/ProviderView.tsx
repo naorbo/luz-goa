@@ -31,17 +31,20 @@ const SAMPLE_WHATSAPP_MESSAGES = [
   {
     labelHe: 'דוגמה 1: הופעה חד-פעמית ברביעי',
     labelEn: 'Sample 1: Wed Live Concert',
-    text: 'הופעה אקוסטית חיה לשקיעה בגג של אילן בקולום!\nיום רביעי הקרוב ב-20:00, כניסה 400 רופי. מוזמנים להביא כלי נגינה וילדים. לפרטים: +972-52-478-0033',
+    textHe: 'הופעה אקוסטית חיה לשקיעה בגג של אילן בקולום!\nיום רביעי הקרוב ב-20:00, כניסה 400 רופי. מוזמנים להביא כלי נגינה וילדים. לפרטים: +972-52-478-0033',
+    textEn: 'Live Sunset Acoustic Concert on Ilan\'s Colomb Rooftop!\nThis Wednesday at 20:00, entrance 400 INR. Instruments & kids welcome. Contact: +972-52-478-0033',
   },
   {
     labelHe: 'דוגמה 2: השכרת בית בקולום (טווח תאריכים)',
     labelEn: 'Sample 2: House Sublet in Colomb',
-    text: 'וילה מהממת להשכרה בקולום ליד שייליש! 3 חדרי שינה ממוזגים, אינטרנט סיבים אופטיים 150 מגה ואינוורטר גיבוי מלא לחשמל. פנויה מ-01/11 עד 25/11. 4500 רופי ללילה. דברו איתי: +972-54-778-9900',
+    textHe: 'וילה מהממת להשכרה בקולום ליד שייליש! 3 חדרי שינה ממוזגים, אינטרנט סיבים אופטיים 150 מגה ואינוורטר גיבוי מלא לחשמל. פנויה מ-01/11 עד 25/11. 4500 רופי ללילה. דברו איתי: +972-54-778-9900',
+    textEn: 'Stunning villa sublet in Colomb near Shailish! 3 AC bedrooms, 150Mbps fiber optic wifi and 100% inverter power backup. Available Nov 1 to Nov 25. 4500 INR/night. Reach out: +972-54-778-9900',
   },
   {
     labelHe: 'דוגמה 3: שירות שעתי / טיפול בתיאום יומן',
     labelEn: 'Sample 3: Hourly Therapy Session',
-    text: 'פותחת יומן לטיפולי דיקור ושיאצו לפי שעה בקליניקה השקטה בפטנם. עלות מפגש 1200 רופי, בתיאום משבצת מראש ביומן. טלפון: +972-50-334-5566',
+    textHe: 'פותחת יומן לטיפולי דיקור ושיאצו לפי שעה בקליניקה השקטה בפטנם. עלות מפגש 1200 רופי, בתיאום משבצת מראש ביומן. טלפון: +972-50-334-5566',
+    textEn: 'Acupuncture & Shiatsu therapy sessions in our serene Patnem clinic. 1200 INR per 1-hour session. Advance calendar booking. WhatsApp: +972-50-334-5566',
   },
 ];
 
@@ -59,7 +62,9 @@ export const ProviderView: React.FC<ProviderViewProps> = ({ lang, onAddEntity })
   const [titleEn, setTitleEn] = useState('');
   const [descriptionHe, setDescriptionHe] = useState('');
   const [area, setArea] = useState<GoaArea>('Colomb');
-  const [locationDetailsHe, setLocationDetailsHe] = useState('קולום, ליד החנות של שייליש');
+  const [locationDetailsHe, setLocationDetailsHe] = useState(
+    isHe ? 'קולום, ליד החנות של שייליש' : 'Colomb, near Shailish Shop'
+  );
   const [hostName, setHostName] = useState('');
   const [hostPhone, setHostPhone] = useState('+972-52-478-0033');
   const [priceAmount, setPriceAmount] = useState<number>(0);
@@ -93,7 +98,7 @@ export const ProviderView: React.FC<ProviderViewProps> = ({ lang, onAddEntity })
 
   const handleParseWhatsApp = () => {
     if (!rawWhatsApp.trim()) return;
-    const draft = parseWhatsAppMessageToDraft(rawWhatsApp);
+    const draft = parseWhatsAppMessageToDraft(rawWhatsApp, lang);
     setType(draft.type);
     setTitleHe(draft.titleHe);
     setTitleEn(draft.titleEn);
@@ -135,6 +140,7 @@ export const ProviderView: React.FC<ProviderViewProps> = ({ lang, onAddEntity })
       locationDetailsHe,
       locationDetailsEn: `${area}, Goa`,
       hostName: hostName || (isHe ? 'חבר קהילה בגואה' : 'Goa Community Member'),
+      hostNameEn: hostName || (isHe ? 'חבר קהילה בגואה' : 'Goa Community Member'),
       hostPhone,
       priceAmount: priceCurrency === 'FREE' ? 0 : priceAmount,
       priceCurrency,
@@ -211,7 +217,7 @@ export const ProviderView: React.FC<ProviderViewProps> = ({ lang, onAddEntity })
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => setRawWhatsApp(sample.text)}
+                  onClick={() => setRawWhatsApp(isHe ? sample.textHe : sample.textEn)}
                   className="text-xs px-2.5 py-1.5 rounded-lg bg-canopy-800 hover:bg-canopy-700 text-sand-100 border border-canopy-700 transition-colors"
                 >
                   {isHe ? sample.labelHe : sample.labelEn}

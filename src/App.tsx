@@ -93,6 +93,7 @@ function mergeWithSeedById<T extends { id: string }>(saved: T[], seed: T[]): T[]
     return {
       ...seedItem,
       ...item,
+      hostNameEn: (seedItem as any).hostNameEn ?? (item as any).hostNameEn,
       preferredContactLang:
         (seedItem as any).preferredContactLang ?? (item as any).preferredContactLang,
       websiteUrl: (item as any).websiteUrl ?? (seedItem as any).websiteUrl,
@@ -122,6 +123,10 @@ function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
   }
   const savedEntities = readJsonOrFallback(keys.entities, TEST_ENTITIES);
   const savedBusinesses = readJsonOrFallback(keys.businesses, TEST_BUSINESSES);
+  const savedTestProfile = readJsonOrFallback(keys.profile, TEST_USER_PROFILE);
+  const normalizedTestProfile =
+    savedTestProfile.name === 'נאור (חבר קהילה)' ? TEST_USER_PROFILE : savedTestProfile;
+
   return {
     env: 'test',
     entities: mergeWithSeedById(savedEntities, TEST_ENTITIES),
@@ -129,14 +134,14 @@ function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
     bookings: readJsonOrFallback(keys.bookings, TEST_BOOKINGS),
     families: readJsonOrFallback(keys.families, TEST_FAMILIES),
     referrals: readJsonOrFallback(keys.referrals, []),
-    userProfile: readJsonOrFallback(keys.profile, TEST_USER_PROFILE),
+    userProfile: normalizedTestProfile,
   };
 }
 
 export function App() {
   const [lang, setLang] = useState<Language>(() => {
-    const saved = localStorage.getItem('luz_lang_v1');
-    return saved === 'en' || saved === 'he' ? saved : 'he';
+    const saved = localStorage.getItem('luz_lang_v2');
+    return saved === 'en' || saved === 'he' ? saved : 'en';
   });
 
   const [store, setStore] = useState<EnvStore>(() =>
@@ -152,11 +157,11 @@ export function App() {
 
   const { env: appEnv, entities, businesses, bookings, families, referrals, userProfile } = store;
 
-  // Sync RTL/LTR direction & language preference
+  // Sync RTL/LTR direction & language preference (English LTR is default across PROD, TEST & Dev)
   useEffect(() => {
     document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
-    localStorage.setItem('luz_lang_v1', lang);
+    localStorage.setItem('luz_lang_v2', lang);
   }, [lang]);
 
   // Persist strictly to the active environment's isolated storage namespace

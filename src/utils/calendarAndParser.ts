@@ -103,7 +103,11 @@ export interface ParsedWhatsAppDraft {
   confidenceNotes: string[];
 }
 
-export function parseWhatsAppMessageToDraft(rawText: string): ParsedWhatsAppDraft {
+export function parseWhatsAppMessageToDraft(
+  rawText: string,
+  lang: Language = 'en'
+): ParsedWhatsAppDraft {
+  const isHe = lang === 'he';
   const text = rawText.trim();
   const lower = text.toLowerCase();
   const notes: string[] = [];
@@ -114,19 +118,19 @@ export function parseWhatsAppMessageToDraft(rawText: string): ParsedWhatsAppDraf
     /להשכרה|סאבלט|וילה|בית|חדרי שינה|קוטג|sublet|villa|bhk|rent|house|cottage/i.test(text)
   ) {
     type = 'rental';
-    notes.push('זוהתה ישות מסוג: השכרת בית / נכס (Date Range)');
+    notes.push(isHe ? 'זוהתה ישות מסוג: השכרת בית / נכס (Date Range)' : 'Detected type: Home Rental / Sublet (Date Range)');
   } else if (
     /לפי שעה|תור|טיפול|אולפן|ייעוץ|שיעור פרטי|קליניקה|session|appointment|studio|1-on-1|hourly/i.test(text)
   ) {
     type = 'service';
-    notes.push('זוהתה ישות מסוג: שירות שעתי / תיאום יומן');
+    notes.push(isHe ? 'זוהתה ישות מסוג: שירות שעתי / תיאום יומן' : 'Detected type: Hourly Service / Resource Slot');
   } else if (
     /כל יום|מדי שבוע|חוג|מתנ"ס|קבוע|סדנה שבועית|every|weekly|youth center/i.test(text)
   ) {
     type = 'workshop';
-    notes.push('זוהתה ישות מסוג: חוג / סדנה קבועה');
+    notes.push(isHe ? 'זוהתה ישות מסוג: חוג / סדנה קבועה' : 'Detected type: Recurring Class / Youth Center');
   } else {
-    notes.push('זוהתה ישות מסוג: אירוע חד-פעמי');
+    notes.push(isHe ? 'זוהתה ישות מסוג: אירוע חד-פעמי' : 'Detected type: One-Time Event');
   }
 
   // 2. Detect Area in Goa
@@ -142,7 +146,7 @@ export function parseWhatsAppMessageToDraft(rawText: string): ParsedWhatsAppDraf
   } else if (/קולום|colomb/i.test(text)) {
     area = 'Colomb';
   }
-  notes.push(`אזור בגואה: ${area}`);
+  notes.push(isHe ? `אזור בגואה: ${area}` : `Area in Goa: ${area}`);
 
   // 3. Extract Phone Number
   const phoneMatch = text.match(/(\+?\d{2,3}[-\s]?\d{2,4}[-\s]?\d{3}[-\s]?\d{3,4}|\b05\d[-\s]?\d{3}[-\s]?\d{4}\b)/);
@@ -158,17 +162,17 @@ export function parseWhatsAppMessageToDraft(rawText: string): ParsedWhatsAppDraf
   if (inrMatch) {
     priceAmount = parseInt(inrMatch[1].replace(/,/g, ''), 10);
     priceCurrency = 'INR';
-    notes.push(`מחיר זוהה: ₹${priceAmount}`);
+    notes.push(isHe ? `מחיר זוהה: ₹${priceAmount}` : `Detected price: ₹${priceAmount}`);
   } else if (ilsMatch) {
     const val = ilsMatch[1] || ilsMatch[2];
     priceAmount = parseInt(val.replace(/,/g, ''), 10);
     priceCurrency = 'ILS';
-    notes.push(`מחיר זוהה: ₪${priceAmount}`);
+    notes.push(isHe ? `מחיר זוהה: ₪${priceAmount}` : `Detected price: ₪${priceAmount}`);
   } else if (usdMatch) {
     const val = usdMatch[1] || usdMatch[2];
     priceAmount = parseInt(val.replace(/,/g, ''), 10);
     priceCurrency = 'USD';
-    notes.push(`מחיר זוהה: $${priceAmount}`);
+    notes.push(isHe ? `מחיר זוהה: $${priceAmount}` : `Detected price: $${priceAmount}`);
   }
 
   // 5. Extract Time (HH:MM)
@@ -179,7 +183,8 @@ export function parseWhatsAppMessageToDraft(rawText: string): ParsedWhatsAppDraf
 
   // 6. Extract Title (first line or first sentence)
   const firstLine = text.split('\n')[0].replace(/^[*-•]\s*/, '').trim();
-  const titleHe = firstLine.length > 65 ? firstLine.slice(0, 62) + '...' : firstLine || 'אירוע קהילתי בגואה';
+  const titleFallback = isHe ? 'אירוע קהילתי בגואה' : 'Community Event in Goa';
+  const titleHe = firstLine.length > 65 ? firstLine.slice(0, 62) + '...' : firstLine || titleFallback;
 
   // 7. Extract Bedrooms / Fiber / Backup for Rentals
   const bhkMatch = text.match(/(\d)\s*(?:חדרי שינה|חדרים|bhk|bedrooms)/i);
@@ -193,7 +198,7 @@ export function parseWhatsAppMessageToDraft(rawText: string): ParsedWhatsAppDraf
     titleEn: titleHe,
     descriptionHe: text,
     area,
-    locationDetailsHe: `${area}, גואה`,
+    locationDetailsHe: isHe ? `${area}, גואה` : `${area}, South Goa`,
     hostPhone,
     priceAmount,
     priceCurrency,
@@ -328,8 +333,36 @@ export function generateWhatsAppDigest(
     (e) => e.type === 'service' && e.calendarSyncStatus !== 'connected'
   ).length;
 
+  if (lang !== 'he') {
+    return [
+      `*LUZ Admin Digest — System Status & Integrations*${envTagEn}`,
+      `Active Environment: ${appEnv === 'prod' ? 'PROD (Verified Live Data Only)' : 'TEST (Demo Sandbox)'}`,
+      `Generated Date: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+      `Core Team: Naor, Shay Eliyahu, Shay Zaluf`,
+      ``,
+      `1. *Entities, Events & Community Businesses:*`,
+      `• One-Time Events: ${entities.filter((e) => e.type === 'event').length}`,
+      `• Recurring Classes & Youth Center: ${entities.filter((e) => e.type === 'workshop').length}`,
+      `• Community Business Directory: ${businesses.length} verified businesses`,
+      `• Hourly Resources & Spaces: ${entities.filter((e) => e.type === 'service').length}`,
+      `• Home Rentals (Date Ranges): ${entities.filter((e) => e.type === 'rental').length}`,
+      ``,
+      `2. *Integrations & Real-Time Lead Attribution:*`,
+      `• Provider Referral Attribution (#LUZ-XXXX + UTM) & Alerts (Sheets CRM / Gmail / Telegram): Active & Live`,
+      `• Total Provider Referrals & Leads from LUZ: ${referralsCount}`,
+      `• WhatsApp AI Bot ("Ben" - Unofficial API): Connected & Running`,
+      `• WhatsApp Group Scraper: Active (${entities.filter((e) => e.ingestionSource === 'scraper' || e.ingestionSource === 'whatsapp_dm').length} items ingested)`,
+      `• Provider Calendar Sync: ${connectedCalendars} auto-synced, ${manualCalendars} manual management`,
+      ``,
+      `3. *Youth Center & Engagement:*`,
+      `• Active Bookings & RSVPs: ${bookings.length}`,
+      `• Registered Colomb Youth Center Families: ${families.length} families (${totalKids} enrolled kids)`,
+      `• Monthly Youth Center Budget Est.: ₪${totalKids * 200} (~$${totalKids * 65})`,
+    ].join('\n');
+  }
+
   return [
-    `*LUZ Admin Digest — דוח מצב מערכת ואינטגרציות*`,
+    `*LUZ Admin Digest — דוח מצב מערכת ואינטגרציות*${envTagHe}`,
     `סביבה פעילה: ${appEnv === 'prod' ? 'PROD (נתוני אמת בלבד)' : 'TEST (סביבת בדיקות והדגמה)'}`,
     `תאריך הפקה: ${new Date().toLocaleDateString('he-IL')}`,
     `צוות: נאור, שי אליהו, שי זלוף`,

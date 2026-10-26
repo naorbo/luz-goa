@@ -232,7 +232,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setTestingAlerts(true);
     setTestResults(null);
     try {
-      const res = await sendTestAlertAllChannels(draftConfig, appEnv);
+      const res = await sendTestAlertAllChannels(draftConfig, appEnv, lang);
       setTestResults(res);
     } finally {
       setTestingAlerts(false);
@@ -453,32 +453,60 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <div className="p-3 rounded-xl bg-sand-100 border border-sand-300 text-[11px] text-canopy-800 space-y-1 leading-relaxed">
                   <div className="font-bold text-canopy-900">
                     {isHe
-                      ? 'חיבור Google Apps Script ב-4 צעדים קצרים (ללא חשיפת מפתחות בקוד וללא עלות):'
-                      : '4-Step Google Apps Script Setup:'}
+                      ? 'חיבור Google Apps Script ב-4 צעדים קצרים (רץ מחשבון luzschedu@gmail.com):'
+                      : '4-Step Google Apps Script Setup (Runs via luzschedu@gmail.com):'}
                   </div>
-                  <div>
-                    1. פתחו את{' '}
-                    <a
-                      href="https://script.new"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline font-bold text-terracotta-600"
-                    >
-                      script.new
-                    </a>{' '}
-                    (או מתוך Google Sheet חדש: Extensions → Apps Script) והדביקו את הקוד שהעתקתם.
-                  </div>
-                  <div>
-                    2. בחרו למעלה בפונקציה <code className="font-mono">setupAndTestLuzAlerts</code>{' '}
-                    ולחצו <strong>Run</strong> לאישור הרשאות חד-פעמי (הסקריפט ייצור אוטומטית גיליון Google Sheets בעברית וישלח לכם מייל בדיקה!).
-                  </div>
-                  <div>
-                    3. לחצו <strong>Deploy → New deployment → Web app</strong>, הגדירו{' '}
-                    <strong>Execute as: Me</strong> ו-<strong>Who has access: Anyone</strong>.
-                  </div>
-                  <div>
-                    4. העתיקו את כתובת ה-<code className="font-mono">.../exec</code> לכאן למטה (או שלחו אותה בצ׳אט כדי שנצרוב אותה קבוע לכל המבקרים באתר).
-                  </div>
+                  {isHe ? (
+                    <>
+                      <div>
+                        1. פתחו את{' '}
+                        <a
+                          href="https://script.new"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline font-bold text-terracotta-600"
+                        >
+                          script.new
+                        </a>{' '}
+                        בחשבון <strong>luzschedu@gmail.com</strong> (או מתוך Google Sheet חדש) והדביקו את הקוד שהעתקתם.
+                      </div>
+                      <div>
+                        2. בחרו למעלה בפונקציה <code className="font-mono">setupAndTestLuzAlerts</code>{' '}
+                        ולחצו <strong>Run</strong> לאישור הרשאות חד-פעמי (ייצור גיליון Google Sheets וישלח מייל בדיקה!).
+                      </div>
+                      <div>
+                        3. לחצו <strong>Deploy → New deployment → Web app</strong>, הגדירו{' '}
+                        <strong>Execute as: Me (luzschedu@gmail.com)</strong> ו-<strong>Who has access: Anyone</strong>.
+                      </div>
+                      <div>
+                        4. העתיקו את כתובת ה-<code className="font-mono">.../exec</code> לכאן למטה.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        1. Open{' '}
+                        <a
+                          href="https://script.new"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline font-bold text-terracotta-600"
+                        >
+                          script.new
+                        </a>{' '}
+                        while signed into <strong>luzschedu@gmail.com</strong> (or create a new Google Sheet: Extensions → Apps Script) and paste the copied code.
+                      </div>
+                      <div>
+                        2. Select <code className="font-mono">setupAndTestLuzAlerts</code> at top and click <strong>Run</strong> for one-time Google authorization (automatically initializes the CRM Sheet & sends a test email).
+                      </div>
+                      <div>
+                        3. Click <strong>Deploy → New deployment → Web app</strong>, set <strong>Execute as: Me</strong> and <strong>Who has access: Anyone</strong>.
+                      </div>
+                      <div>
+                        4. Copy the deployed <code className="font-mono">.../exec</code> Web App URL below.
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -554,7 +582,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     onChange={(e) =>
                       setDraftConfig((prev) => ({ ...prev, adminEmail: e.target.value }))
                     }
-                    placeholder="naorbo@gmail.com"
+                    placeholder="luzschedu@gmail.com"
                     className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-1.5 text-xs font-mono"
                   />
                 </div>
@@ -620,7 +648,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-canopy-600 mb-1">
-                    Telegram Chat ID (שלך או של קבוצת אדמינים):
+                    {isHe
+                      ? 'Telegram Chat ID (שלך או של קבוצת אדמינים):'
+                      : 'Telegram Chat ID (Personal or Admin Group):'}
                   </label>
                   <input
                     type="text"
@@ -950,7 +980,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                           {isHe ? srv.titleHe : srv.titleEn}
                         </div>
                         <div className="text-canopy-600 tabular-nums">
-                          {srv.hostName} • {srv.area} ({srv.timeSlots?.length || 0}{' '}
+                          {isHe ? srv.hostName : srv.hostNameEn || srv.hostName} • {srv.area} ({srv.timeSlots?.length || 0}{' '}
                           {isHe ? 'משבצות' : 'slots'})
                         </div>
                       </div>

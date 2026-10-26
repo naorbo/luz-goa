@@ -69,6 +69,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const title = isHe ? entity.titleHe : entity.titleEn;
   const description = isHe ? entity.descriptionHe : entity.descriptionEn;
   const location = isHe ? entity.locationDetailsHe : entity.locationDetailsEn;
+  const hostDisplay = isHe ? entity.hostName : entity.hostNameEn || entity.hostName;
 
   const [customerName, setCustomerName] = useState(defaultUserName);
   const [customerPhone, setCustomerPhone] = useState(defaultUserPhone);
@@ -114,7 +115,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       providerId: entity.id,
       providerNameHe: entity.titleHe,
       providerNameEn: entity.titleEn,
-      ownerOrHostName: entity.hostName,
+      ownerOrHostName: hostDisplay,
       providerPhone: entity.hostPhone,
       providerCategoryOrType: entityTypeLabelHe,
       area: entity.area,
@@ -192,8 +193,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     const scheduleSummary =
       entity.type === 'rental'
-        ? `${rentalFrom} → ${rentalTo} (${rentalCalculation.nights} לילות)`
-        : `${selectedDate} בשעה ${selectedSlot}`;
+        ? `${rentalFrom} → ${rentalTo} (${rentalCalculation.nights} ${isHe ? 'לילות' : 'nights'})`
+        : `${selectedDate} ${isHe ? 'בשעה' : 'at'} ${selectedSlot}`;
 
     const actionType: ReferralActionType =
       entity.type === 'rental'
@@ -205,13 +206,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     trackEntityLead(actionType, bookingRef, {
       customerName,
       customerPhone,
-      serviceOrDateSummary: `${scheduleSummary} | משתתפים: ${participantsCount}`,
+      serviceOrDateSummary: `${scheduleSummary} | ${isHe ? 'משתתפים' : 'Participants'}: ${participantsCount}`,
     });
 
     if (reminderChannel === 'calendar_ics' || reminderChannel === 'both') {
       downloadIcsFile({
         title: `${title} (LUZ Goa)`,
-        description: `${description}\nHost: ${entity.hostName} (${entity.hostPhone})\nLUZ Ref: #${bookingRef}`,
+        description: `${description}\nHost: ${hostDisplay} (${entity.hostPhone})\nLUZ Ref: #${bookingRef}`,
         location,
         startDate: entity.type === 'rental' ? rentalFrom : selectedDate,
         startTime: entity.type === 'rental' ? '14:00' : selectedSlot,
@@ -269,7 +270,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-terracotta-400" />
-                {entity.hostName} ({entity.hostPhone})
+                {hostDisplay} ({entity.hostPhone})
               </span>
             </div>
           </div>

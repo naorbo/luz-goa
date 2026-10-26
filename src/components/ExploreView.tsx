@@ -89,7 +89,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         const inDesc =
           item.descriptionHe.toLowerCase().includes(q) ||
           item.descriptionEn.toLowerCase().includes(q);
-        const inHost = item.hostName.toLowerCase().includes(q);
+        const inHost =
+          item.hostName.toLowerCase().includes(q) ||
+          Boolean(item.hostNameEn && item.hostNameEn.toLowerCase().includes(q));
         const inArea = item.area.toLowerCase().includes(q);
         if (!inTitle && !inDesc && !inHost && !inArea) return false;
       }
@@ -271,10 +273,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 className="bg-transparent text-canopy-800 font-medium focus:outline-none"
               >
                 <option value="all">{isHe ? 'כל אזורי דרום גואה' : 'All South Goa Areas'}</option>
-                <option value="Colomb">Colomb (קולום)</option>
-                <option value="Patnem">Patnem (פטנם)</option>
-                <option value="Palolem">Palolem (פאלולם)</option>
-                <option value="Agonda">Agonda (אגונדה)</option>
+                <option value="Colomb">{isHe ? 'קולום (Colomb)' : 'Colomb'}</option>
+                <option value="Patnem">{isHe ? 'פטנם (Patnem)' : 'Patnem'}</option>
+                <option value="Palolem">{isHe ? 'פאלולם (Palolem)' : 'Palolem'}</option>
+                <option value="Agonda">{isHe ? 'אגונדה (Agonda)' : 'Agonda'}</option>
               </select>
             </div>
 
@@ -620,7 +622,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
                     <div className="px-5 py-3.5 bg-sand-100 border-t border-sand-200 flex items-center justify-between">
                       <div className="text-xs text-canopy-600 truncate max-w-[60%]">
-                        {entity.hostName}
+                        {isHe ? entity.hostName : entity.hostNameEn || entity.hostName}
                       </div>
                       <span className="text-xs font-semibold text-terracotta-600 group-hover:underline">
                         {entity.type === 'rental'
