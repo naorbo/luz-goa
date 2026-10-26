@@ -60,6 +60,7 @@ export interface CommunityBusiness {
   instagramHandle?: string;
   websiteUrl?: string;
   whatsappGroupUrl?: string;
+  preferredContactLang?: Language;
   imageUrl: string;
   availableDays: number[]; // 0..6
   timeSlots: string[];
@@ -88,6 +89,7 @@ export interface LuzEntity {
   mapUrl?: string;
   websiteUrl?: string;
   whatsappGroupUrl?: string;
+  preferredContactLang?: Language;
   hostName: string;
   hostRoleHe?: string;
   hostRoleEn?: string;
@@ -134,6 +136,7 @@ export interface LuzEntity {
 
 export interface BookingRecord {
   id: string;
+  referralCode?: string;
   entityId: string;
   entityTitleHe: string;
   entityTitleEn: string;
@@ -152,6 +155,48 @@ export interface BookingRecord {
   notes?: string;
   createdAt: string;
   status: 'confirmed' | 'pending';
+}
+
+export type ReferralActionType =
+  | 'whatsapp_click'
+  | 'slot_booking'
+  | 'event_rsvp'
+  | 'rental_booking'
+  | 'website_click'
+  | 'whatsapp_group_click'
+  | 'instagram_click'
+  | 'youth_center_signup';
+
+export interface LeadReferralEvent {
+  id: string;
+  referralCode: string;
+  environment: AppEnvironment;
+  actionType: ReferralActionType;
+  providerId: string;
+  providerNameHe: string;
+  providerNameEn: string;
+  ownerOrHostName: string;
+  providerPhone: string;
+  providerCategoryOrType: string;
+  area: GoaArea;
+  providerContactLang: Language;
+  customerName?: string;
+  customerPhone?: string;
+  serviceOrDateSummary?: string;
+  channelsDispatched: Array<'webhook' | 'telegram' | 'email'>;
+  createdAt: string;
+}
+
+export interface NotificationChannelsConfig {
+  enableEmail: boolean;
+  adminEmail: string;
+  web3formsAccessKey?: string;
+  enableWebhook: boolean;
+  webhookUrl: string;
+  enableTelegram: boolean;
+  telegramBotToken: string;
+  telegramChatId: string;
+  sendRealAlertsInTestEnv: boolean;
 }
 
 export interface ChildDetail {

@@ -13,6 +13,13 @@ import {
   ShieldCheck,
   FlaskConical,
   Briefcase,
+  Bell,
+  Mail,
+  Webhook,
+  Send,
+  Hash,
+  Save,
+  Sparkles,
 } from 'lucide-react';
 import {
   LuzEntity,
@@ -21,17 +28,27 @@ import {
   YouthCenterFamily,
   Language,
   AppEnvironment,
+  LeadReferralEvent,
+  NotificationChannelsConfig,
 } from '../types/luz';
 import { generateWhatsAppDigest } from '../utils/calendarAndParser';
+import {
+  ChannelDispatchResult,
+  getActionTypeLabel,
+  sendTestAlertAllChannels,
+} from '../utils/referralAndAlerts';
 
 interface AdminViewProps {
   entities: LuzEntity[];
   businesses: CommunityBusiness[];
   bookings: BookingRecord[];
   families: YouthCenterFamily[];
+  referrals: LeadReferralEvent[];
+  notificationConfig: NotificationChannelsConfig;
   lang: Language;
   appEnv: AppEnvironment;
   onToggleProviderSync: (entityId: string) => void;
+  onUpdateNotificationConfig: (config: NotificationChannelsConfig) => void;
 }
 
 const SUPABASE_SCHEMA_SQL = `-- LUZ Goa Community OS — Supabase & Lovable Database Schema (PROD + TEST)
@@ -47,6 +64,7 @@ create table public.luz_entities (
   location_details text,
   host_name text not null,
   host_phone text not null,
+  preferred_contact_lang text default 'he',
   price_amount numeric default 0,
   price_currency text default 'INR',
   ingestion_source text default 'web',
@@ -91,7 +109,10 @@ create table public.luz_businesses (
   location_details_he text,
   home_visit_available boolean default false,
   phone text not null,
+  preferred_contact_lang text default 'he',
   instagram_handle text,
+  website_url text,
+  whatsapp_group_url text,
   services_menu jsonb default '[]'::jsonb,
   available_days jsonb default '[1,2,3,4,5]'::jsonb,
   time_slots jsonb default '[]'::jsonb,
@@ -102,6 +123,7 @@ create table public.luz_businesses (
 
 create table public.luz_bookings (
   id uuid primary key default gen_random_uuid(),
+  referral_code text,
   environment text not null default 'prod' check (environment in ('prod', 'test')),
   entity_id text not null,
   entity_type text not null,
@@ -115,6 +137,26 @@ create table public.luz_bookings (
   rental_to date,
   reminder_channel text default 'both',
   created_at timestamptz default now()
+);
+
+create table public.luz_referrals (
+  id uuid primary key default gen_random_uuid(),
+  referral_code text not null,
+  environment text not null default 'prod' check (environment in ('prod', 'test')),
+  action_type text not null,
+  provider_id text not null,
+  provider_name_he text not null,
+  provider_name_en text not null,
+  owner_or_host_name text not null,
+  provider_phone text not null,
+  provider_category_or_type text,
+  area text not null,
+  provider_contact_lang text default 'he',
+  customer_name text,
+  customer_phone text,
+  service_or_date_summary text,
+  channels_dispatched jsonb default '[]'::jsonb,
+  created_at timestamptz default now()
 );`;
 
 export const AdminView: React.FC<AdminViewProps> = ({
@@ -122,15 +164,24 @@ export const AdminView: React.FC<AdminViewProps> = ({
   businesses,
   bookings,
   families,
+  referrals,
+  notificationConfig,
   lang,
   appEnv,
   onToggleProviderSync,
+  onUpdateNotificationConfig,
 }) => {
   const isHe = lang === 'he';
   const [digestType, setDigestType] = useState<'user_weekly' | 'admin_system'>('admin_system');
   const [copiedDigest, setCopiedDigest] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
   const [showSqlModal, setShowSqlModal] = useState(false);
+
+  const [draftConfig, setDraftConfig] = useState<NotificationChannelsConfig>(notificationConfig);
+  const [savedConfigNotice, setSavedConfigNotice] = useState(false);
+  const [testingAlerts, setTestingAlerts] = useState(false);
+  const [testResults, setTestResults] = useState<ChannelDispatchResult[] | null>(null);
+  const [copiedWebhookSample, setCopiedWebhookSample] = useState(false);
 
   const digestText = generateWhatsAppDigest(
     entities,
@@ -139,7 +190,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
     digestType,
     lang,
     businesses,
-    appEnv
+    appEnv,
+    referrals.length
   );
 
   const handleCopyDigest = () => {
@@ -152,6 +204,53 @@ export const AdminView: React.FC<AdminViewProps> = ({
     navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL);
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 2500);
+  };
+
+  const handleSaveConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateNotificationConfig(draftConfig);
+    setSavedConfigNotice(true);
+    setTimeout(() => setSavedConfigNotice(false), 2500);
+  };
+
+  const handleSendTestAlert = async () => {
+    onUpdateNotificationConfig(draftConfig);
+    setTestingAlerts(true);
+    setTestResults(null);
+    try {
+      const res = await sendTestAlertAllChannels(draftConfig, appEnv);
+      setTestResults(res);
+    } finally {
+      setTestingAlerts(false);
+    }
+  };
+
+  const handleCopySamplePayload = () => {
+    const sample = JSON.stringify(
+      {
+        event: 'luz.provider_referral',
+        referralCode: 'LUZ-1026-A8F2',
+        environment: 'prod',
+        actionType: 'whatsapp_click',
+        actionLabelHe: 'פנייה ישירה בוואטסאפ לספק',
+        provider: {
+          nameHe: 'סולי — ריברסינג וטיפול רגשי (CBT)',
+          ownerOrHost: 'סולי',
+          phone: '+66 64 094 9859',
+          area: 'Patnem',
+          contactLang: 'he',
+        },
+        customer: {
+          name: 'אורח/ת בקהילה',
+          phone: '+972-52-000-0000',
+        },
+      },
+      null,
+      2
+    );
+    navigator.clipboard.writeText(sample);
+    setCopiedWebhookSample(true);
+    setTimeout(() => setCopiedWebhookSample(false), 2500);
   };
 
   const hourlyServices = entities.filter((e) => e.type === 'service');
@@ -168,8 +267,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div className="flex flex-wrap items-center gap-2.5">
             <h2 className="font-display text-2xl md:text-3xl font-bold">
               {isHe
-                ? 'לוח בקרה למנהל מערכת ו-Digest'
-                : 'LUZ System Manager & Digest Control'}
+                ? 'לוח בקרה למנהל מערכת, לידים ו-Digest'
+                : 'LUZ System Manager, Referrals & Digest'}
             </h2>
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
@@ -188,12 +287,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </div>
           <p className="text-xs md:text-sm text-sand-200">
             {isHe
-              ? 'מעקב חי אחר אינטגרציות יומן ספקים, עסקים רשומים, קליטת אירועים מוואטסאפ והפקת Digest שבועי'
-              : 'Monitor provider calendar integrations, registered businesses, bookings, and generate digests'}
+              ? 'התראות בזמן אמת על כל פנייה לספק (#LUZ-XXXX), ניהול ערוצי Webhook / טלגרם / אימייל והפקת Digest שבועי'
+              : 'Real-time provider referral alerts (#LUZ-XXXX), Webhook / Telegram / Email routing, and weekly digests'}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <div className="px-3.5 py-2 rounded-xl bg-terracotta-500/20 border border-terracotta-400/40 text-xs flex items-center gap-2 tabular-nums text-sand-50 font-semibold">
+            <Bell className="w-3.5 h-3.5 text-ochre-400" />
+            <span>
+              {isHe ? 'פניות לספקים:' : 'Provider Leads:'} {referrals.length}
+            </span>
+          </div>
           <div className="px-3.5 py-2 rounded-xl bg-canopy-800 border border-canopy-700 text-xs flex items-center gap-2 tabular-nums">
             <Briefcase className="w-3.5 h-3.5 text-ochre-400" />
             <span>
@@ -222,8 +327,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-ochre-400">
               {isHe
-                ? 'כולל טבלאות luz_entities, luz_businesses ו-luz_bookings עם הפרדת סביבות (prod / test):'
-                : 'Includes luz_entities, luz_businesses, and luz_bookings with prod/test isolation:'}
+                ? 'כולל טבלאות luz_entities, luz_businesses, luz_bookings ו-luz_referrals עם הפרדת סביבות:'
+                : 'Includes luz_entities, luz_businesses, luz_bookings, and luz_referrals:'}
             </span>
             <button
               type="button"
@@ -242,6 +347,411 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </pre>
         </div>
       )}
+
+      {/* REAL-TIME PROVIDER REFERRAL ALERTS & ATTRIBUTION HUB */}
+      <div className="grid lg:grid-cols-12 gap-6">
+        {/* Channel Configuration Card */}
+        <form
+          onSubmit={handleSaveConfig}
+          className="lg:col-span-7 bg-sand-50 rounded-2xl border border-sand-300 p-6 space-y-5"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <h3 className="font-display text-xl font-bold text-canopy-900 flex items-center gap-2">
+                <Bell className="w-5 h-5 text-terracotta-500" />
+                {isHe
+                  ? 'מרכז התראות לידים והפניות לספקים בזמן אמת'
+                  : 'Real-Time Provider Referral Alerts Hub'}
+              </h3>
+              <p className="text-xs text-canopy-600 leading-relaxed">
+                {isHe
+                  ? 'בכל לחיצה על וואטסאפ של ספק, אתר חיצוני או קביעת תור — הספק מקבל הודעה ממותגת מ-LUZ גואה (#LUZ-XXXX בעברית או באנגלית בהתאם לספק), ואתה מקבל התראה מיידית לערוצים הפעילים כאן.'
+                  : 'Every provider WhatsApp click, website visit, or slot booking tags LUZ Goa (#LUZ-XXXX) for the provider and sends you an instant alert.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* 1. Email Channel */}
+            <div className="p-4 rounded-xl bg-white border border-sand-300 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="inline-flex items-center gap-2 text-xs font-bold text-canopy-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={draftConfig.enableEmail}
+                    onChange={(e) =>
+                      setDraftConfig((prev) => ({ ...prev, enableEmail: e.target.checked }))
+                    }
+                    className="rounded border-sand-300 text-terracotta-500 focus:ring-terracotta-500"
+                  />
+                  <Mail className="w-4 h-4 text-terracotta-500" />
+                  <span>
+                    {isHe
+                      ? 'התראה מיידית באימייל על כל פנייה לספק'
+                      : 'Instant Email Alert on Every Provider Referral'}
+                  </span>
+                </label>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-canopy-100 text-canopy-800">
+                  {isHe ? 'מוגדר אוטומטית לכל המכשירים' : 'Global Ready'}
+                </span>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-canopy-600 mb-1">
+                    {isHe ? 'כתובת אימייל לקבלת הלידים:' : 'Admin Alert Email:'}
+                  </label>
+                  <input
+                    type="email"
+                    dir="ltr"
+                    value={draftConfig.adminEmail}
+                    onChange={(e) =>
+                      setDraftConfig((prev) => ({ ...prev, adminEmail: e.target.value }))
+                    }
+                    placeholder="naorbo@gmail.com"
+                    className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-1.5 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-canopy-600 mb-1">
+                    {isHe
+                      ? 'מפתח Web3Forms (אופציונלי — ללא צורך באישור מייל):'
+                      : 'Web3Forms Key (Optional):'}
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={draftConfig.web3formsAccessKey || ''}
+                    onChange={(e) =>
+                      setDraftConfig((prev) => ({
+                        ...prev,
+                        web3formsAccessKey: e.target.value,
+                      }))
+                    }
+                    placeholder="Optional UUID key..."
+                    className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-1.5 text-xs font-mono"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-canopy-600">
+                {isHe
+                  ? 'טיפ: לחץ למטה על "שלח התראת בדיקה עכשיו" ואשר פעם אחת את מייל ההפעלה מ-FormSubmit בתיבת naorbo@gmail.com — מאותו רגע כל פנייה מכל משתמש באתר תגיע אליך ישירות למייל.'
+                  : 'Tip: Click "Send Test Alert" below and confirm the one-time FormSubmit activation email in your inbox.'}
+              </p>
+            </div>
+
+            {/* 2. Webhook Channel (Make / n8n / Bot "Ben") */}
+            <div className="p-4 rounded-xl bg-white border border-sand-300 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="inline-flex items-center gap-2 text-xs font-bold text-canopy-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={draftConfig.enableWebhook}
+                    onChange={(e) =>
+                      setDraftConfig((prev) => ({ ...prev, enableWebhook: e.target.checked }))
+                    }
+                    className="rounded border-sand-300 text-terracotta-500 focus:ring-terracotta-500"
+                  />
+                  <Webhook className="w-4 h-4 text-ochre-600" />
+                  <span>
+                    {isHe
+                      ? 'חיבור Webhook (Make.com / n8n / הבוט "בן" בוואטסאפ)'
+                      : 'Webhook URL (Make.com / n8n / "Ben" WhatsApp Bot)'}
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleCopySamplePayload}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-canopy-700 hover:text-canopy-950 px-2 py-0.5 rounded bg-sand-100 border border-sand-300"
+                >
+                  {copiedWebhookSample ? (
+                    <Check className="w-3 h-3 text-canopy-700" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
+                  {copiedWebhookSample
+                    ? isHe
+                      ? 'דוגמת JSON הועתקה'
+                      : 'JSON Copied'
+                    : isHe
+                    ? 'העתק מבנה JSON ל-Make'
+                    : 'Copy Sample JSON'}
+                </button>
+              </div>
+
+              <input
+                type="url"
+                dir="ltr"
+                value={draftConfig.webhookUrl}
+                onChange={(e) =>
+                  setDraftConfig((prev) => ({ ...prev, webhookUrl: e.target.value }))
+                }
+                placeholder="https://hook.eu1.make.com/xxxxxxxxxxxxxxxx"
+                className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-1.5 text-xs font-mono"
+              />
+            </div>
+
+            {/* 3. Telegram Bot Channel */}
+            <div className="p-4 rounded-xl bg-white border border-sand-300 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="inline-flex items-center gap-2 text-xs font-bold text-canopy-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={draftConfig.enableTelegram}
+                    onChange={(e) =>
+                      setDraftConfig((prev) => ({ ...prev, enableTelegram: e.target.checked }))
+                    }
+                    className="rounded border-sand-300 text-terracotta-500 focus:ring-terracotta-500"
+                  />
+                  <Send className="w-4 h-4 text-lagoon-600" />
+                  <span>
+                    {isHe
+                      ? 'התראה מיידית בבוט טלגרם (Telegram Bot Push)'
+                      : 'Instant Telegram Bot Push'}
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-canopy-600 mb-1">
+                    Telegram Bot Token (@BotFather):
+                  </label>
+                  <input
+                    type="password"
+                    dir="ltr"
+                    value={draftConfig.telegramBotToken}
+                    onChange={(e) =>
+                      setDraftConfig((prev) => ({ ...prev, telegramBotToken: e.target.value }))
+                    }
+                    placeholder="123456789:ABCdefGHIjklMNO..."
+                    className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-1.5 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-canopy-600 mb-1">
+                    Telegram Chat ID (שלך או של קבוצת אדמינים):
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={draftConfig.telegramChatId}
+                    onChange={(e) =>
+                      setDraftConfig((prev) => ({ ...prev, telegramChatId: e.target.value }))
+                    }
+                    placeholder="e.g. 987654321 or -100123456789"
+                    className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-1.5 text-xs font-mono tabular-nums"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sandbox Alert Toggle */}
+            <label className="inline-flex items-center gap-2 text-xs text-canopy-700 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={draftConfig.sendRealAlertsInTestEnv}
+                onChange={(e) =>
+                  setDraftConfig((prev) => ({
+                    ...prev,
+                    sendRealAlertsInTestEnv: e.target.checked,
+                  }))
+                }
+                className="rounded border-sand-300 text-canopy-800"
+              />
+              <span>
+                {isHe
+                  ? 'שלח התראות אמיתיות גם בעת גלישה בסביבת TEST (כבוי כברירת מחדל כדי למנוע התראות דמו)'
+                  : 'Also dispatch real alerts while browsing TEST sandbox'}
+              </span>
+            </label>
+          </div>
+
+          {/* Save + Test Buttons */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-canopy-800 text-sand-50 text-xs font-semibold hover:bg-canopy-700 transition-colors"
+            >
+              {savedConfigNotice ? (
+                <>
+                  <Check className="w-4 h-4 text-ochre-400" />
+                  {isHe ? 'ההגדרות נשמרו!' : 'Settings Saved!'}
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 text-ochre-400" />
+                  {isHe ? 'שמירת הגדרות ערוצים' : 'Save Alert Channels'}
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              disabled={testingAlerts}
+              onClick={handleSendTestAlert}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-terracotta-500 text-white text-xs font-semibold hover:bg-terracotta-600 disabled:opacity-50 transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              {testingAlerts
+                ? isHe
+                  ? 'שולח התראת בדיקה...'
+                  : 'Sending Test Alert...'
+                : isHe
+                ? 'שלח התראת בדיקה עכשיו (Test Alert)'
+                : 'Send Test Alert Now'}
+            </button>
+          </div>
+
+          {/* Test Dispatch Results */}
+          {testResults && (
+            <div className="p-3.5 rounded-xl bg-white border border-sand-300 space-y-2">
+              <div className="text-xs font-bold text-canopy-900">
+                {isHe ? 'תוצאות בדיקת שליחה לערוצים:' : 'Channel Test Results:'}
+              </div>
+              {testResults.length === 0 ? (
+                <div className="text-xs text-ochre-600">
+                  {isHe
+                    ? 'לא הוגדר אף ערוץ פעיל עם כתובת/טוקן. הזן כתובת אימייל, Webhook או טלגרם ונסה שוב.'
+                    : 'No active channel configured with a destination address/token.'}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {testResults.map((r, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-start gap-2 text-xs px-3 py-2 rounded-lg ${
+                        r.ok
+                          ? 'bg-canopy-100/70 text-canopy-900'
+                          : 'bg-terracotta-50 text-terracotta-600'
+                      }`}
+                    >
+                      {r.ok ? (
+                        <CheckCircle2 className="w-4 h-4 text-canopy-700 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-terracotta-500 shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <span className="font-bold uppercase">{r.channel}:</span> {r.detail}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </form>
+
+        {/* Live Provider Referrals & Attribution Log (#LUZ-XXXX) */}
+        <div className="lg:col-span-5 bg-sand-50 rounded-2xl border border-sand-300 p-6 flex flex-col justify-between space-y-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-display text-xl font-bold text-canopy-900 flex items-center gap-2">
+                <Hash className="w-5 h-5 text-terracotta-500" />
+                {isHe
+                  ? 'יומן הפניות ולידים לספקים (#LUZ)'
+                  : 'Live Provider Referrals Log (#LUZ)'}
+              </h3>
+              <span className="text-xs font-mono px-2.5 py-0.5 rounded bg-sand-200 text-canopy-800 tabular-nums">
+                {referrals.length}
+              </span>
+            </div>
+
+            <p className="text-xs text-canopy-600 leading-relaxed">
+              {isHe
+                ? 'כל פנייה לספק מתועדת כאן בזמן אמת יחד עם קוד השיוך החד-ערכי שהוצמד להודעת הוואטסאפ או לקישור ה-UTM של הספק.'
+                : 'Every user click or booking to a provider is logged here with the exact #LUZ referral code sent to the provider.'}
+            </p>
+
+            {referrals.length === 0 ? (
+              <div className="p-6 bg-white rounded-xl border border-sand-300 text-xs text-canopy-600 text-center space-y-1.5">
+                <div className="font-semibold text-canopy-800">
+                  {isHe
+                    ? 'טרם נרשמו פניות לספקים בסביבה זו.'
+                    : 'No provider referrals recorded in this environment yet.'}
+                </div>
+                <div>
+                  {isHe
+                    ? 'נסה ללחוץ על כפתור וואטסאפ או לקבוע תור אצל אחד מבעלי העסקים כדי לראות את השיוך והליד מופיעים מיד.'
+                    : 'Click any provider WhatsApp or book a slot to see live attribution in action.'}
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-sand-200 bg-white rounded-xl border border-sand-300 overflow-hidden max-h-[470px] overflow-y-auto">
+                {referrals.map((ref) => (
+                  <div key={ref.id} className="p-3.5 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-canopy-900 text-ochre-400 font-mono text-[11px] font-bold tabular-nums">
+                        #{ref.referralCode}
+                      </span>
+                      <span className="text-[11px] text-canopy-500 tabular-nums">
+                        {new Date(ref.createdAt).toLocaleString(isHe ? 'he-IL' : 'en-GB', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                        })}
+                      </span>
+                    </div>
+
+                    <div className="font-bold text-canopy-900">
+                      {isHe ? ref.providerNameHe : ref.providerNameEn}{' '}
+                      <span className="font-normal text-canopy-600">
+                        ({ref.ownerOrHostName} • {ref.area})
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="px-2 py-0.5 rounded-full bg-terracotta-50 text-terracotta-600 font-semibold">
+                        {getActionTypeLabel(ref.actionType, lang)}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-sand-100 text-canopy-700 font-medium">
+                        {ref.providerContactLang === 'en'
+                          ? isHe
+                            ? 'שיוך לספק: English'
+                            : 'Provider Msg: EN'
+                          : isHe
+                          ? 'שיוך לספק: עברית'
+                          : 'Provider Msg: HE'}
+                      </span>
+                    </div>
+
+                    {(ref.customerName || ref.serviceOrDateSummary) && (
+                      <div className="text-[11px] text-canopy-700 tabular-nums">
+                        {ref.customerName && (
+                          <span className="font-semibold">
+                            {ref.customerName}
+                            {ref.customerPhone ? ` (${ref.customerPhone})` : ''}
+                          </span>
+                        )}
+                        {ref.customerName && ref.serviceOrDateSummary ? ' • ' : ''}
+                        {ref.serviceOrDateSummary && <span>{ref.serviceOrDateSummary}</span>}
+                      </div>
+                    )}
+
+                    <div className="text-[10px] text-canopy-500 flex items-center gap-1.5 pt-0.5">
+                      <span>{isHe ? 'התראות שנשלחו:' : 'Dispatched:'}</span>
+                      {ref.channelsDispatched.length > 0 ? (
+                        ref.channelsDispatched.map((ch) => (
+                          <span
+                            key={ch}
+                            className="px-1.5 py-0.5 rounded bg-canopy-100 text-canopy-800 font-mono uppercase"
+                          >
+                            {ch}
+                          </span>
+                        ))
+                      ) : (
+                        <span>
+                          {isHe ? 'תיעוד ביומן בלבד (מצב TEST)' : 'Logged locally (TEST mode)'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Main Grid: Digest Generator + Provider Integrations & Bookings */}
       <div className="grid lg:grid-cols-12 gap-6">
@@ -422,8 +932,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     className="p-3.5 flex items-center justify-between gap-3 text-xs"
                   >
                     <div className="min-w-0">
-                      <div className="font-bold text-canopy-900 truncate">
-                        {isHe ? bk.entityTitleHe : bk.entityTitleEn}
+                      <div className="font-bold text-canopy-900 truncate flex items-center gap-1.5">
+                        {bk.referralCode && (
+                          <span className="px-1.5 py-0.5 rounded bg-sand-200 text-canopy-800 font-mono text-[10px] tabular-nums shrink-0">
+                            #{bk.referralCode}
+                          </span>
+                        )}
+                        <span className="truncate">
+                          {isHe ? bk.entityTitleHe : bk.entityTitleEn}
+                        </span>
                       </div>
                       {bk.selectedServiceOffer && (
                         <div className="text-[11px] text-ochre-600 font-medium truncate">

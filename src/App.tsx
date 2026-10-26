@@ -19,12 +19,22 @@ import {
   UserProfile,
   Language,
   AppEnvironment,
+  LeadReferralEvent,
+  NotificationChannelsConfig,
 } from './types/luz';
 import {
   detectInitialEnvironment,
   getStorageKeys,
   updateUrlForEnvironment,
 } from './config/environment';
+import {
+  loadNotificationConfig,
+  saveNotificationConfig,
+} from './config/notifications';
+import {
+  createBookingReferralCode,
+  dispatchLeadReferralAlerts,
+} from './utils/referralAndAlerts';
 import {
   PROD_ENTITIES,
   PROD_BUSINESSES,
@@ -61,6 +71,7 @@ interface EnvStore {
   businesses: CommunityBusiness[];
   bookings: BookingRecord[];
   families: YouthCenterFamily[];
+  referrals: LeadReferralEvent[];
   userProfile: UserProfile;
 }
 
@@ -75,9 +86,23 @@ function readJsonOrFallback<T>(key: string, fallback: T): T {
 }
 
 function mergeWithSeedById<T extends { id: string }>(saved: T[], seed: T[]): T[] {
+  const seedMap = new Map(seed.map((s) => [s.id, s]));
+  const updatedSaved = saved.map((item) => {
+    const seedItem = seedMap.get(item.id);
+    if (!seedItem) return item;
+    return {
+      ...seedItem,
+      ...item,
+      preferredContactLang:
+        (seedItem as any).preferredContactLang ?? (item as any).preferredContactLang,
+      websiteUrl: (item as any).websiteUrl ?? (seedItem as any).websiteUrl,
+      whatsappGroupUrl: (item as any).whatsappGroupUrl ?? (seedItem as any).whatsappGroupUrl,
+      mapUrl: (item as any).mapUrl ?? (seedItem as any).mapUrl,
+    };
+  });
   const savedIds = new Set(saved.map((item) => item.id));
   const missingSeeds = seed.filter((item) => !savedIds.has(item.id));
-  return [...saved, ...missingSeeds];
+  return [...updatedSaved, ...missingSeeds];
 }
 
 function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
@@ -91,6 +116,7 @@ function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
       businesses: mergeWithSeedById(savedBusinesses, PROD_BUSINESSES),
       bookings: readJsonOrFallback(keys.bookings, PROD_BOOKINGS),
       families: readJsonOrFallback(keys.families, PROD_FAMILIES),
+      referrals: readJsonOrFallback(keys.referrals, []),
       userProfile: readJsonOrFallback(keys.profile, PROD_USER_PROFILE),
     };
   }
@@ -102,6 +128,7 @@ function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
     businesses: mergeWithSeedById(savedBusinesses, TEST_BUSINESSES),
     bookings: readJsonOrFallback(keys.bookings, TEST_BOOKINGS),
     families: readJsonOrFallback(keys.families, TEST_FAMILIES),
+    referrals: readJsonOrFallback(keys.referrals, []),
     userProfile: readJsonOrFallback(keys.profile, TEST_USER_PROFILE),
   };
 }
@@ -116,10 +143,14 @@ export function App() {
     loadStoreForEnvironment(detectInitialEnvironment())
   );
 
+  const [notificationConfig, setNotificationConfig] = useState<NotificationChannelsConfig>(() =>
+    loadNotificationConfig()
+  );
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('explore');
   const [selectedEntity, setSelectedEntity] = useState<LuzEntity | null>(null);
 
-  const { env: appEnv, entities, businesses, bookings, families, userProfile } = store;
+  const { env: appEnv, entities, businesses, bookings, families, referrals, userProfile } = store;
 
   // Sync RTL/LTR direction & language preference
   useEffect(() => {
@@ -135,6 +166,7 @@ export function App() {
     localStorage.setItem(keys.businesses, JSON.stringify(store.businesses));
     localStorage.setItem(keys.bookings, JSON.stringify(store.bookings));
     localStorage.setItem(keys.families, JSON.stringify(store.families));
+    localStorage.setItem(keys.referrals, JSON.stringify(store.referrals));
     localStorage.setItem(keys.profile, JSON.stringify(store.userProfile));
   }, [store]);
 
@@ -231,6 +263,50 @@ export function App() {
     }));
   };
 
+  const handleUpdateNotificationConfig = (next: NotificationChannelsConfig) => {
+    setNotificationConfig(next);
+    saveNotificationConfig(next);
+  };
+
+  const handleTrackReferral = (
+    partial: Omit<LeadReferralEvent, 'id' | 'createdAt' | 'channelsDispatched' | 'environment'>
+  ) => {
+    const shouldSendReal =
+      appEnv === 'prod' || notificationConfig.sendRealAlertsInTestEnv;
+
+    const activeChannels: Array<'webhook' | 'telegram' | 'email'> = [];
+    if (shouldSendReal) {
+      if (notificationConfig.enableEmail && notificationConfig.adminEmail.trim()) {
+        activeChannels.push('email');
+      }
+      if (notificationConfig.enableWebhook && notificationConfig.webhookUrl.trim()) {
+        activeChannels.push('webhook');
+      }
+      if (
+        notificationConfig.enableTelegram &&
+        notificationConfig.telegramBotToken.trim() &&
+        notificationConfig.telegramChatId.trim()
+      ) {
+        activeChannels.push('telegram');
+      }
+    }
+
+    const fullEvent: LeadReferralEvent = {
+      ...partial,
+      id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      environment: appEnv,
+      channelsDispatched: activeChannels,
+      createdAt: new Date().toISOString(),
+    };
+
+    setStore((prev) => ({
+      ...prev,
+      referrals: [fullEvent, ...prev.referrals],
+    }));
+
+    void dispatchLeadReferralAlerts(fullEvent, notificationConfig);
+  };
+
   const handleRegisterFamily = (fam: Omit<YouthCenterFamily, 'id' | 'createdAt'>) => {
     const newFam: YouthCenterFamily = {
       ...fam,
@@ -241,6 +317,25 @@ export function App() {
       ...prev,
       families: [newFam, ...prev.families],
     }));
+
+    const refCode = createBookingReferralCode();
+    handleTrackReferral({
+      referralCode: refCode,
+      actionType: 'youth_center_signup',
+      providerId: 'youth-center-goa',
+      providerNameHe: 'מרכז הנוער והילדים — קהילת גואה',
+      providerNameEn: 'Goa Community Youth Center',
+      ownerOrHostName: 'צוות המתנ"ס',
+      providerPhone: fam.parentPhone,
+      providerCategoryOrType: 'מרכז הנוער (רישום משפחה)',
+      area: fam.area,
+      providerContactLang: 'he',
+      customerName: fam.parentName,
+      customerPhone: fam.parentPhone,
+      serviceOrDateSummary: `${fam.children.length} ילדים (${fam.children
+        .map((c) => `${c.name} גיל ${c.age}`)
+        .join(', ')})`,
+    });
   };
 
   const handleUpdateProfile = (profile: UserProfile) => {
@@ -274,6 +369,7 @@ export function App() {
         businesses: PROD_BUSINESSES,
         bookings: PROD_BOOKINGS,
         families: PROD_FAMILIES,
+        referrals: [],
         userProfile: PROD_USER_PROFILE,
       });
     } else {
@@ -283,6 +379,7 @@ export function App() {
         businesses: TEST_BUSINESSES,
         bookings: TEST_BOOKINGS,
         families: TEST_FAMILIES,
+        referrals: [],
         userProfile: TEST_USER_PROFILE,
       });
     }
@@ -330,10 +427,10 @@ export function App() {
     },
     {
       id: 'admin',
-      labelHe: 'אדמין ו-Digest',
-      labelEn: 'Admin & Digest',
+      labelHe: 'אדמין ולידים',
+      labelEn: 'Admin & Leads',
       icon: ShieldCheck,
-      badge: bookings.length,
+      badge: Math.max(referrals.length, bookings.length),
     },
   ];
 
@@ -523,6 +620,7 @@ export function App() {
             defaultUserPhone={userProfile.phone}
             onAddBusiness={handleAddBusiness}
             onBookBusinessSlot={handleBookBusinessSlot}
+            onTrackReferral={handleTrackReferral}
             onSwitchToTest={() => handleSwitchEnvironment('test')}
           />
         )}
@@ -566,9 +664,12 @@ export function App() {
             businesses={businesses}
             bookings={bookings}
             families={families}
+            referrals={referrals}
+            notificationConfig={notificationConfig}
             lang={lang}
             appEnv={appEnv}
             onToggleProviderSync={handleToggleProviderSync}
+            onUpdateNotificationConfig={handleUpdateNotificationConfig}
           />
         )}
       </main>
@@ -581,6 +682,7 @@ export function App() {
         defaultUserPhone={userProfile.phone}
         onClose={() => setSelectedEntity(null)}
         onConfirmBooking={handleConfirmBooking}
+        onTrackReferral={handleTrackReferral}
       />
     </div>
   );

@@ -31,8 +31,18 @@ import {
   Language,
   AppEnvironment,
   BookingRecord,
+  LeadReferralEvent,
+  ReferralActionType,
 } from '../types/luz';
 import { downloadIcsFile, buildGoogleCalendarUrl } from '../utils/calendarAndParser';
+import {
+  appendLuzAttributionParams,
+  buildBusinessBookingConfirmationWaUrl,
+  buildBusinessWhatsAppReferralUrl,
+  createBookingReferralCode,
+  generateLuzReferralCode,
+  resolveProviderContactLang,
+} from '../utils/referralAndAlerts';
 
 interface BusinessesViewProps {
   businesses: CommunityBusiness[];
@@ -44,6 +54,9 @@ interface BusinessesViewProps {
   onBookBusinessSlot: (
     businessId: string,
     booking: Omit<BookingRecord, 'id' | 'createdAt' | 'status'>
+  ) => void;
+  onTrackReferral: (
+    event: Omit<LeadReferralEvent, 'id' | 'createdAt' | 'channelsDispatched' | 'environment'>
   ) => void;
   onSwitchToTest: () => void;
 }
@@ -139,6 +152,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   defaultUserPhone,
   onAddBusiness,
   onBookBusinessSlot,
+  onTrackReferral,
   onSwitchToTest,
 }) => {
   const isHe = lang === 'he';
@@ -147,6 +161,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   const [selectedArea, setSelectedArea] = useState<GoaArea | 'all'>('all');
   const [onlyHomeVisit, setOnlyHomeVisit] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [referralNonce, setReferralNonce] = useState<number>(() => Math.floor(Math.random() * 9000) + 1000);
 
   // Modal states
   const [activeBusiness, setActiveBusiness] = useState<CommunityBusiness | null>(null);
@@ -159,6 +174,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   const [customerName, setCustomerName] = useState(defaultUserName);
   const [customerPhone, setCustomerPhone] = useState(defaultUserPhone);
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
+  const [lastBookingRef, setLastBookingRef] = useState<string>('');
 
   // New Business Form State
   const [newCategory, setNewCategory] = useState<BusinessCategory>('body_therapy');
@@ -202,11 +218,41 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
     });
   }, [businesses, selectedCategory, selectedArea, onlyHomeVisit, searchQuery]);
 
+  const trackBusinessLead = (
+    biz: CommunityBusiness,
+    actionType: ReferralActionType,
+    referralCode: string,
+    extra?: { customerName?: string; customerPhone?: string; summary?: string }
+  ) => {
+    const catMeta = BUSINESS_CATEGORIES.find((c) => c.id === biz.category);
+    onTrackReferral({
+      referralCode,
+      actionType,
+      providerId: biz.id,
+      providerNameHe: biz.businessNameHe,
+      providerNameEn: biz.businessNameEn,
+      ownerOrHostName: biz.ownerNameHe,
+      providerPhone: biz.phone,
+      providerCategoryOrType: catMeta ? catMeta.labelHe : biz.category,
+      area: biz.area,
+      providerContactLang: resolveProviderContactLang(
+        biz.preferredContactLang,
+        biz.phone,
+        biz.ownerNameHe
+      ),
+      customerName: extra?.customerName ?? (defaultUserName || undefined),
+      customerPhone: extra?.customerPhone ?? (defaultUserPhone || undefined),
+      serviceOrDateSummary: extra?.summary || biz.specialtyHe,
+    });
+    setReferralNonce((n) => n + 1);
+  };
+
   const openBookingForBusiness = (biz: CommunityBusiness) => {
     setActiveBusiness(biz);
     setSelectedOfferId(biz.servicesMenu[0]?.id || '');
     setSelectedSlot(biz.timeSlots[0] || '10:00');
     setBookingConfirmed(false);
+    setLastBookingRef('');
   };
 
   const handleConfirmBusinessBooking = (e: React.FormEvent) => {
@@ -218,8 +264,11 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
     );
     const titleHe = `${activeBusiness.businessNameHe}${offer ? ` — ${offer.nameHe}` : ''}`;
     const titleEn = `${activeBusiness.businessNameEn}${offer ? ` — ${offer.nameEn}` : ''}`;
+    const bookingRef = createBookingReferralCode();
+    setLastBookingRef(bookingRef);
 
     onBookBusinessSlot(activeBusiness.id, {
+      referralCode: bookingRef,
       entityId: activeBusiness.id,
       entityTitleHe: titleHe,
       entityTitleEn: titleEn,
@@ -233,6 +282,12 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
       totalPrice: offer?.priceAmount || 0,
       currency: offer?.priceCurrency || 'INR',
       reminderChannel: 'both',
+    });
+
+    trackBusinessLead(activeBusiness, 'slot_booking', bookingRef, {
+      customerName,
+      customerPhone,
+      summary: `${offer?.nameHe || activeBusiness.specialtyHe} | ${selectedDate} בשעה ${selectedSlot}`,
     });
 
     setBookingConfirmed(true);
@@ -505,6 +560,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
           {filteredBusinesses.map((biz) => {
             const catMeta = getCategoryMeta(biz.category);
             const CatIcon = catMeta.icon;
+            const cardRefCode = generateLuzReferralCode(biz.id, referralNonce);
             return (
               <div
                 key={biz.id}
@@ -560,7 +616,8 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                       <div className="flex flex-wrap items-center gap-1.5">
                         {biz.websiteUrl && (
                           <a
-                            href={biz.websiteUrl}
+                            href={appendLuzAttributionParams(biz.websiteUrl, cardRefCode)}
+                            onClick={() => trackBusinessLead(biz, 'website_click', cardRefCode)}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
@@ -573,6 +630,9 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                         {biz.whatsappGroupUrl && (
                           <a
                             href={biz.whatsappGroupUrl}
+                            onClick={() =>
+                              trackBusinessLead(biz, 'whatsapp_group_click', cardRefCode)
+                            }
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
@@ -585,6 +645,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                         {biz.instagramHandle && (
                           <a
                             href={`https://instagram.com/${biz.instagramHandle.replace(/^@/, '')}`}
+                            onClick={() => trackBusinessLead(biz, 'instagram_click', cardRefCode)}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-medium text-canopy-700 hover:border-canopy-700 transition-colors"
@@ -627,13 +688,15 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                   </button>
 
                   <a
-                    href={`https://wa.me/${biz.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                      isHe
-                        ? `היי ${biz.ownerNameHe}, הגעתי דרך אינדקס העסקים של LUZ גואה ואשמח לתאם תור ל-${biz.specialtyHe}.`
-                        : `Hi ${biz.ownerNameEn}, reaching out via LUZ Goa Directory to book a session.`
-                    )}`}
+                    href={buildBusinessWhatsAppReferralUrl(biz, cardRefCode, defaultUserName)}
+                    onClick={() => trackBusinessLead(biz, 'whatsapp_click', cardRefCode)}
                     target="_blank"
                     rel="noreferrer"
+                    title={
+                      isHe
+                        ? `פנייה ממותגת דרך LUZ (#${cardRefCode})`
+                        : `LUZ Attributed Inquiry (#${cardRefCode})`
+                    }
                     className="py-2 px-3 rounded-xl bg-terracotta-500 text-white text-xs font-semibold hover:bg-terracotta-600 transition-colors inline-flex items-center gap-1.5"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
@@ -679,15 +742,45 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                   <div className="w-14 h-14 rounded-full bg-canopy-100 text-canopy-700 flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h4 className="font-display text-2xl font-bold text-canopy-900">
-                    {isHe ? 'התור שוריין בהצלחה!' : 'Appointment Confirmed!'}
-                  </h4>
-                  <p className="text-xs text-canopy-700">
-                    {isHe
-                      ? `נקבע עם ${activeBusiness.ownerNameHe} בתאריך ${selectedDate} בשעה ${selectedSlot}.`
-                      : `Booked with ${activeBusiness.ownerNameEn} on ${selectedDate} at ${selectedSlot}.`}
-                  </p>
+                  <div className="space-y-1.5">
+                    <h4 className="font-display text-2xl font-bold text-canopy-900">
+                      {isHe ? 'התור שוריין בהצלחה!' : 'Appointment Confirmed!'}
+                    </h4>
+                    <p className="text-xs text-canopy-700">
+                      {isHe
+                        ? `נקבע עם ${activeBusiness.ownerNameHe} בתאריך ${selectedDate} בשעה ${selectedSlot}.`
+                        : `Booked with ${activeBusiness.ownerNameEn} on ${selectedDate} at ${selectedSlot}.`}
+                    </p>
+                    {lastBookingRef && (
+                      <div className="inline-block px-3 py-1 rounded-full bg-sand-200 text-canopy-900 font-mono text-xs font-bold tabular-nums">
+                        {isHe ? `מזהה הפניה מ-LUZ: #${lastBookingRef}` : `LUZ Ref: #${lastBookingRef}`}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-wrap justify-center gap-2.5 pt-2">
+                    <a
+                      href={buildBusinessBookingConfirmationWaUrl(activeBusiness, {
+                        referralCode: lastBookingRef || 'LUZ-BOOK',
+                        serviceNameHe:
+                          activeBusiness.servicesMenu.find((s) => s.id === selectedOfferId)
+                            ?.nameHe || activeBusiness.specialtyHe,
+                        serviceNameEn:
+                          activeBusiness.servicesMenu.find((s) => s.id === selectedOfferId)
+                            ?.nameEn || activeBusiness.specialtyEn,
+                        selectedDate,
+                        selectedSlot,
+                        customerName,
+                        customerPhone,
+                      })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-terracotta-500 text-white text-xs font-semibold hover:bg-terracotta-600 transition-colors"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      {isHe
+                        ? 'שליחת אישור התור לספק בוואטסאפ (ממותג LUZ)'
+                        : 'Send LUZ Booking to Provider on WhatsApp'}
+                    </a>
                     <a
                       href={buildGoogleCalendarUrl({
                         title: `${isHe ? activeBusiness.businessNameHe : activeBusiness.businessNameEn}`,

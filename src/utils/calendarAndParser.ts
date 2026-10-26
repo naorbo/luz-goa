@@ -219,7 +219,8 @@ export function generateWhatsAppDigest(
   mode: 'user_weekly' | 'admin_system',
   lang: Language,
   businesses: import('../types/luz').CommunityBusiness[] = [],
-  appEnv: import('../types/luz').AppEnvironment = 'prod'
+  appEnv: import('../types/luz').AppEnvironment = 'prod',
+  referralsCount: number = 0
 ): string {
   const envTagHe = appEnv === 'test' ? ' [סביבת TEST — נתוני הדגמה]' : '';
   const envTagEn = appEnv === 'test' ? ' [TEST Sandbox]' : '';
@@ -340,7 +341,9 @@ export function generateWhatsAppDigest(
     `• משאבים ושירותים שעתיים: ${entities.filter((e) => e.type === 'service').length}`,
     `• בתים להשכרה (Date Range): ${entities.filter((e) => e.type === 'rental').length}`,
     ``,
-    `2. *סטטוס אינטגרציות טכנולוגיות:*`,
+    `2. *סטטוס אינטגרציות והתראות לידים בזמן אמת:*`,
+    `• שיוך פניות לספקים (#LUZ-XXXX + UTM) והתראות לידים (Email / Webhook / Telegram): מחובר ופעיל`,
+    `• סך הפניות ולידים לספקים שנרשמו מ-LUZ: ${referralsCount}`,
     `• בוט וואטסאפ ("בן" - Unofficial API): מחובר ופעיל`,
     `• Scraper קבוצות וואטסאפ (שי): פעיל (${entities.filter((e) => e.ingestionSource === 'scraper' || e.ingestionSource === 'whatsapp_dm').length} פריטים נקלטו מהצ'אט)`,
     `• חיבורי יומן ספקים (Calendly/Google): ${connectedCalendars} מסונכרנים אוטומטית, ${manualCalendars} בניהול ידני`,

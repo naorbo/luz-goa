@@ -27,6 +27,7 @@ export function getStorageKeys(env: AppEnvironment) {
     bookings: `${prefix}_bookings`,
     families: `${prefix}_families`,
     profile: `${prefix}_profile`,
+    referrals: `${prefix}_referrals`,
   };
 }
 

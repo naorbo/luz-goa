@@ -15,9 +15,23 @@ import {
   AlertCircle,
   Users,
   Globe,
+  Hash,
 } from 'lucide-react';
-import { LuzEntity, BookingRecord, Language } from '../types/luz';
+import {
+  LuzEntity,
+  BookingRecord,
+  Language,
+  LeadReferralEvent,
+  ReferralActionType,
+} from '../types/luz';
 import { downloadIcsFile, buildGoogleCalendarUrl } from '../utils/calendarAndParser';
+import {
+  appendLuzAttributionParams,
+  buildEntityWhatsAppReferralUrl,
+  createBookingReferralCode,
+  generateLuzReferralCode,
+  resolveProviderContactLang,
+} from '../utils/referralAndAlerts';
 
 interface BookingModalProps {
   entity: LuzEntity | null;
@@ -26,6 +40,9 @@ interface BookingModalProps {
   defaultUserPhone: string;
   onClose: () => void;
   onConfirmBooking: (booking: Omit<BookingRecord, 'id' | 'createdAt' | 'status'>) => void;
+  onTrackReferral: (
+    event: Omit<LeadReferralEvent, 'id' | 'createdAt' | 'channelsDispatched' | 'environment'>
+  ) => void;
 }
 
 const UPCOMING_DATES = [
@@ -44,6 +61,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   defaultUserPhone,
   onClose,
   onConfirmBooking,
+  onTrackReferral,
 }) => {
   if (!entity) return null;
 
@@ -64,6 +82,51 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [reminderChannel, setReminderChannel] = useState<'whatsapp' | 'calendar_ics' | 'both'>('both');
   const [notes, setNotes] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [referralNonce, setReferralNonce] = useState(1);
+  const [confirmedRefCode, setConfirmedRefCode] = useState('');
+
+  const entityTypeLabelHe =
+    entity.type === 'rental'
+      ? 'השכרת נכס / סאבלט'
+      : entity.type === 'service'
+      ? 'משאב / שירות שעתי'
+      : entity.type === 'workshop'
+      ? 'חוג / סדנה קבועה'
+      : 'אירוע חד-פעמי';
+
+  const trackEntityLead = (
+    actionType: ReferralActionType,
+    refCode: string,
+    extra?: {
+      customerName?: string;
+      customerPhone?: string;
+      serviceOrDateSummary?: string;
+    }
+  ) => {
+    const providerContactLang = resolveProviderContactLang(
+      entity.preferredContactLang,
+      entity.hostPhone,
+      entity.hostName
+    );
+    onTrackReferral({
+      referralCode: refCode,
+      actionType,
+      providerId: entity.id,
+      providerNameHe: entity.titleHe,
+      providerNameEn: entity.titleEn,
+      ownerOrHostName: entity.hostName,
+      providerPhone: entity.hostPhone,
+      providerCategoryOrType: entityTypeLabelHe,
+      area: entity.area,
+      providerContactLang,
+      customerName: extra?.customerName || customerName.trim() || undefined,
+      customerPhone: extra?.customerPhone || customerPhone.trim() || undefined,
+      serviceOrDateSummary: extra?.serviceOrDateSummary,
+    });
+    setReferralNonce((n) => n + 1);
+  };
+
+  const modalRefCode = generateLuzReferralCode(entity.id, referralNonce);
 
   // Check if selected slot is already booked for hourly services
   const bookedForDate = useMemo(() => {
@@ -102,7 +165,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     if (entity.type === 'rental' && rentalCalculation.conflict) return;
     if (entity.type === 'service' && bookedForDate.includes(selectedSlot)) return;
 
+    const bookingRef = createBookingReferralCode();
+    setConfirmedRefCode(bookingRef);
+
     onConfirmBooking({
+      referralCode: bookingRef,
       entityId: entity.id,
       entityTitleHe: entity.titleHe,
       entityTitleEn: entity.titleEn,
@@ -123,10 +190,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       notes,
     });
 
+    const scheduleSummary =
+      entity.type === 'rental'
+        ? `${rentalFrom} → ${rentalTo} (${rentalCalculation.nights} לילות)`
+        : `${selectedDate} בשעה ${selectedSlot}`;
+
+    const actionType: ReferralActionType =
+      entity.type === 'rental'
+        ? 'rental_booking'
+        : entity.type === 'service'
+        ? 'slot_booking'
+        : 'event_rsvp';
+
+    trackEntityLead(actionType, bookingRef, {
+      customerName,
+      customerPhone,
+      serviceOrDateSummary: `${scheduleSummary} | משתתפים: ${participantsCount}`,
+    });
+
     if (reminderChannel === 'calendar_ics' || reminderChannel === 'both') {
       downloadIcsFile({
         title: `${title} (LUZ Goa)`,
-        description: `${description}\nHost: ${entity.hostName} (${entity.hostPhone})`,
+        description: `${description}\nHost: ${entity.hostName} (${entity.hostPhone})\nLUZ Ref: #${bookingRef}`,
         location,
         startDate: entity.type === 'rental' ? rentalFrom : selectedDate,
         startTime: entity.type === 'rental' ? '14:00' : selectedSlot,
@@ -201,14 +286,45 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <h3 className="font-display text-2xl font-bold text-canopy-900">
                   {isHe ? 'ההרשמה והשריון נקלטו בהצלחה!' : 'Booking & RSVP Confirmed!'}
                 </h3>
+                {confirmedRefCode && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-sand-200/80 border border-sand-300 text-xs font-mono font-bold text-canopy-900 tabular-nums">
+                    <Hash className="w-3.5 h-3.5 text-terracotta-500" />
+                    <span>{isHe ? 'מזהה הפניה מ-LUZ:' : 'LUZ Referral:'} #{confirmedRefCode}</span>
+                  </div>
+                )}
                 <p className="text-sm text-canopy-600 max-w-md mx-auto">
                   {isHe
-                    ? `שריינו עבור ${customerName}. תזכורת אוטומטית תישלח מהבוט "בן" בוואטסאפ למספר ${customerPhone}.`
-                    : `Reserved for ${customerName}. Smart reminder scheduled via "Ben" WhatsApp Bot to ${customerPhone}.`}
+                    ? `שריינו עבור ${customerName}. נשלחה התראה למערכת LUZ, בלחיצה על כפתור הוואטסאפ המארח יראה שהגעתם דרך פלטפורמת LUZ גואה.`
+                    : `Reserved for ${customerName}. Click the WhatsApp button below so the host immediately sees your LUZ Goa booking reference.`}
                 </p>
               </div>
 
               <div className="flex flex-wrap justify-center gap-3 pt-2">
+                <a
+                  href={buildEntityWhatsAppReferralUrl(
+                    entity,
+                    confirmedRefCode || 'LUZ-RSVP',
+                    'booked',
+                    {
+                      customerName,
+                      customerPhone,
+                      participantsCount,
+                      scheduleSummary:
+                        entity.type === 'rental'
+                          ? `${rentalFrom} → ${rentalTo}`
+                          : `${selectedDate} ${selectedSlot}`,
+                    }
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-terracotta-500 text-white text-sm font-semibold hover:bg-terracotta-600 transition-colors"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  {isHe
+                    ? 'שליחת אישור בוואטסאפ למארח (עם שיוך LUZ)'
+                    : 'Send LUZ Booking to Host on WhatsApp'}
+                </a>
+
                 <a
                   href={gcalUrl}
                   target="_blank"
@@ -225,7 +341,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   onClick={() =>
                     downloadIcsFile({
                       title: `${title} (LUZ Goa)`,
-                      description,
+                      description: `${description}\nLUZ Ref: #${confirmedRefCode}`,
                       location,
                       startDate: entity.type === 'rental' ? rentalFrom : selectedDate,
                       startTime: entity.type === 'rental' ? '14:00' : selectedSlot,
@@ -238,24 +354,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <Download className="w-4 h-4 text-terracotta-500" />
                   {isHe ? 'הורדת קובץ יומן (.ics)' : 'Download .ics File'}
                 </button>
-
-                <a
-                  href={`https://wa.me/${entity.hostPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                    isHe
-                      ? `היי ${entity.hostName}, נרשמתי דרך מערכת LUZ ל"${entity.titleHe}" (${
-                          entity.type === 'rental' ? `${rentalFrom} עד ${rentalTo}` : `${selectedDate} ${selectedSlot}`
-                        }).`
-                      : `Hi ${entity.hostName}, I booked "${entity.titleEn}" via LUZ Goa (${
-                          entity.type === 'rental' ? `${rentalFrom} to ${rentalTo}` : `${selectedDate} ${selectedSlot}`
-                        }).`
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-terracotta-500 text-white text-sm font-medium hover:bg-terracotta-600 transition-colors"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  {isHe ? 'שליחת הודעה בוואטסאפ למארח' : 'Message Host on WhatsApp'}
-                </a>
               </div>
 
               <div className="pt-4">
@@ -275,9 +373,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   {entity.websiteUrl && (
                     <a
-                      href={entity.websiteUrl}
+                      href={appendLuzAttributionParams(entity.websiteUrl, modalRefCode)}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={() =>
+                        trackEntityLead('website_click', modalRefCode, {
+                          serviceOrDateSummary: entity.websiteUrl,
+                        })
+                      }
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-sand-300 text-xs font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
                     >
                       <Globe className="w-3.5 h-3.5 text-terracotta-500" />
@@ -290,6 +393,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       href={entity.whatsappGroupUrl}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={() =>
+                        trackEntityLead('whatsapp_group_click', modalRefCode, {
+                          serviceOrDateSummary: 'מעבר לקבוצת הוואטסאפ של הפעילות',
+                        })
+                      }
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-sand-300 text-xs font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
                     >
                       <Users className="w-3.5 h-3.5 text-canopy-600" />
@@ -310,13 +418,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     </a>
                   )}
                   <a
-                    href={`https://wa.me/${entity.hostPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                      isHe
-                        ? `היי, ראיתי בלוח LUZ גואה את "${entity.titleHe}" ואשמח לפרטים.`
-                        : `Hi, reaching out via LUZ Goa regarding "${entity.titleEn}".`
-                    )}`}
+                    href={buildEntityWhatsAppReferralUrl(entity, modalRefCode, 'direct', {
+                      customerName,
+                    })}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() =>
+                      trackEntityLead('whatsapp_click', modalRefCode, {
+                        serviceOrDateSummary: 'פנייה ישירה למארגן מתוך כרטיס הפעילות',
+                      })
+                    }
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sand-100 border border-sand-300 text-xs font-semibold text-canopy-900 hover:border-terracotta-500 transition-colors"
                   >
                     <MessageSquare className="w-3.5 h-3.5 text-terracotta-500" />
