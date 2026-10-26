@@ -37,6 +37,10 @@ import {
   getActionTypeLabel,
   sendTestAlertAllChannels,
 } from '../utils/referralAndAlerts';
+import {
+  GOOGLE_APPS_SCRIPT_CODE,
+  isGoogleAppsScriptUrl,
+} from '../utils/appsScriptTemplate';
 
 interface AdminViewProps {
   entities: LuzEntity[];
@@ -182,6 +186,16 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [testingAlerts, setTestingAlerts] = useState(false);
   const [testResults, setTestResults] = useState<ChannelDispatchResult[] | null>(null);
   const [copiedWebhookSample, setCopiedWebhookSample] = useState(false);
+  const [copiedAppsScript, setCopiedAppsScript] = useState(false);
+  const [showAppsScriptGuide, setShowAppsScriptGuide] = useState(false);
+
+  const isAppsScriptConnected = isGoogleAppsScriptUrl(draftConfig.webhookUrl);
+
+  const handleCopyAppsScriptCode = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
+    setCopiedAppsScript(true);
+    setTimeout(() => setCopiedAppsScript(false), 3000);
+  };
 
   const digestText = generateWhatsAppDigest(
     entities,
@@ -287,8 +301,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </div>
           <p className="text-xs md:text-sm text-sand-200">
             {isHe
-              ? 'התראות בזמן אמת על כל פנייה לספק (#LUZ-XXXX), ניהול ערוצי Webhook / טלגרם / אימייל והפקת Digest שבועי'
-              : 'Real-time provider referral alerts (#LUZ-XXXX), Webhook / Telegram / Email routing, and weekly digests'}
+              ? 'התראות בזמן אמת על כל פנייה לספק (#LUZ-XXXX), ניהול ערוצי Google Apps Script / טלגרם / אימייל והפקת Digest שבועי'
+              : 'Real-time provider referral alerts (#LUZ-XXXX), Google Apps Script / Telegram / Email routing, and weekly digests'}
           </p>
         </div>
 
@@ -372,7 +386,133 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </div>
 
           <div className="space-y-4">
-            {/* 1. Email Channel */}
+            {/* 1. Google Apps Script / Webhook Channel (RECOMMENDED) */}
+            <div className="p-4 rounded-xl bg-white border border-sand-300 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="inline-flex items-center gap-2 text-xs font-bold text-canopy-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={draftConfig.enableWebhook}
+                    onChange={(e) =>
+                      setDraftConfig((prev) => ({ ...prev, enableWebhook: e.target.checked }))
+                    }
+                    className="rounded border-sand-300 text-terracotta-500 focus:ring-terracotta-500"
+                  />
+                  <Webhook className="w-4 h-4 text-ochre-600" />
+                  <span>
+                    {isHe
+                      ? 'Google Apps Script (מומלץ — חינם + Google Sheets + Gmail) או Webhook'
+                      : 'Google Apps Script Web App (Recommended) / Make Webhook'}
+                  </span>
+                </label>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleCopyAppsScriptCode}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-sand-50 bg-canopy-800 hover:bg-canopy-700 px-2.5 py-1 rounded-lg transition-colors"
+                  >
+                    {copiedAppsScript ? (
+                      <Check className="w-3 h-3 text-ochre-400" />
+                    ) : (
+                      <Copy className="w-3 h-3 text-ochre-400" />
+                    )}
+                    {copiedAppsScript
+                      ? isHe
+                        ? 'קוד ה-Apps Script הועתק!'
+                        : 'Apps Script Copied!'
+                      : isHe
+                      ? 'העתק קוד Google Apps Script מוכן'
+                      : 'Copy Ready Apps Script'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAppsScriptGuide((v) => !v)}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-canopy-700 hover:text-canopy-950 px-2 py-1 rounded-lg bg-sand-100 border border-sand-300"
+                  >
+                    {isHe ? 'איך מחברים ב-2 דק׳?' : '2-Min Setup'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCopySamplePayload}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-canopy-700 hover:text-canopy-950 px-2 py-1 rounded-lg bg-sand-100 border border-sand-300"
+                  >
+                    {copiedWebhookSample ? (
+                      <Check className="w-3 h-3 text-canopy-700" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                    {copiedWebhookSample ? 'JSON' : 'JSON'}
+                  </button>
+                </div>
+              </div>
+
+              {showAppsScriptGuide && (
+                <div className="p-3 rounded-xl bg-sand-100 border border-sand-300 text-[11px] text-canopy-800 space-y-1 leading-relaxed">
+                  <div className="font-bold text-canopy-900">
+                    {isHe
+                      ? 'חיבור Google Apps Script ב-4 צעדים קצרים (ללא חשיפת מפתחות בקוד וללא עלות):'
+                      : '4-Step Google Apps Script Setup:'}
+                  </div>
+                  <div>
+                    1. פתחו את{' '}
+                    <a
+                      href="https://script.new"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline font-bold text-terracotta-600"
+                    >
+                      script.new
+                    </a>{' '}
+                    (או מתוך Google Sheet חדש: Extensions → Apps Script) והדביקו את הקוד שהעתקתם.
+                  </div>
+                  <div>
+                    2. בחרו למעלה בפונקציה <code className="font-mono">setupAndTestLuzAlerts</code>{' '}
+                    ולחצו <strong>Run</strong> לאישור הרשאות חד-פעמי (הסקריפט ייצור אוטומטית גיליון Google Sheets בעברית וישלח לכם מייל בדיקה!).
+                  </div>
+                  <div>
+                    3. לחצו <strong>Deploy → New deployment → Web app</strong>, הגדירו{' '}
+                    <strong>Execute as: Me</strong> ו-<strong>Who has access: Anyone</strong>.
+                  </div>
+                  <div>
+                    4. העתיקו את כתובת ה-<code className="font-mono">.../exec</code> לכאן למטה (או שלחו אותה בצ׳אט כדי שנצרוב אותה קבוע לכל המבקרים באתר).
+                  </div>
+                </div>
+              )}
+
+              <input
+                type="url"
+                dir="ltr"
+                value={draftConfig.webhookUrl}
+                onChange={(e) => {
+                  const nextUrl = e.target.value;
+                  const nextIsGas = isGoogleAppsScriptUrl(nextUrl);
+                  setDraftConfig((prev) => ({
+                    ...prev,
+                    webhookUrl: nextUrl,
+                    // Avoid duplicate FormSubmit email when Apps Script already emails via Gmail
+                    enableEmail: nextIsGas ? false : prev.enableEmail,
+                  }));
+                }}
+                placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-1.5 text-xs font-mono"
+              />
+
+              {isAppsScriptConnected && (
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-canopy-800 bg-canopy-100/70 px-2.5 py-1.5 rounded-lg">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-canopy-700 shrink-0" />
+                  <span>
+                    {isHe
+                      ? 'זוהה Google Apps Script — נשלח ישירות ללא שגיאות CORS, שומר ל-Google Sheets ושולח מייל מ-Gmail שלך!'
+                      : 'Google Apps Script detected — zero-CORS dispatch to Sheets + Gmail active!'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Fallback Direct Email Channel (FormSubmit / Web3Forms) */}
             <div className="p-4 rounded-xl bg-white border border-sand-300 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <label className="inline-flex items-center gap-2 text-xs font-bold text-canopy-900 cursor-pointer">
@@ -387,12 +527,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   <Mail className="w-4 h-4 text-terracotta-500" />
                   <span>
                     {isHe
-                      ? 'התראה מיידית באימייל על כל פנייה לספק'
-                      : 'Instant Email Alert on Every Provider Referral'}
+                      ? 'גיבוי אימייל ישיר מהדפדפן (FormSubmit / Web3Forms — ללא Apps Script)'
+                      : 'Direct Browser Email Fallback (FormSubmit / Web3Forms)'}
                   </span>
                 </label>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-canopy-100 text-canopy-800">
-                  {isHe ? 'מוגדר אוטומטית לכל המכשירים' : 'Global Ready'}
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-sand-100 text-canopy-700">
+                  {isAppsScriptConnected
+                    ? isHe
+                      ? 'כבוי אוטומטית (Apps Script שולח Gmail)'
+                      : 'Handled by Apps Script'
+                    : isHe
+                    ? 'פעיל כגיבוי מיידי'
+                    : 'Active Fallback'}
                 </span>
               </div>
 
@@ -415,7 +561,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <div>
                   <label className="block text-[11px] font-medium text-canopy-600 mb-1">
                     {isHe
-                      ? 'מפתח Web3Forms (אופציונלי — ללא צורך באישור מייל):'
+                      ? 'מפתח Web3Forms (אופציונלי):'
                       : 'Web3Forms Key (Optional):'}
                   </label>
                   <input
@@ -433,63 +579,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   />
                 </div>
               </div>
-              <p className="text-[11px] text-canopy-600">
-                {isHe
-                  ? 'טיפ: לחץ למטה על "שלח התראת בדיקה עכשיו" ואשר פעם אחת את מייל ההפעלה מ-FormSubmit בתיבת naorbo@gmail.com — מאותו רגע כל פנייה מכל משתמש באתר תגיע אליך ישירות למייל.'
-                  : 'Tip: Click "Send Test Alert" below and confirm the one-time FormSubmit activation email in your inbox.'}
-              </p>
-            </div>
-
-            {/* 2. Webhook Channel (Make / n8n / Bot "Ben") */}
-            <div className="p-4 rounded-xl bg-white border border-sand-300 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="inline-flex items-center gap-2 text-xs font-bold text-canopy-900 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={draftConfig.enableWebhook}
-                    onChange={(e) =>
-                      setDraftConfig((prev) => ({ ...prev, enableWebhook: e.target.checked }))
-                    }
-                    className="rounded border-sand-300 text-terracotta-500 focus:ring-terracotta-500"
-                  />
-                  <Webhook className="w-4 h-4 text-ochre-600" />
-                  <span>
-                    {isHe
-                      ? 'חיבור Webhook (Make.com / n8n / הבוט "בן" בוואטסאפ)'
-                      : 'Webhook URL (Make.com / n8n / "Ben" WhatsApp Bot)'}
-                  </span>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={handleCopySamplePayload}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-canopy-700 hover:text-canopy-950 px-2 py-0.5 rounded bg-sand-100 border border-sand-300"
-                >
-                  {copiedWebhookSample ? (
-                    <Check className="w-3 h-3 text-canopy-700" />
-                  ) : (
-                    <Copy className="w-3 h-3" />
-                  )}
-                  {copiedWebhookSample
-                    ? isHe
-                      ? 'דוגמת JSON הועתקה'
-                      : 'JSON Copied'
-                    : isHe
-                    ? 'העתק מבנה JSON ל-Make'
-                    : 'Copy Sample JSON'}
-                </button>
-              </div>
-
-              <input
-                type="url"
-                dir="ltr"
-                value={draftConfig.webhookUrl}
-                onChange={(e) =>
-                  setDraftConfig((prev) => ({ ...prev, webhookUrl: e.target.value }))
-                }
-                placeholder="https://hook.eu1.make.com/xxxxxxxxxxxxxxxx"
-                className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-1.5 text-xs font-mono"
-              />
             </div>
 
             {/* 3. Telegram Bot Channel */}

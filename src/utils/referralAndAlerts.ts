@@ -7,6 +7,7 @@ import {
   NotificationChannelsConfig,
   ReferralActionType,
 } from '../types/luz';
+import { isGoogleAppsScriptUrl } from './appsScriptTemplate';
 
 const PLATFORM_SHORT_URL = 'naorbo.github.io/luz-goa';
 
@@ -322,9 +323,10 @@ export async function dispatchLeadReferralAlerts(
 
   const tasks: Promise<void>[] = [];
 
-  // 1. Webhook (Make / n8n / WhatsApp Bot "Ben")
+  // 1. Webhook / Google Apps Script Web App (Sheets + Gmail + Telegram + Bot "Ben")
   if (config.enableWebhook && config.webhookUrl.trim()) {
     const webhookUrl = config.webhookUrl.trim();
+    const isAppsScript = isGoogleAppsScriptUrl(webhookUrl);
     const webhookPayload = {
       event: 'luz.provider_referral',
       referralCode: event.referralCode,
@@ -353,20 +355,41 @@ export async function dispatchLeadReferralAlerts(
 
     tasks.push(
       (async () => {
+        // Google Apps Script rejects CORS OPTIONS preflight if Content-Type is application/json,
+        // so send text/plain;charset=utf-8 immediately on the first shot (still parsed via JSON.parse(e.postData.contents)).
+        const contentType = isAppsScript
+          ? 'text/plain;charset=utf-8'
+          : 'application/json';
+
         try {
           const res = await fetch(webhookUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': contentType },
             body: JSON.stringify(webhookPayload),
+            redirect: 'follow',
             keepalive: true,
           });
+
+          if (isAppsScript) {
+            const gasJson = await res.json().catch(() => null);
+            const ok = res.ok && gasJson?.ok !== false;
+            results.push({
+              channel: 'webhook',
+              ok,
+              detail: ok
+                ? 'נשלח ל-Google Apps Script — נרשם ב-Google Sheets ונשלח מייל/טלגרם!'
+                : `שגיאת Apps Script: ${gasJson?.error || `HTTP ${res.status}`}`,
+            });
+            return;
+          }
+
           results.push({
             channel: 'webhook',
             ok: res.ok,
             detail: res.ok ? `נשלח ל-Webhook (HTTP ${res.status})` : `שגיאת HTTP ${res.status}`,
           });
         } catch {
-          // Fallback to CORS-safe simple request (no preflight) for Google Apps Script / strict webhooks
+          // Fallback to CORS-opaque simple request if browser blocks reading cross-origin redirect
           try {
             await fetch(webhookUrl, {
               method: 'POST',
@@ -378,7 +401,9 @@ export async function dispatchLeadReferralAlerts(
             results.push({
               channel: 'webhook',
               ok: true,
-              detail: 'נשלח ל-Webhook (מצב no-cors)',
+              detail: isAppsScript
+                ? 'נשלח ל-Google Apps Script (Google Sheets + Gmail)'
+                : 'נשלח ל-Webhook (מצב no-cors)',
             });
           } catch (err2) {
             results.push({
