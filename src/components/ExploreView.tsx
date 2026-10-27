@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Calendar as CalendarIcon,
   LayoutGrid,
@@ -25,6 +25,7 @@ import {
   UserProfile,
   AppEnvironment,
 } from '../types/luz';
+import { ScrollCraftHero } from './ScrollCraftHero';
 
 interface ExploreViewProps {
   entities: LuzEntity[];
@@ -52,6 +53,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   appEnv,
   userProfile,
   onSelectEntity,
+  onOpenBenBot,
   onSwitchToTest,
   onGoToProvider,
   onGoToBusinesses,
@@ -64,6 +66,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [selectedAudience, setSelectedAudience] = useState<AudienceGroup | 'all'>('all');
   const [onlyRecommended, setOnlyRecommended] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showScrollCraftHero, setShowScrollCraftHero] = useState(true);
+
+  const catalogSectionRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollToCatalog = () => {
+    catalogSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const filteredEntities = useMemo(() => {
     return entities.filter((item) => {
@@ -172,8 +181,50 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Scroll-Craft Dynamic Hero Preview (Rendered in TEST Sandbox) */}
+      {appEnv === 'test' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-canopy-900">
+              <Sparkles className="w-4 h-4 text-ochre-500" />
+              <span>
+                {isHe
+                  ? 'הדגמת Scroll-Craft Hero (סביבת TEST) — שכבות עומק Parallax, מוני נתונים וניווט מהיר'
+                  : 'Scroll-Craft Motion Hero Preview (TEST Sandbox) — Multi-plane Parallax & Counters'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowScrollCraftHero(!showScrollCraftHero)}
+              className="text-xs text-canopy-700 hover:text-canopy-950 font-semibold underline"
+            >
+              {showScrollCraftHero
+                ? isHe
+                  ? 'מזער תצוגת הירו ▲'
+                  : 'Collapse Hero ▲'
+                : isHe
+                ? 'פתח תצוגת הירו ▼'
+                : 'Expand Hero ▼'}
+            </button>
+          </div>
+
+          {showScrollCraftHero && (
+            <ScrollCraftHero
+              lang={lang}
+              onSelectCategory={(type) => setSelectedType(type)}
+              onScrollToCatalog={handleScrollToCatalog}
+              onOpenBenBot={onOpenBenBot}
+              totalEntities={entities.length}
+            />
+          )}
+        </div>
+      )}
+
       {/* Top Filter & Control Bar */}
-      <div className="bg-sand-50 rounded-2xl p-4 md:p-5 border border-sand-300 space-y-4">
+      <div
+        ref={catalogSectionRef}
+        className="bg-sand-50 rounded-2xl p-4 md:p-5 border border-sand-300 space-y-4"
+      >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Search Input */}
           <div className="relative flex-1 max-w-xl">
