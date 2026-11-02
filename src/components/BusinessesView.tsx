@@ -370,53 +370,53 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-reveal">
-      {/* Header & Add Business Action */}
-      <div className="bg-canopy-900 text-sand-50 rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-        <div className="space-y-1.5 max-w-2xl">
-          <h2 className="font-display text-2xl md:text-3xl font-bold">
+    <div className="space-y-10">
+      {/* Hallmark Editorial Section Header */}
+      <section className="hallmark-rule-top pt-8 pb-6 border-b border-rule flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="space-y-2 max-w-2xl">
+          <h1 className="font-serif text-3xl md:text-5xl font-semibold text-ink tracking-tight">
             {isHe
-              ? 'אינדקס בעלי עסקים, מטפלים ונותני שירות בקהילת גואה'
-              : 'Goa Community Businesses & Local Services Directory'}
-          </h2>
-          <p className="text-xs md:text-sm text-sand-200 leading-relaxed">
+              ? 'מדריך בעלי המקצוע והשירותים בדרום גואה'
+              : 'South Goa Practitioners & Services Index'}
+          </h1>
+          <p className="lead text-ink-2">
             {isHe
-              ? 'כל נותני השירות בקהילה לפי קטגוריות — טיפולי גוף ומים, תספורות ורוקחות, אומנות, פילאטיס ושחייה, אוכל ביתי, חינוך, מוניות וריקשות, וויזות — כולל פנייה ישירה ותיאום תור.'
-              : 'Verified community practitioners and trusted local contacts across South Goa — Bodywork, Beauty, Art, Fitness, Home Food, Kids, Taxis/Rickshaws, and Visas.'}
+              ? 'מטפלי גוף ומים, תספורות ורוקחות טבעית, אימוני כושר, אוכל ביתי, חינוך, נהגים ומוניות עם תיאום תור ישיר בוואטסאפ.'
+              : 'Community bodyworkers, home kitchens, movement coaches, reliable drivers and local specialists across Palolem, Patnem and Agonda.'}
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
-          className="shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-terracotta-500 text-white font-semibold text-sm hover:bg-terracotta-600 transition-colors"
+          className="shrink-0 hallmark-btn-primary text-sm"
         >
           <Plus className="w-4 h-4" />
-          {isHe ? 'רישום עסק / מטפל חדש' : 'Add Business Profile'}
+          <span>{isHe ? 'רישום עסק או מטפל חדש' : 'List a Local Business'}</span>
         </button>
-      </div>
+      </section>
 
-      {/* Category Filter Grid */}
+      {/* Hallmark Category Matrix (Ruled Cells) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2.5">
         <button
           type="button"
           onClick={() => setSelectedCategory('all')}
-          className={`p-3 rounded-xl border text-start transition-colors flex flex-col justify-between ${
+          className={`p-3 border text-start transition-colors flex flex-col justify-between ${
             selectedCategory === 'all'
-              ? 'bg-canopy-800 text-sand-50 border-canopy-800'
-              : 'bg-sand-50 text-canopy-800 border-sand-300 hover:border-canopy-600'
+              ? 'bg-ink text-paper border-ink'
+              : 'bg-plate text-ink border-rule hover:border-ink'
           }`}
         >
           <Briefcase
             className={`w-4 h-4 mb-2 ${
-              selectedCategory === 'all' ? 'text-ochre-400' : 'text-terracotta-500'
+              selectedCategory === 'all' ? 'text-gold' : 'text-accent'
             }`}
           />
           <div>
-            <div className="font-bold text-xs">{isHe ? 'כל הקטגוריות' : 'All Categories'}</div>
+            <div className="font-semibold text-xs">{isHe ? 'כל הקטגוריות' : 'All Categories'}</div>
             <div
-              className={`text-[11px] tabular-nums ${
-                selectedCategory === 'all' ? 'text-sand-200' : 'text-canopy-600'
+              className={`text-[11px] hallmark-code ${
+                selectedCategory === 'all' ? 'text-paper/80' : 'text-muted'
               }`}
             >
               {businesses.length} {isHe ? 'עסקים' : 'listed'}
@@ -433,31 +433,31 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
               key={cat.id}
               type="button"
               onClick={() => setSelectedCategory(cat.id)}
-              className={`p-3 rounded-xl border text-start transition-colors flex flex-col justify-between ${
+              className={`p-3 border text-start transition-colors flex flex-col justify-between ${
                 active
-                  ? 'bg-canopy-800 text-sand-50 border-canopy-800'
-                  : 'bg-sand-50 text-canopy-800 border-sand-300 hover:border-canopy-600'
+                  ? 'bg-ink text-paper border-ink'
+                  : 'bg-plate text-ink border-rule hover:border-ink'
               }`}
             >
               <div className="flex items-center justify-between w-full mb-2">
                 <Icon
-                  className={`w-4 h-4 ${active ? 'text-ochre-400' : 'text-terracotta-500'}`}
+                  className={`w-4 h-4 ${active ? 'text-gold' : 'text-accent'}`}
                 />
                 <span
-                  className={`text-[11px] font-mono tabular-nums ${
-                    active ? 'text-ochre-400' : 'text-canopy-600'
+                  className={`text-[11px] hallmark-code ${
+                    active ? 'text-gold' : 'text-muted'
                   }`}
                 >
                   {count}
                 </span>
               </div>
               <div>
-                <div className="font-bold text-xs leading-tight">
+                <div className="font-semibold text-xs leading-tight">
                   {isHe ? cat.labelHe : cat.labelEn}
                 </div>
                 <div
-                  className={`text-[10px] mt-0.5 line-clamp-1 ${
-                    active ? 'text-sand-300' : 'text-canopy-600'
+                  className={`text-[11px] mt-0.5 line-clamp-1 ${
+                    active ? 'text-paper/75' : 'text-muted'
                   }`}
                 >
                   {isHe ? cat.examplesHe : cat.examplesEn}
@@ -468,20 +468,22 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
         })}
       </div>
 
-      {/* Search & Secondary Filters */}
-      <div className="bg-sand-50 rounded-2xl p-4 border border-sand-300 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Search & Secondary Filters Bar */}
+      <div className="bg-paper-2 border-y-2 border-ink p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-xl">
-          <Search className="w-4 h-4 text-canopy-600 absolute top-1/2 -translate-y-1/2 start-3.5" />
+          <Search className="w-4 h-4 text-muted absolute top-1/2 -translate-y-1/2 start-3.5" />
           <input
-            type="text"
+            type="search"
+            name="business-search"
+            aria-label={isHe ? 'חיפוש בעלי מקצוע' : 'Search businesses'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               isHe
-                ? 'חיפוש לפי מקצוע או שם (שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף, מאמנת ספורט...)'
-                : 'Search by specialty or name (Shiatsu, Cosmetician, Tattoo, Boxing, Fitness...)'
+                ? 'חיפוש לפי מקצוע או שם (שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף, אוכל ביתי...)'
+                : 'Search by specialty or name (Shiatsu, Cosmetician, Tattoo, Boxing, Home Food...)'
             }
-            className="w-full ps-10 pe-4 py-2 rounded-xl bg-white border border-sand-300 text-sm"
+            className="w-full ps-10 pe-4 py-2 bg-plate border border-ink text-sm text-ink placeholder:text-muted"
           />
         </div>
 
@@ -489,22 +491,23 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
           <button
             type="button"
             onClick={() => setOnlyHomeVisit(!onlyHomeVisit)}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border transition-colors ${
               onlyHomeVisit
-                ? 'bg-canopy-800 text-sand-50 border-canopy-800'
-                : 'bg-white text-canopy-800 border-sand-300'
+                ? 'bg-ink text-paper border-ink'
+                : 'bg-plate text-ink border-ink hover:bg-paper'
             }`}
           >
             <Home className="w-3.5 h-3.5" />
-            {isHe ? 'מגיע/ה לבית הלקוח' : 'Home Visits Available'}
+            <span>{isHe ? 'מגיע/ה לבית הלקוח' : 'Home Visits Available'}</span>
           </button>
 
-          <div className="inline-flex items-center gap-1.5 bg-white border border-sand-300 rounded-xl px-3 py-2 text-xs">
-            <MapPin className="w-3.5 h-3.5 text-terracotta-500" />
+          <div className="inline-flex items-center gap-1.5 bg-plate border border-ink px-3 py-2 text-xs">
+            <MapPin className="w-3.5 h-3.5 text-accent" />
             <select
+              aria-label={isHe ? 'סינון לפי אזור' : 'Filter by area'}
               value={selectedArea}
               onChange={(e) => setSelectedArea(e.target.value as any)}
-              className="bg-transparent font-medium text-canopy-800 focus:outline-none"
+              className="bg-transparent font-medium text-ink focus:outline-none"
             >
               <option value="all">{isHe ? 'כל האזורים בגואה' : 'All Areas'}</option>
               <option value="Colomb">Colomb (קולום)</option>
@@ -516,103 +519,106 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
         </div>
       </div>
 
-      {/* CLEAN PROD EMPTY STATE vs BUSINESS DIRECTORY CARDS */}
+      {/* CLEAN PROD EMPTY STATE vs BUSINESS DIRECTORY PLATES */}
       {businesses.length === 0 && appEnv === 'prod' ? (
-        <div className="bg-sand-50 rounded-2xl border border-sand-300 p-10 text-center max-w-2xl mx-auto space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-canopy-100 text-canopy-800 flex items-center justify-center mx-auto">
+        <div className="hallmark-plate p-10 text-center max-w-2xl mx-auto space-y-4">
+          <div className="w-12 h-12 bg-ink text-gold flex items-center justify-center mx-auto">
             <Briefcase className="w-6 h-6" />
           </div>
-          <h3 className="font-display text-2xl font-bold text-canopy-900">
+          <h3 className="font-serif text-2xl font-semibold text-ink">
             {isHe
-              ? 'סביבת PROD נקייה ומוכנה לבעלי העסקים האמיתיים של הקהילה'
-              : 'PROD Environment Ready for Verified Community Businesses'}
+              ? 'אינדקס בעלי המקצוע של דרום גואה'
+              : 'South Goa Practitioners Directory Ready'}
           </h3>
-          <p className="text-sm text-canopy-700 leading-relaxed">
+          <p className="text-sm text-ink-2 leading-relaxed">
             {isHe
-              ? 'כפי שהגדרת, בסביבת הפרודקשן מופיע אך ורק מידע אמיתי ומאומת שתספק (ללא נתוני דמו). ניתן להוסיף כעת בעל עסק אמיתי ראשון או לעבור לסביבת TEST כדי לראות הדגמה מלאה של הקטגוריות (שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף ומאמנת ספורט).'
-              : 'PROD strictly holds verified real community listings only. Add your first real business below, or switch to the TEST environment to preview the populated demo directory.'}
+              ? 'הוסיפו את הפרופיל העסקי הראשון שלכם לקטלוג הקהילה וקבלו פניות ישירות לוואטסאפ.'
+              : 'Add your verified business profile to the community directory and receive direct WhatsApp inquiries.'}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-terracotta-500 text-white text-xs font-semibold hover:bg-terracotta-600"
+              className="hallmark-btn-primary text-xs"
             >
               <Plus className="w-4 h-4" />
-              {isHe ? 'הוספת בעל עסק חדש בקהילה' : 'Add Community Business'}
+              <span>{isHe ? 'הוספת בעל עסק חדש בקהילה' : 'Add Community Business'}</span>
             </button>
             {isAdmin && (
               <button
                 type="button"
                 onClick={onSwitchToTest}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-canopy-800 text-sand-50 text-xs font-semibold hover:bg-canopy-700"
+                className="hallmark-btn-ink text-xs"
               >
-                <FlaskConical className="w-4 h-4 text-ochre-400" />
-                {isHe ? 'מעבר לסביבת TEST (אדמין)' : 'Preview Demo in TEST Env (Admin)'}
+                <FlaskConical className="w-4 h-4 text-gold" />
+                <span>{isHe ? 'מעבר לסביבת TEST (אדמין)' : 'Preview Demo in TEST Env (Admin)'}</span>
               </button>
             )}
           </div>
         </div>
       ) : filteredBusinesses.length === 0 ? (
-        <div className="bg-sand-50 rounded-2xl border border-sand-300 p-8 text-center text-sm text-canopy-600">
+        <div className="hallmark-well p-8 text-center text-sm text-muted">
           {isHe
             ? 'לא נמצאו בעלי עסקים התואמים את הסינון הנוכחי.'
             : 'No businesses match the selected filters.'}
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredBusinesses.map((biz) => {
             const catMeta = getCategoryMeta(biz.category);
             const CatIcon = catMeta.icon;
             const cardRefCode = generateLuzReferralCode(biz.id, referralNonce);
             return (
-              <div
+              <article
                 key={biz.id}
-                className="bg-sand-50 rounded-2xl border border-sand-300 hover:border-canopy-700 transition-colors overflow-hidden flex flex-col justify-between"
+                className="hallmark-plate hallmark-plate-interactive overflow-hidden flex flex-col justify-between"
               >
                 <div>
-                  {/* Cover Image */}
-                  <div className="relative h-44 bg-canopy-900 overflow-hidden">
+                  {/* Framed Photograph (No text overlay per Hallmark Terrazzo/Solstice) */}
+                  <div className="h-44 bg-paper-2 border-b border-ink overflow-hidden">
                     <img
                       src={biz.imageUrl}
                       alt={isHe ? biz.businessNameHe : biz.businessNameEn}
+                      width={480}
+                      height={300}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-canopy-950/85 via-canopy-950/20 to-transparent" />
-                    <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sand-50 text-canopy-900 text-xs font-semibold">
-                        <CatIcon className="w-3.5 h-3.5 text-terracotta-500" />
-                        {isHe ? catMeta.labelHe : catMeta.labelEn}
-                      </span>
+                  </div>
+
+                  {/* Category & Area Strip below frame */}
+                  <div className="px-5 py-2.5 bg-paper-2 border-b border-rule flex items-center justify-between gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1.5 font-medium text-ink">
+                      <CatIcon className="w-3.5 h-3.5 text-accent" />
+                      <span>{isHe ? catMeta.labelHe : catMeta.labelEn}</span>
+                    </span>
+                    <div className="flex items-center gap-2">
                       {biz.homeVisitAvailable && (
-                        <span className="px-2.5 py-1 rounded-lg bg-canopy-900/85 text-ochre-400 text-[11px] font-semibold">
-                          {isHe ? 'כולל הגעה לבית' : 'Home Visit'}
+                        <span className="px-2 py-0.5 bg-plate border border-rule text-[11px] font-medium text-ink">
+                          {isHe ? 'ביקור בית' : 'Home Visit'}
                         </span>
                       )}
-                    </div>
-                    <div className="absolute bottom-3 inset-x-4 text-sand-50">
-                      <div className="text-xs text-ochre-400 font-semibold">
-                        {isHe ? biz.specialtyHe : biz.specialtyEn}
-                      </div>
-                      <h3 className="font-display text-xl font-bold leading-snug">
-                        {isHe ? biz.businessNameHe : biz.businessNameEn}
-                      </h3>
+                      <span className="inline-flex items-center gap-1 text-muted">
+                        <MapPin className="w-3 h-3 text-accent" />
+                        <span>{biz.area}</span>
+                      </span>
                     </div>
                   </div>
 
                   {/* Body */}
                   <div className="p-5 space-y-4">
-                    <div className="flex items-center justify-between text-xs text-canopy-700">
-                      <span className="font-semibold text-canopy-900">
+                    <div>
+                      <div className="text-xs font-medium text-accent mb-0.5">
+                        {isHe ? biz.specialtyHe : biz.specialtyEn}
+                      </div>
+                      <h3 className="font-serif text-xl font-semibold text-ink leading-snug">
+                        {isHe ? biz.businessNameHe : biz.businessNameEn}
+                      </h3>
+                      <div className="text-xs text-muted mt-0.5">
                         {isHe ? biz.ownerNameHe : biz.ownerNameEn}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-terracotta-500" />
-                        {biz.area}
-                      </span>
+                      </div>
                     </div>
 
-                    <p className="text-xs text-canopy-700 leading-relaxed line-clamp-3">
+                    <p className="text-xs text-ink-2 leading-relaxed line-clamp-3">
                       {isHe ? biz.bioHe : biz.bioEn}
                     </p>
 
@@ -624,9 +630,9 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                             onClick={() => trackBusinessLead(biz, 'website_click', cardRefCode)}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-paper border border-rule text-[11px] font-semibold text-ink hover:border-ink transition-colors"
                           >
-                            <Globe className="w-3 h-3 text-terracotta-500" />
+                            <Globe className="w-3 h-3 text-accent" />
                             <span>{isHe ? 'אתר / מידע' : 'Website'}</span>
                             <ExternalLink className="w-2.5 h-2.5 opacity-70" />
                           </a>
@@ -639,9 +645,9 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                             }
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-paper border border-rule text-[11px] font-semibold text-ink hover:border-ink transition-colors"
                           >
-                            <Users className="w-3 h-3 text-canopy-600" />
+                            <Users className="w-3 h-3 text-forest" />
                             <span>{isHe ? 'קבוצת עדכונים' : 'WA Group'}</span>
                             <ExternalLink className="w-2.5 h-2.5 opacity-70" />
                           </a>
@@ -652,7 +658,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                             onClick={() => trackBusinessLead(biz, 'instagram_click', cardRefCode)}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-sand-300 text-[11px] font-medium text-canopy-700 hover:border-canopy-700 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-paper border border-rule text-[11px] font-medium text-ink-2 hover:border-ink transition-colors"
                           >
                             <span>{biz.instagramHandle}</span>
                             <ExternalLink className="w-2.5 h-2.5 opacity-70" />
@@ -661,17 +667,17 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                       </div>
                     )}
 
-                    {/* Services Menu Preview */}
-                    <div className="space-y-1.5 pt-2 border-t border-sand-200">
+                    {/* Ruled Specification Services Menu */}
+                    <div className="divide-y divide-rule border-t border-rule pt-1">
                       {biz.servicesMenu.map((srv) => (
                         <div
                           key={srv.id}
-                          className="flex items-center justify-between gap-2 text-xs bg-white px-3 py-2 rounded-lg border border-sand-200"
+                          className="flex items-center justify-between gap-2 text-xs py-2"
                         >
-                          <span className="font-medium text-canopy-900 truncate">
+                          <span className="font-medium text-ink truncate">
                             {isHe ? srv.nameHe : srv.nameEn}
                           </span>
-                          <span className="font-bold text-canopy-900 shrink-0 tabular-nums">
+                          <span className="font-semibold text-ink shrink-0 hallmark-code">
                             {formatServiceOfferPrice(srv)}
                           </span>
                         </div>
@@ -681,14 +687,14 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                 </div>
 
                 {/* Action Footer */}
-                <div className="px-5 py-3.5 bg-sand-100 border-t border-sand-200 flex items-center gap-2">
+                <div className="px-5 py-3.5 bg-paper border-t border-rule flex items-center gap-2.5">
                   <button
                     type="button"
                     onClick={() => openBookingForBusiness(biz)}
-                    className="flex-1 py-2 px-3 rounded-xl bg-canopy-800 text-sand-50 text-xs font-semibold hover:bg-canopy-700 transition-colors inline-flex items-center justify-center gap-1.5"
+                    className="flex-1 hallmark-btn-ink text-xs py-2 px-3"
                   >
-                    <Calendar className="w-3.5 h-3.5 text-ochre-400" />
-                    {isHe ? 'תיאום תור ביומן' : 'Book Slot'}
+                    <Calendar className="w-3.5 h-3.5 text-gold" />
+                    <span>{isHe ? 'תיאום תור ביומן' : 'Book Slot'}</span>
                   </button>
 
                   <a
@@ -701,13 +707,13 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                         ? `פנייה ממותגת דרך LUZ (#${cardRefCode})`
                         : `LUZ Attributed Inquiry (#${cardRefCode})`
                     }
-                    className="py-2 px-3 rounded-xl bg-terracotta-500 text-white text-xs font-semibold hover:bg-terracotta-600 transition-colors inline-flex items-center gap-1.5"
+                    className="py-2 px-3.5 bg-plate border border-ink text-ink text-xs font-semibold hover:bg-accent hover:text-accent-ink hover:border-accent transition-colors inline-flex items-center gap-1.5"
                   >
-                    <MessageSquare className="w-3.5 h-3.5" />
+                    <MessageSquare className="w-3.5 h-3.5 text-accent group-hover:text-current" />
                     <span>WhatsApp</span>
                   </a>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>

@@ -1,17 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import {
-  Sparkles,
   Calendar,
-  Users,
   Compass,
-  ArrowDown,
   Home,
+  ArrowDown,
+  MessageCircle,
   Clock,
-  Music,
+  MapPin,
   CheckCircle2,
-  ChevronDown,
-  Eye,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { EntityType, Language } from '../types/luz';
 
@@ -33,416 +29,238 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
   totalBusinesses = 12,
 }) => {
   const isHe = lang === 'he';
-  const heroRef = useRef<HTMLDivElement>(null);
-  const [scrollY, setScrollY] = useState(0);
-  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
-  const [hasScrolledIntoCounters, setHasScrolledIntoCounters] = useState(false);
-  const countersRef = useRef<HTMLDivElement>(null);
 
-  // Animated Numbers State (ease-out tick)
-  const [displayCounts, setDisplayCounts] = useState({
-    events: 0,
-    pros: 0,
-    youthDays: 0,
-    community: 0,
-  });
-
-  // Track scroll position for smooth parallax planes
-  useEffect(() => {
-    let ticking = false;
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          if (heroRef.current) {
-            const rect = heroRef.current.getBoundingClientRect();
-            // Normalized scroll offset relative to hero
-            const offset = Math.max(0, -rect.top);
-            setScrollY(offset);
-          }
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Subtle pointer depth (perspective shift)
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setMouseOffset({ x, y });
-  };
-
-  const handleMouseLeave = () => {
-    setMouseOffset({ x: 0, y: 0 });
-  };
-
-  // Intersection observer for community counters
-  useEffect(() => {
-    const el = countersRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasScrolledIntoCounters) {
-          setHasScrolledIntoCounters(true);
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasScrolledIntoCounters]);
-
-  // Cubic ease-out counter animation when in view
-  useEffect(() => {
-    if (!hasScrolledIntoCounters) return;
-
-    const targetEvents = Math.max(18, totalEntities);
-    const targetPros = totalBusinesses;
-    const targetDays = 4;
-    const targetCommunity = 100;
-
-    const duration = 1600; // 1.6s ease-out as prescribed in scroll-craft
-    const startTime = performance.now();
-
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(1, elapsed / duration);
-      // Cubic ease-out: 1 - pow(1 - p, 3)
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-
-      setDisplayCounts({
-        events: Math.round(targetEvents * easeOut),
-        pros: Math.round(targetPros * easeOut),
-        youthDays: Math.round(targetDays * easeOut),
-        community: Math.round(targetCommunity * easeOut),
-      });
-
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  }, [hasScrolledIntoCounters, totalEntities, totalBusinesses]);
-
-  // Compute restrained parallax rates back to front
-  // Far sky: -0.16x | Mid coast: -0.08x | Foreground flora: +0.06x
-  const farParallax = scrollY * -0.16;
-  const midParallax = scrollY * -0.08;
-  const foreParallax = scrollY * 0.06;
-
-  // Pointer tilt offsets
-  const tiltX = mouseOffset.x * 12;
-  const tiltY = mouseOffset.y * 8;
-
-  const categories = [
+  const channels: Array<{
+    id: EntityType | 'all';
+    titleEn: string;
+    titleHe: string;
+    detailEn: string;
+    detailHe: string;
+    icon: React.ElementType;
+  }> = [
     {
-      type: 'event' as EntityType,
-      titleHe: 'אירועים והופעות',
-      titleEn: 'Live Events & Music',
-      descHe: 'הופעות שקיעה, ג׳אמים, סדנאות נשימה ומפגשי תוכן',
-      descEn: 'Sunset concerts, acoustic jams, breathwork & gatherings',
-      badgeHe: 'חד-פעמי',
-      badgeEn: 'One-Time',
-      icon: Music,
-      gradient: 'from-terracotta-500/15 via-terracotta-500/5 to-transparent',
-      border: 'hover:border-terracotta-500/60',
-      tagColor: 'bg-terracotta-100 text-terracotta-600',
+      id: 'event',
+      titleEn: 'Events & Gatherings',
+      titleHe: 'אירועים ומפגשי קהילה',
+      detailEn: 'Acoustic sunset jams, cacao circles, communal dinners',
+      detailHe: 'ג׳אם שקיעה אקוסטי, מעגלי קקאו, ארוחות שישי ומפגשים',
+      icon: Calendar,
     },
     {
-      type: 'workshop' as EntityType,
-      titleHe: 'מתנ"ס וחוגי נוער',
-      titleEn: 'Youth Center & Classes',
-      descHe: 'תכנית 4 ימים בשבוע בקולום לנוער (11–15) והורים',
-      descEn: '4-day weekly afterschool program in Colomb for teens',
-      badgeHe: 'קבוע שבועי',
-      badgeEn: 'Weekly',
-      icon: Users,
-      gradient: 'from-canopy-600/15 via-canopy-600/5 to-transparent',
-      border: 'hover:border-canopy-600/60',
-      tagColor: 'bg-canopy-100 text-canopy-800',
+      id: 'service',
+      titleEn: 'Workshops & Practitioners',
+      titleHe: 'סדנאות, יוגה ומטפלים',
+      detailEn: 'Morning vinyasa, breathwork, ice bath, bodyworkers',
+      detailHe: 'ויניאסה של בוקר, נשימה מעגלית, אמבטיית קרח וטיפולים',
+      icon: Compass,
     },
     {
-      type: 'service' as EntityType,
-      titleHe: 'מטפלים ומשאבים שעתיים',
-      titleEn: 'Therapists & Hourly Slots',
-      descHe: 'שיאצו, אקופונקטורה, אולפן הקלטות ומאמנים פרטיים',
-      descEn: 'Shiatsu, acupuncture, sound studios & private coaches',
-      badgeHe: 'תורים ביומן',
-      badgeEn: 'Time Slots',
-      icon: Clock,
-      gradient: 'from-ochre-500/15 via-ochre-500/5 to-transparent',
-      border: 'hover:border-ochre-500/60',
-      tagColor: 'bg-ochre-100 text-ochre-700',
-    },
-    {
-      type: 'rental' as EntityType,
-      titleHe: 'השכרת בתים וסאבלטים',
-      titleEn: 'Home Rentals & Sublets',
-      descHe: 'וילות ודירות עם אינטרנט סיבים ואינוורטר גיבוי מלא',
-      descEn: 'Villas & apartments with verified fiber wifi & power backup',
-      badgeHe: 'טווח תאריכים',
-      badgeEn: 'Date Ranges',
+      id: 'rental',
+      titleEn: 'Long-Stay Homes & Villas',
+      titleHe: 'בתים ווילות להשכרה',
+      detailEn: 'Direct host listings in Patnem, Colomb, Palolem & Agonda',
+      detailHe: 'בתים מאומתים ישירות מבעלי הנכסים בפטנם, קולום ופאלולם',
       icon: Home,
-      gradient: 'from-lagoon-600/15 via-lagoon-600/5 to-transparent',
-      border: 'hover:border-lagoon-600/60',
-      tagColor: 'bg-lagoon-100 text-lagoon-800',
+    },
+  ];
+
+  const dailyTides = [
+    {
+      time: '08:00',
+      placeEn: 'North Patnem Shala',
+      placeHe: 'שאלה צפון פטנם',
+      titleEn: 'Morning Vinyasa, Ice Bath & Breathwork',
+      titleHe: 'יוגה של בוקר, אמבטיית קרח ונשימות',
+      category: 'service' as EntityType,
+    },
+    {
+      time: '16:30',
+      placeEn: 'Patnem Community Center',
+      placeHe: 'מתנ"ס הקהילה בפטנם',
+      titleEn: 'Youth Center Tracks & Parents Coffee',
+      titleHe: 'פעילויות ילדים ונוער ומפגש הורים',
+      category: 'event' as EntityType,
+    },
+    {
+      time: '18:00',
+      placeEn: 'Colomb Cliff & Palolem South',
+      placeHe: 'מצוק קולום ודרום פאלולם',
+      titleEn: 'Sunset Acoustic Jam & Night Market',
+      titleHe: 'ג׳אם שקיעה אקוסטי ושוק אוכל לילי',
+      category: 'event' as EntityType,
     },
   ];
 
   return (
     <section
-      ref={heroRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="relative rounded-3xl overflow-hidden bg-canopy-950 text-sand-50 shadow-elevated border border-canopy-800/80 mb-8 transition-colors"
+      aria-label={isHe ? 'אלמנך דרום גואה' : 'South Goa Almanac Stage'}
+      className="hallmark-rule-top pt-8 pb-12 md:pt-12 md:pb-16 border-b border-rule"
     >
-      {/* ============================================================
-          DIMENSIONAL LAYER 1: Far Plane (Sky, Twilight Sun Glow)
-          Moves at -0.16x
-          ============================================================ */}
-      <div
-        className="absolute inset-0 pointer-events-none will-change-transform"
-        style={{
-          transform: `translate3d(0, ${farParallax}px, 0)`,
-          transition: 'transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1)',
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-canopy-950 via-canopy-900 to-canopy-950" />
-        {/* Soft Golden Sunset Radial Light */}
-        <div
-          className="absolute top-0 end-1/4 w-[480px] h-[480px] rounded-full bg-gradient-to-br from-ochre-400/20 via-terracotta-500/10 to-transparent opacity-80"
-          style={{
-            transform: `translate3d(${tiltX * -1.5}px, ${tiltY * -1.5}px, 0)`,
-          }}
-        />
-      </div>
-
-      {/* ============================================================
-          DIMENSIONAL LAYER 2: Midground Plane (South Goa Coastal Silhouette)
-          Moves at -0.08x
-          ============================================================ */}
-      <div
-        className="absolute inset-0 pointer-events-none will-change-transform opacity-30"
-        style={{
-          transform: `translate3d(${tiltX * 0.8}px, ${midParallax + tiltY * 0.8}px, 0)`,
-        }}
-      >
-        {/* Soft wave and hill curves */}
-        <svg
-          aria-hidden="true"
-          className="absolute bottom-0 inset-x-0 w-full h-44 text-canopy-900"
-          viewBox="0 0 1440 220"
-          fill="none"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M0,120 C240,60 480,180 720,110 C960,40 1200,160 1440,90 L1440,220 L0,220 Z"
-            fill="currentColor"
-            opacity="0.6"
-          />
-          <path
-            d="M0,160 C320,110 640,200 960,130 C1200,80 1360,150 1440,140 L1440,220 L0,220 Z"
-            fill="currentColor"
-          />
-        </svg>
-      </div>
-
-      {/* ============================================================
-          DIMENSIONAL LAYER 3: Foreground Tropical Silhouettes
-          Moves at +0.06x (gentle foreground overtake)
-          ============================================================ */}
-      <div
-        className="absolute top-0 start-0 w-56 h-56 pointer-events-none opacity-20 will-change-transform"
-        style={{
-          transform: `translate3d(${tiltX * -2}px, ${foreParallax + tiltY * -2}px, 0)`,
-        }}
-      >
-        <svg aria-hidden="true" viewBox="0 0 100 100" className="w-full h-full text-ochre-400 fill-current">
-          {/* Stylized tropical palm frond leaves */}
-          <path d="M10,0 C30,25 35,65 10,95 C45,70 50,30 25,0 Z" />
-          <path d="M25,0 C50,20 60,60 40,85 C65,55 60,20 35,0 Z" opacity="0.6" />
-        </svg>
-      </div>
-
-      {/* ============================================================
-          HERO SUBJECT CONTENT (1.0x Core Plane)
-          ============================================================ */}
-      <div className="relative z-10 px-6 py-10 md:px-12 md:py-16 flex flex-col justify-between min-h-[480px]">
-        {/* Top Eyebrow Banner */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-canopy-800/90 border border-ochre-400/40 text-xs text-ochre-300 font-medium">
-            <Sparkles className="w-3.5 h-3.5 text-ochre-400 animate-pulse" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+        {/* Left 5 Columns: Editorial Headline, Lead, Action Pair & Ruled Index */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
             <span>
               {isHe
-                ? 'פלטפורמת הקהילה של דרום גואה: קולום, פטנם ופאלולם'
-                : 'South Goa Community Operating System: Colomb, Patnem & Palolem'}
+                ? 'מהדורת החוף הדרומי · קולום, פטנם, פאלולם ואגונדה'
+                : 'South Coast Edition · Colomb, Patnem, Palolem & Agonda'}
             </span>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sand-200/10 border border-sand-200/20 text-[11px] text-sand-300">
-            <span className="w-2 h-2 rounded-full bg-ochre-400 inline-block" />
-            <span>{isHe ? 'סביבת בדיקות (Scroll-Craft הדגמה)' : 'TEST Sandbox (Scroll-Craft Motion)'}</span>
-          </div>
-        </div>
-
-        {/* Main Headline & Lead Text */}
-        <div className="max-w-3xl space-y-4">
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.15] text-sand-50 tracking-tight">
-            {isHe ? (
-              <>
-                איפה שקצב הקהילה פוגש את חופי{' '}
-                <span className="text-ochre-400">
-                  דרום גואה.
-                </span>
-              </>
-            ) : (
-              <>
-                Where community rhythms meet{' '}
-                <span className="text-ochre-400">
-                  South Goa shores.
-                </span>
-              </>
-            )}
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-[3.4rem] font-semibold text-ink leading-[1.03] tracking-tight">
+            {isHe ? 'השולחן היומי של דרום גואה.' : 'The daily table for South Goa.'}
           </h1>
 
-          <p className="text-sm md:text-base lg:text-lg text-sand-200/90 max-w-2xl leading-relaxed font-sans font-normal">
+          <p className="lead text-ink-2">
             {isHe
-              ? 'אירועים חד-פעמיים, מפגשי מתנ"ס קבועים, מטפלים ובעלי עסקים אמינים, ובתים להשכרה: מרוכז, מסונכרן ומאומת ע״י התושבים.'
-              : 'One-time events, weekly youth center sessions, verified therapists, and homes with fiber wifi, curated and coordinated in one community OS.'}
+              ? 'לוח האירועים, הסדנאות, הבתים להשכרה ובעלי המקצוע של הקהילה, עם הזמנה ישירה בוואטסאפ מול כל מארח.'
+              : 'Community happenings, morning shalas, family tracks and long-stay homes, booked directly with each host on WhatsApp.'}
           </p>
 
-          {/* Quick Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 pt-3">
+          {/* Hallmark Control Pair: One filled primary pill, one typographic underlined secondary */}
+          <div className="flex flex-wrap items-center gap-6 pt-1">
             <button
               type="button"
               onClick={onScrollToCatalog}
-              className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 text-white text-xs md:text-sm font-bold shadow-elevated hover:from-terracotta-600 hover:to-terracotta-700 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              className="hallmark-btn-primary text-sm"
             >
-              <Compass className="w-4 h-4" />
-              <span>{isHe ? 'ללוח השבועי והקטלוג' : 'Explore Weekly Timetable'}</span>
-              <ArrowDown className="w-3.5 h-3.5 opacity-80" />
+              <span>{isHe ? 'ללוח האירועים והבתים' : 'Browse the Schedule'}</span>
+              <ArrowDown className="w-4 h-4" />
             </button>
 
             <button
               type="button"
               onClick={onOpenBenBot}
-              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-canopy-800/80 hover:bg-canopy-700/80 border border-sand-300/20 text-sand-100 text-xs md:text-sm font-semibold transition-colors"
+              className="hallmark-btn-secondary text-sm"
             >
-              <Sparkles className="w-4 h-4 text-ochre-400" />
-              <span>{isHe ? 'שאל את "בן" בוואטסאפ' : 'Chat with "Ben" Bot'}</span>
+              <MessageCircle className="w-4 h-4 text-accent" />
+              <span>{isHe ? 'שאלו את "בן" בוואטסאפ' : 'Ask "Ben" Concierge'}</span>
             </button>
           </div>
-        </div>
 
-        {/* ============================================================
-            COMMUNITY PULSE: Animated Live Counters (scroll-craft count)
-            ============================================================ */}
-        <div
-          ref={countersRef}
-          className="mt-10 pt-6 border-t border-canopy-800/80 grid grid-cols-2 sm:grid-cols-4 gap-4"
-        >
-          <div className="space-y-1">
-            <div className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-ochre-400 tabular-nums">
-              {displayCounts.events}+
-            </div>
-            <div className="text-xs text-sand-300 font-medium">
-              {isHe ? 'פעילויות ואירועים בלוח' : 'Live Activities & Events'}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-terracotta-400 tabular-nums">
-              {displayCounts.pros}
-            </div>
-            <div className="text-xs text-sand-300 font-medium">
-              {isHe ? 'בעלי עסקים ומטפלים' : 'Verified Local Pros'}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-sand-100 tabular-nums">
-              {displayCounts.youthDays}
-            </div>
-            <div className="text-xs text-sand-300 font-medium">
-              {isHe ? 'ימי מתנ"ס בשבוע (קולום)' : 'Youth Days / Week (Colomb)'}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-ochre-300 tabular-nums">
-              {displayCounts.community}%
-            </div>
-            <div className="text-xs text-sand-300 font-medium">
-              {isHe ? 'קהילתי, שקוף וללא עמלות' : 'Community Owned & Free'}
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================
-            CATEGORY GATEWAY CARDS: Lateral Breadth (scroll-craft rail)
-            ============================================================ */}
-        <div className="mt-8 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-sand-300/80">
-              {isHe ? 'בחר קטגוריה לקפיצה ישירה ביומן:' : 'Jump straight into a category:'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {categories.map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <button
-                  key={cat.type}
-                  type="button"
-                  onClick={() => {
-                    onSelectCategory(cat.type);
-                    onScrollToCatalog();
-                  }}
-                  className={`group relative p-4 rounded-2xl bg-gradient-to-b ${cat.gradient} bg-canopy-900/60 border border-canopy-700/60 ${cat.border} text-start transition-colors duration-300 flex flex-col justify-between`}
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 rounded-xl bg-canopy-800 text-ochre-400 flex items-center justify-center">
-                        <Icon className="w-4 h-4" />
+          {/* Ruled Index Channels (Hallmark Rows Composition) */}
+          <div className="pt-4 border-t border-ink">
+            <div className="divide-y divide-rule">
+              {channels.map((ch) => {
+                const Icon = ch.icon;
+                return (
+                  <button
+                    key={ch.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectCategory(ch.id);
+                      onScrollToCatalog();
+                    }}
+                    className="w-full py-3.5 flex items-start justify-between gap-4 text-start group hover:bg-paper-2/70 px-2 -mx-2 transition-colors"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <Icon className="w-4 h-4 text-accent mt-1 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-serif text-lg font-semibold text-ink group-hover:text-accent transition-colors">
+                          {isHe ? ch.titleHe : ch.titleEn}
+                        </div>
+                        <p className="text-xs text-muted">
+                          {isHe ? ch.detailHe : ch.detailEn}
+                        </p>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${cat.tagColor}`}>
-                        {isHe ? cat.badgeHe : cat.badgeEn}
-                      </span>
                     </div>
+                    <span className="text-xs font-medium text-ink-2 group-hover:text-accent shrink-0 mt-1">
+                      {isHe ? 'סינון' : 'Filter'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
-                    <h3 className="font-bold text-sand-50 text-sm group-hover:text-ochre-300 transition-colors">
-                      {isHe ? cat.titleHe : cat.titleEn}
-                    </h3>
+        {/* Right 7 Columns: Signature Object — The South Goa Almanac & Dispatch Plate */}
+        <div className="lg:col-span-7">
+          <div className="hallmark-well-gold p-6 sm:p-8 space-y-6">
+            {/* Almanac Plate Header */}
+            <div className="flex flex-wrap items-baseline justify-between gap-4 pb-4 border-b border-ink">
+              <div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-ink">
+                  {isHe ? 'מקצב היום בחוף הדרומי' : 'Daily Rhythm Along the Coast'}
+                </h2>
+                <p className="text-xs text-muted mt-1">
+                  {isHe
+                    ? 'לחצו על כל משבצת זמן כדי לסנן את הלוח למטה'
+                    : 'Select any tide slot below to filter the live schedule'}
+                </p>
+              </div>
+              <div className="hallmark-code text-xs text-ink-2 bg-plate px-3 py-1 border border-rule">
+                15.0100° N · 74.0232° E
+              </div>
+            </div>
 
-                    <p className="text-[11px] text-sand-300/80 leading-snug line-clamp-2">
-                      {isHe ? cat.descHe : cat.descEn}
-                    </p>
-                  </div>
+            {/* Three Tides Timetable (Schedule Composition) */}
+            <ol className="divide-y divide-rule border-b border-rule">
+              {dailyTides.map((slot) => (
+                <li key={slot.time}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectCategory(slot.category);
+                      onScrollToCatalog();
+                    }}
+                    className="w-full py-4 grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-baseline text-start hover:bg-plate/80 px-3 -mx-3 transition-colors group"
+                  >
+                    <div className="sm:col-span-3 flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-accent shrink-0" />
+                      <time className="hallmark-code text-sm font-semibold text-ink">
+                        {slot.time}
+                      </time>
+                    </div>
+                    <div className="sm:col-span-6">
+                      <div className="font-serif text-lg font-semibold text-ink group-hover:text-accent transition-colors">
+                        {isHe ? slot.titleHe : slot.titleEn}
+                      </div>
+                    </div>
+                    <div className="sm:col-span-3 sm:text-end text-xs text-muted">
+                      {isHe ? slot.placeHe : slot.placeEn}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ol>
 
-                  <div className="mt-3 pt-2 border-t border-canopy-800/60 flex items-center justify-between text-[11px] text-ochre-400 font-semibold group-hover:translate-x-0.5 transition-transform">
-                    <span>{isHe ? 'צפה ברשימה ←' : 'View Listings →'}</span>
-                  </div>
-                </button>
-              );
-            })}
+            {/* Real Figures & Direct Dispatch Explanation (Hallmark Figures + Spec Row) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
+              <div className="border-s-2 border-ink ps-4">
+                <div className="font-serif text-3xl font-semibold text-ink tabular-nums">
+                  {totalEntities}
+                </div>
+                <div className="text-xs text-muted mt-0.5">
+                  {isHe ? 'אירועים, סדנאות ובתים פעילים' : 'Active events, sessions & homes'}
+                </div>
+              </div>
+
+              <div className="border-s-2 border-ink ps-4">
+                <div className="font-serif text-3xl font-semibold text-ink tabular-nums">
+                  {totalBusinesses}
+                </div>
+                <div className="text-xs text-muted mt-0.5">
+                  {isHe ? 'עסקים ונותני שירות בקהילה' : 'Trusted local community businesses'}
+                </div>
+              </div>
+
+              <div className="border-s-2 border-accent ps-4">
+                <div className="hallmark-code text-lg font-semibold text-ink flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                  <span>#LUZ-XXXX</span>
+                </div>
+                <div className="text-xs text-muted mt-1">
+                  {isHe
+                    ? 'אסמכתא ישירה בוואטסאפ מול כל מארח'
+                    : 'Direct WhatsApp host dispatch on every booking'}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* ============================================================
-          FLOOR FADE: Gradient blend to the page background (#FAF8F5 / sand-50)
-          ============================================================ */}
-      <div className="h-6 bg-gradient-to-b from-transparent to-canopy-950/80" />
     </section>
   );
 };

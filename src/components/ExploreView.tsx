@@ -68,7 +68,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [selectedAudience, setSelectedAudience] = useState<AudienceGroup | 'all'>('all');
   const [onlyRecommended, setOnlyRecommended] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showScrollCraftHero, setShowScrollCraftHero] = useState(true);
 
   const catalogSectionRef = useRef<HTMLDivElement>(null);
 
@@ -122,30 +121,30 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     switch (type) {
       case 'event':
         return {
-          label: isHe ? 'אירוע חד-פעמי' : 'One-Time Event',
-          classes: 'bg-terracotta-100 text-terracotta-600',
+          label: isHe ? 'אירוע' : 'Event',
+          classes: 'bg-accent-soft text-ink border border-accent/40',
         };
       case 'workshop':
         return {
-          label: isHe ? 'חוג / מתנ"ס קבוע' : 'Recurring / Youth Center',
-          classes: 'bg-canopy-100 text-canopy-800',
+          label: isHe ? 'חוג / מתנ"ס' : 'Youth Center',
+          classes: 'bg-paper-2 text-ink border border-rule',
         };
       case 'service':
         return {
-          label: isHe ? 'שירות שעתי / משאב' : 'Hourly / Space Slot',
-          classes: 'bg-ochre-100 text-ochre-600',
+          label: isHe ? 'משבצת שעתית' : 'Hourly Slot',
+          classes: 'bg-paper-2 text-ink-2 border border-rule',
         };
       case 'rental':
         return {
-          label: isHe ? 'השכרת בית (טווח תאריכים)' : 'Home Rental (Date Range)',
-          classes: 'bg-lagoon-100 text-lagoon-700',
+          label: isHe ? 'בית להשכרה' : 'Home Stay',
+          classes: 'bg-ink text-paper',
         };
     }
   };
 
   const formatPrice = (e: LuzEntity) => {
     if (e.priceCurrency === 'CONTACT') {
-      return isHe ? 'פרטים בהרשמה' : 'Contact for details';
+      return isHe ? 'פרטים בהרשמה' : 'Contact host';
     }
     if (e.priceCurrency === 'FREE' || e.priceAmount === 0) {
       return isHe ? 'כניסה חופשית' : 'Free Entry';
@@ -182,121 +181,98 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   );
 
   return (
-    <div className="space-y-6">
-      {/* Scroll-Craft Dynamic Hero Preview (Rendered in TEST Sandbox) */}
-      {appEnv === 'test' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-canopy-900">
-              <Sparkles className="w-4 h-4 text-ochre-500" />
-              <span>
-                {isHe
-                  ? 'הדגמת Scroll-Craft Hero (סביבת TEST) — שכבות עומק Parallax, מוני נתונים וניווט מהיר'
-                  : 'Scroll-Craft Motion Hero Preview (TEST Sandbox) — Multi-plane Parallax & Counters'}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowScrollCraftHero(!showScrollCraftHero)}
-              className="text-xs text-canopy-700 hover:text-canopy-950 font-semibold underline"
-            >
-              {showScrollCraftHero
-                ? isHe
-                  ? 'מזער תצוגת הירו ▲'
-                  : 'Collapse Hero ▲'
-                : isHe
-                ? 'פתח תצוגת הירו ▼'
-                : 'Expand Hero ▼'}
-            </button>
-          </div>
+    <div className="space-y-12">
+      {/* Hallmark Stage Hero */}
+      <ScrollCraftHero
+        lang={lang}
+        onSelectCategory={(type) => setSelectedType(type)}
+        onScrollToCatalog={handleScrollToCatalog}
+        onOpenBenBot={onOpenBenBot}
+        totalEntities={entities.length}
+      />
 
-          {showScrollCraftHero && (
-            <ScrollCraftHero
-              lang={lang}
-              onSelectCategory={(type) => setSelectedType(type)}
-              onScrollToCatalog={handleScrollToCatalog}
-              onOpenBenBot={onOpenBenBot}
-              totalEntities={entities.length}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Top Filter & Control Bar */}
-      <div
+      {/* Hallmark Editorial Filter & Index Ledger Bar */}
+      <section
         ref={catalogSectionRef}
-        className="bg-sand-50 rounded-2xl p-4 md:p-5 border border-sand-300 space-y-4"
+        aria-label={isHe ? 'סינון וחיפוש בלוח' : 'Schedule Filter Controls'}
+        className="bg-paper-2 border-y-2 border-ink p-5 md:p-6 space-y-5"
       >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Search Input */}
           <div className="relative flex-1 max-w-xl">
-            <Search className="w-4 h-4 text-canopy-600 absolute top-1/2 -translate-y-1/2 start-3.5" />
+            <Search className="w-4 h-4 text-muted absolute top-1/2 -translate-y-1/2 start-3.5" />
             <input
-              type="text"
+              type="search"
+              name="schedule-search"
+              aria-label={isHe ? 'חיפוש בלוח הקהילה' : 'Search schedule'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={
                 isHe
-                  ? 'חיפוש אירוע, סדנת מתנ"ס, אולפן הקלטות או בית להשכרה בקולום...'
-                  : 'Search events, Youth Center sessions, hourly spaces, or homes in Colomb...'
+                  ? 'חיפוש אירוע, סדנה, אולפן הקלטות או בית להשכרה בקולום ופטנם...'
+                  : 'Search events, Youth Center sessions, hourly spaces, or homes in Patnem...'
               }
-              className="w-full ps-10 pe-4 py-2.5 rounded-xl bg-white border border-sand-300 text-sm text-canopy-900 placeholder:text-canopy-600/60"
+              className="w-full ps-10 pe-4 py-2.5 bg-plate border border-ink text-sm text-ink placeholder:text-muted"
             />
           </div>
 
           {/* Right Controls: Personal Filter + View Switcher */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => setOnlyRecommended(!onlyRecommended)}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+              className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold border transition-colors ${
                 onlyRecommended
-                  ? 'bg-ochre-500 text-canopy-950 border-ochre-500'
-                  : 'bg-white text-canopy-800 border-sand-300 hover:border-canopy-600'
+                  ? 'bg-accent text-accent-ink border-ink'
+                  : 'bg-plate text-ink border-ink hover:bg-paper'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              {isHe ? 'מותאם לפרופיל שלי ("בן")' : 'Matched to My Profile ("Ben")'}
+              <span>{isHe ? 'מותאם לפרופיל שלי ("בן")' : 'Matched to My Profile'}</span>
             </button>
 
-            <div className="inline-flex rounded-xl bg-sand-200 p-1">
+            <div
+              className="inline-flex bg-plate border border-ink p-0.5"
+              role="group"
+              aria-label="View Mode Switcher"
+            >
               <button
                 type="button"
                 onClick={() => setViewMode('timetable')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${
                   viewMode === 'timetable'
-                    ? 'bg-canopy-800 text-sand-50'
-                    : 'text-canopy-700 hover:text-canopy-900'
+                    ? 'bg-ink text-paper'
+                    : 'text-ink-2 hover:text-ink'
                 }`}
               >
                 <CalendarIcon className="w-3.5 h-3.5" />
-                {isHe ? 'לוח שבועי (Timetable)' : 'Weekly Timetable'}
+                <span>{isHe ? 'לוח שבועי' : 'Weekly Timetable'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('catalog')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${
                   viewMode === 'catalog'
-                    ? 'bg-canopy-800 text-sand-50'
-                    : 'text-canopy-700 hover:text-canopy-900'
+                    ? 'bg-ink text-paper'
+                    : 'text-ink-2 hover:text-ink'
                 }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
-                {isHe ? 'תצוגת קטלוג ורשימה' : 'Catalog & Cards'}
+                <span>{isHe ? 'קטלוג מלא' : 'Catalog Cards'}</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Entity Type & Area Filter Pills */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-sand-200">
-          <div className="flex flex-wrap items-center gap-1.5">
+        {/* Entity Type & Area Filter Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-rule">
+          <div className="flex flex-wrap items-center gap-2">
             {[
-              { id: 'all', labelHe: 'כל הישויות', labelEn: 'All Entities', dot: 'bg-canopy-600' },
-              { id: 'event', labelHe: 'אירועים חד-פעמיים', labelEn: 'One-Time Events', dot: 'bg-terracotta-500' },
-              { id: 'workshop', labelHe: 'חוגים ומתנ"ס (4 ימים)', labelEn: 'Youth Center & Classes', dot: 'bg-canopy-600' },
-              { id: 'service', labelHe: 'משאבים ושירותים שעתיים', labelEn: 'Hourly & Spaces', dot: 'bg-ochre-500' },
-              { id: 'rental', labelHe: 'השכרת בתים (טווח תאריכים)', labelEn: 'Home Rentals (Dates)', dot: 'bg-lagoon-600' },
+              { id: 'all', labelHe: 'כל הלוח', labelEn: 'All Listings' },
+              { id: 'event', labelHe: 'אירועים ומפגשים', labelEn: 'Events & Gatherings' },
+              { id: 'workshop', labelHe: 'חוגים ומתנ"ס', labelEn: 'Youth Center & Classes' },
+              { id: 'service', labelHe: 'סדנאות ומשאבים שעתיים', labelEn: 'Hourly & Practitioners' },
+              { id: 'rental', labelHe: 'בתים ווילות להשכרה', labelEn: 'Homes & Villas' },
             ].map((tab) => {
               const active = selectedType === tab.id;
               return (
@@ -304,26 +280,26 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setSelectedType(tab.id as any)}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium border transition-colors ${
                     active
-                      ? 'bg-canopy-800 text-sand-50'
-                      : 'bg-white text-canopy-700 border border-sand-300 hover:bg-sand-100'
+                      ? 'bg-ink text-paper border-ink'
+                      : 'bg-plate text-ink-2 border-rule hover:border-ink hover:text-ink'
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${tab.dot}`} />
-                  {isHe ? tab.labelHe : tab.labelEn}
+                  <span>{isHe ? tab.labelHe : tab.labelEn}</span>
                 </button>
               );
             })}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-1.5 bg-white border border-sand-300 rounded-lg px-2.5 py-1 text-xs">
-              <MapPin className="w-3.5 h-3.5 text-terracotta-500" />
+            <div className="inline-flex items-center gap-1.5 bg-plate border border-ink px-2.5 py-1.5 text-xs">
+              <MapPin className="w-3.5 h-3.5 text-accent" />
               <select
+                aria-label={isHe ? 'סינון לפי אזור' : 'Filter by area'}
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value as any)}
-                className="bg-transparent text-canopy-800 font-medium focus:outline-none"
+                className="bg-transparent text-ink font-medium focus:outline-none"
               >
                 <option value="all">{isHe ? 'כל אזורי דרום גואה' : 'All South Goa Areas'}</option>
                 <option value="Colomb">{isHe ? 'קולום (Colomb)' : 'Colomb'}</option>
@@ -333,12 +309,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               </select>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 bg-white border border-sand-300 rounded-lg px-2.5 py-1 text-xs">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-canopy-600" />
+            <div className="inline-flex items-center gap-1.5 bg-plate border border-ink px-2.5 py-1.5 text-xs">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-muted" />
               <select
+                aria-label={isHe ? 'סינון לפי קהל יעד' : 'Filter by audience'}
                 value={selectedAudience}
                 onChange={(e) => setSelectedAudience(e.target.value as any)}
-                className="bg-transparent text-canopy-800 font-medium focus:outline-none"
+                className="bg-transparent text-ink font-medium focus:outline-none"
               >
                 <option value="all">{isHe ? 'כל הגילאים' : 'All Ages'}</option>
                 <option value="youth_11_15">{isHe ? 'נוער מתנ"ס (11 עד 15)' : 'Youth (11 to 15)'}</option>
@@ -348,112 +325,103 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* CLEAN PROD EMPTY STATE (Strict Zero Fake Data in PROD) */}
+      {/* CLEAN PROD EMPTY STATE */}
       {entities.length === 0 && appEnv === 'prod' ? (
-        <div className="bg-sand-50 rounded-2xl border border-sand-300 p-8 md:p-12 text-center space-y-5 animate-reveal">
-          <div className="w-12 h-12 rounded-2xl bg-canopy-900 text-ochre-400 flex items-center justify-center mx-auto">
+        <div className="hallmark-plate p-8 md:p-12 text-center space-y-5">
+          <div className="w-12 h-12 bg-ink text-gold flex items-center justify-center mx-auto">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div className="max-w-xl mx-auto space-y-2">
-            <h2 className="font-display text-2xl md:text-3xl font-bold text-canopy-900">
+            <h2 className="font-serif text-2xl md:text-3xl font-semibold text-ink">
               {isHe
                 ? 'לוח הקהילה של דרום גואה מתעדכן'
                 : 'South Goa Community Board Ready'}
             </h2>
-            <p className="text-sm text-canopy-700 leading-relaxed">
+            <p className="text-sm text-ink-2 leading-relaxed">
               {isHe
                 ? 'לוח הקהילה מציג אירועים, מפגשי מתנ"ס, בתים ובעלי עסקים מאומתים בדרום גואה. ניתן להעלות אירוע או בית חדש כבר עכשיו.'
                 : 'Discover verified Goa community events, Youth Center sessions, homes, and local businesses. Publish a new listing below.'}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <button
               type="button"
               onClick={onGoToProvider}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-terracotta-500 text-white text-xs md:text-sm font-semibold hover:bg-terracotta-600 transition-colors"
+              className="hallmark-btn-primary text-xs md:text-sm"
             >
               <PlusCircle className="w-4 h-4" />
-              {isHe ? 'העלאת אירוע / בית חדש' : 'Publish New Listing'}
+              <span>{isHe ? 'העלאת אירוע / בית חדש' : 'Publish New Listing'}</span>
             </button>
 
             <button
               type="button"
               onClick={onGoToBusinesses}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-canopy-800 text-sand-50 text-xs md:text-sm font-semibold hover:bg-canopy-700 transition-colors"
+              className="hallmark-btn-ink text-xs md:text-sm"
             >
-              <Briefcase className="w-4 h-4 text-ochre-400" />
-              {isHe ? 'למתחם בעלי עסקים בקהילה' : 'Community Business Directory'}
+              <Briefcase className="w-4 h-4 text-gold" />
+              <span>{isHe ? 'למתחם בעלי עסקים בקהילה' : 'Community Business Directory'}</span>
             </button>
 
             {isAdmin && (
               <button
                 type="button"
                 onClick={onSwitchToTest}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-sand-300 text-canopy-900 text-xs md:text-sm font-semibold hover:bg-sand-100 transition-colors"
+                className="px-4 py-2 bg-plate border border-ink text-ink text-xs md:text-sm font-semibold hover:bg-paper-2 transition-colors inline-flex items-center gap-2"
               >
-                <FlaskConical className="w-4 h-4 text-ochre-600" />
-                {isHe ? 'מעבר לסביבת TEST (אדמין)' : 'Switch to TEST (Admin)'}
+                <FlaskConical className="w-4 h-4 text-accent" />
+                <span>{isHe ? 'מעבר לסביבת TEST (אדמין)' : 'Switch to TEST (Admin)'}</span>
               </button>
             )}
           </div>
         </div>
       ) : (
         <>
-          {/* VIEW MODE 1: WEEKLY TIMETABLE RHYTHM */}
+          {/* VIEW MODE 1: WEEKLY TIMETABLE RHYTHM (Hallmark Schedule Composition) */}
           {viewMode === 'timetable' && (
-            <div className="space-y-6 animate-reveal">
+            <div className="space-y-12">
               {selectedType !== 'rental' && (
-                <div className="bg-sand-50 rounded-2xl border border-sand-300 overflow-hidden">
-                  <div className="bg-canopy-900 text-sand-50 px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
+                <section className="space-y-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-4">
                     <div>
-                      <h2 className="font-display text-lg font-bold">
+                      <h2 className="font-serif text-2xl md:text-3xl font-semibold text-ink">
                         {isHe
-                          ? 'לוח השבוע של הקהילה ומרכז הנוער (ב׳ עד ו׳)'
-                          : 'Goa Community & Youth Center Weekly Timetable (Mon to Fri)'}
+                          ? 'לוח השבוע של הקהילה ומרכז הנוער'
+                          : 'Weekly Community & Youth Center Schedule'}
                       </h2>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-sand-200">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-terracotta-500" />
-                        {isHe ? 'אירוע חד-פעמי' : 'Event'}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-canopy-500" />
-                        {isHe ? 'מתנ"ס / חוג קבוע' : 'Youth Center / Class'}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-ochre-500" />
-                        {isHe ? 'משאב שעתי (לפי משבצת)' : 'Hourly Slot'}
-                      </span>
+                      <p className="text-sm text-muted mt-1">
+                        {isHe
+                          ? 'ימים שני עד שישי לאורך החוף הדרומי. לחצו על כל משבצת לפרטים והרשמה בוואטסאפ.'
+                          : 'Monday through Friday across the South Coast. Select any slot for details and direct WhatsApp RSVP.'}
+                      </p>
                     </div>
                   </div>
 
-                  {/* 5-Column Timetable Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x md:rtl:divide-x-reverse divide-sand-300">
+                  {/* 5-Column Ruled Almanac Timetable */}
+                  <div className="border-2 border-ink bg-plate shadow-card grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x md:rtl:divide-x-reverse divide-rule">
                     {WEEK_DAYS.map((day) => {
                       const dayItems = getEntitiesForDay(day.dayIndex);
                       return (
                         <div key={day.dayIndex} className="flex flex-col min-h-[340px]">
-                          <div className="p-3.5 bg-sand-100 border-b border-sand-300 flex items-center justify-between">
+                          <div className="p-3.5 bg-paper-2 border-b-2 border-ink flex items-center justify-between">
                             <div>
-                              <div className="font-bold text-sm text-canopy-900">
+                              <div className="font-serif font-semibold text-base text-ink">
                                 {isHe ? day.nameHe : day.nameEn}
                               </div>
-                              <div className="text-xs text-canopy-600 font-medium">
+                              <div className="text-xs text-muted">
                                 {isHe ? day.subHe : day.subEn}
                               </div>
                             </div>
-                            <span className="text-xs font-mono px-2 py-0.5 rounded bg-sand-200 text-canopy-800 tabular-nums">
+                            <span className="text-xs hallmark-code px-2 py-0.5 bg-plate border border-rule text-ink">
                               {dayItems.length}
                             </span>
                           </div>
 
-                          <div className="p-3 space-y-2.5 flex-1">
+                          <div className="p-3 space-y-3 flex-1">
                             {dayItems.length === 0 ? (
-                              <div className="text-xs text-canopy-500/60 py-8 text-center">
+                              <div className="text-xs text-muted py-8 text-center">
                                 {isHe ? 'אין פעילויות מסוננות ליום זה' : 'No matching items'}
                               </div>
                             ) : (
@@ -463,27 +431,27 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                   <div
                                     key={`${day.dayIndex}-${item.id}`}
                                     onClick={() => onSelectEntity(item)}
-                                    className="group p-3 rounded-xl bg-white border border-sand-300 hover:border-canopy-700 transition-colors cursor-pointer space-y-2"
+                                    className="group p-3.5 bg-paper border border-rule hover:border-ink transition-colors cursor-pointer space-y-2"
                                   >
                                     <div className="flex items-center justify-between gap-1">
                                       <span
-                                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${badge.classes}`}
+                                        className={`text-[11px] font-medium px-2 py-0.5 ${badge.classes}`}
                                       >
                                         {badge.label}
                                       </span>
-                                      <span className="text-xs font-mono font-semibold text-canopy-700 tabular-nums">
+                                      <span className="text-xs hallmark-code font-semibold text-ink">
                                         {item.type === 'service'
                                           ? `${item.timeSlots?.[0] || '09:00'}+`
                                           : item.startTime || '17:00'}
                                       </span>
                                     </div>
 
-                                    <h3 className="font-semibold text-sm text-canopy-900 group-hover:text-terracotta-600 transition-colors leading-snug">
+                                    <h3 className="font-serif font-semibold text-base text-ink group-hover:text-accent transition-colors leading-snug">
                                       {isHe ? item.titleHe : item.titleEn}
                                     </h3>
 
                                     {item.weekCycle && item.weekCycle !== 'all' && (
-                                      <div className="text-[11px] font-medium text-canopy-700 bg-sand-100 px-2 py-0.5 rounded inline-block">
+                                      <div className="text-[11px] font-medium text-ink-2 bg-paper-2 px-2 py-0.5 border border-rule inline-block">
                                         {item.weekCycle === 'week_a'
                                           ? isHe
                                             ? 'לסירוגין: שבוע א׳ / שבוע ב׳'
@@ -494,12 +462,12 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                       </div>
                                     )}
 
-                                    <div className="flex items-center justify-between text-xs text-canopy-600 pt-1 border-t border-sand-100">
+                                    <div className="flex items-center justify-between text-xs text-muted pt-2 border-t border-rule">
                                       <span className="inline-flex items-center gap-1">
-                                        <MapPin className="w-3 h-3 text-terracotta-500" />
+                                        <MapPin className="w-3 h-3 text-accent" />
                                         {item.area}
                                       </span>
-                                      <span className="font-semibold text-canopy-800 tabular-nums">
+                                      <span className="font-semibold text-ink hallmark-code">
                                         {formatPrice(item)}
                                       </span>
                                     </div>
@@ -512,174 +480,174 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                       );
                     })}
                   </div>
-                </div>
+                </section>
               )}
 
-              {/* Property Rentals Strip (Date Range Entities) */}
+              {/* Property Rentals Section (Hallmark Grid Composition on Plates) */}
               {(selectedType === 'all' || selectedType === 'rental') && rentalsList.length > 0 && (
-                <div className="bg-sand-50 rounded-2xl border border-sand-300 p-5 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-lagoon-100 text-lagoon-700 flex items-center justify-center">
-                        <Home className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h2 className="font-display text-xl font-bold text-canopy-900">
-                          {isHe
-                            ? 'בתים וסאבלטים להשכרה בקהילה (שריון לפי טווח תאריכים)'
-                            : 'Community Homes & Sublets (Date-Range Booking)'}
-                        </h2>
-                        <p className="text-xs text-canopy-600">
-                          {isHe
-                            ? 'בתים מאומתים עם סיבים אופטיים וגיבוי חשמל בקולום ופטנם'
-                            : 'Verified homes with Fiber Wi-Fi and power backup in Colomb & Patnem'}
-                        </p>
-                      </div>
+                <section className="hallmark-rule-top pt-10 space-y-6">
+                  <div className="flex flex-wrap items-baseline justify-between gap-4">
+                    <div>
+                      <h2 className="font-serif text-2xl md:text-3xl font-semibold text-ink">
+                        {isHe
+                          ? 'בתים וסאבלטים להשכרה בקהילה'
+                          : 'Verified Community Homes & Sublets'}
+                      </h2>
+                      <p className="text-sm text-muted mt-1">
+                        {isHe
+                          ? 'בתים מאומתים עם סיבים אופטיים וגיבוי חשמל בקולום, פטנם ופאלולם'
+                          : 'Long-stay homes with fiber Wi-Fi and power backup in Colomb, Patnem and Palolem'}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-6">
                     {rentalsList.map((rental) => (
-                      <div
+                      <article
                         key={rental.id}
                         onClick={() => onSelectEntity(rental)}
-                        className="group bg-white rounded-xl border border-sand-300 overflow-hidden hover:border-lagoon-600 transition-colors cursor-pointer flex flex-col sm:flex-row"
+                        className="group hallmark-plate hallmark-plate-interactive cursor-pointer flex flex-col sm:flex-row overflow-hidden"
                       >
-                        <div className="sm:w-48 h-44 sm:h-auto relative shrink-0 overflow-hidden">
+                        <div className="sm:w-52 h-48 sm:h-auto relative shrink-0 border-b sm:border-b-0 sm:border-e border-ink bg-paper-2">
                           <img
                             src={rental.imageUrl}
                             alt={isHe ? rental.titleHe : rental.titleEn}
+                            width={400}
+                            height={300}
                             className="w-full h-full object-cover"
                           />
-                          <span className="absolute top-2.5 start-2.5 px-2.5 py-1 rounded-md bg-canopy-950/80 text-sand-50 text-xs font-semibold tabular-nums">
+                          <span className="absolute top-2.5 start-2.5 px-2.5 py-0.5 bg-ink text-paper text-xs font-medium hallmark-code">
                             {rental.bedrooms} {isHe ? 'חדרי שינה' : 'BHK'}
                           </span>
                         </div>
 
-                        <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                        <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                           <div>
-                            <div className="flex items-center justify-between gap-2 text-xs text-lagoon-700 font-semibold mb-1">
-                              <span>{rental.area}</span>
-                              <span className="tabular-nums">
-                                {rental.availableFrom} / {rental.availableTo}
+                            <div className="flex items-center justify-between gap-2 text-xs text-muted mb-1.5">
+                              <span className="font-semibold text-ink">{rental.area}</span>
+                              <span className="hallmark-code">
+                                {rental.availableFrom} · {rental.availableTo}
                               </span>
                             </div>
-                            <h3 className="font-display text-lg font-bold text-canopy-900 group-hover:text-lagoon-700 transition-colors">
+                            <h3 className="font-serif text-xl font-semibold text-ink group-hover:text-accent transition-colors">
                               {isHe ? rental.titleHe : rental.titleEn}
                             </h3>
-                            <p className="text-xs text-canopy-600 line-clamp-2 mt-1">
+                            <p className="text-xs text-ink-2 line-clamp-2 mt-1.5 leading-relaxed">
                               {isHe ? rental.descriptionHe : rental.descriptionEn}
                             </p>
                           </div>
 
-                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-sand-200">
-                            <div className="flex items-center gap-3 text-xs text-canopy-700">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-rule">
+                            <div className="flex items-center gap-3 text-xs text-ink-2">
                               {rental.hasFiberWifi && (
-                                <span className="inline-flex items-center gap-1 tabular-nums">
-                                  <Wifi className="w-3.5 h-3.5 text-lagoon-600" />
+                                <span className="inline-flex items-center gap-1 hallmark-code">
+                                  <Wifi className="w-3.5 h-3.5 text-forest" />
                                   {rental.wifiSpeedMbps}Mbps
                                 </span>
                               )}
                               {rental.hasPowerBackup && (
                                 <span className="inline-flex items-center gap-1">
-                                  <Zap className="w-3.5 h-3.5 text-ochre-600" />
-                                  {isHe ? 'אינוורטר/גנרטור' : 'Backup'}
+                                  <Zap className="w-3.5 h-3.5 text-accent" />
+                                  {isHe ? 'גיבוי חשמל' : 'Power Backup'}
                                 </span>
                               )}
                             </div>
-                            <span className="text-sm font-bold text-canopy-900 tabular-nums">
+                            <span className="text-sm font-semibold text-ink hallmark-code">
                               {formatPrice(rental)}
                             </span>
                           </div>
                         </div>
-                      </div>
+                      </article>
                     ))}
                   </div>
-                </div>
+                </section>
               )}
             </div>
           )}
 
-          {/* VIEW MODE 2: CATALOG & DETAILED CARDS */}
+          {/* VIEW MODE 2: CATALOG & DETAILED CARDS (Hallmark Plate Grid, No Type Over Photo) */}
           {viewMode === 'catalog' && (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 animate-reveal">
+            <section className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredEntities.map((entity) => {
                 const badge = entityBadge(entity.type);
                 return (
-                  <div
+                  <article
                     key={entity.id}
                     onClick={() => onSelectEntity(entity)}
-                    className="group bg-sand-50 rounded-2xl border border-sand-300 hover:border-canopy-700 overflow-hidden flex flex-col justify-between transition-colors cursor-pointer"
+                    className="group hallmark-plate hallmark-plate-interactive flex flex-col justify-between cursor-pointer overflow-hidden"
                   >
                     <div>
-                      <div className="relative h-44 overflow-hidden bg-canopy-900">
+                      {/* Framed Photograph without text overlay (per Hallmark Terrazzo/Solstice rules) */}
+                      <div className="h-48 overflow-hidden border-b border-ink bg-paper-2">
                         <img
                           src={entity.imageUrl}
                           alt={isHe ? entity.titleHe : entity.titleEn}
+                          width={480}
+                          height={320}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-canopy-950/80 via-transparent to-transparent" />
-                        <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-                          <span
-                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${badge.classes}`}
-                          >
-                            {badge.label}
-                          </span>
-                          <span className="px-2.5 py-1 rounded-lg bg-canopy-950/75 text-sand-50 text-xs font-semibold tabular-nums">
-                            {formatPrice(entity)}
-                          </span>
-                        </div>
-                        <div className="absolute bottom-2.5 inset-x-3 flex items-center justify-between text-xs text-sand-100">
-                          <span className="inline-flex items-center gap-1 font-medium">
-                            <MapPin className="w-3.5 h-3.5 text-ochre-400" />
-                            {isHe ? entity.locationDetailsHe : entity.locationDetailsEn}
-                          </span>
-                        </div>
+                      </div>
+
+                      {/* Caption & Metadata Strip below the frame */}
+                      <div className="px-5 py-2.5 bg-paper-2 border-b border-rule flex items-center justify-between gap-2 text-xs">
+                        <span className={`px-2 py-0.5 font-medium ${badge.classes}`}>
+                          {badge.label}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-muted truncate">
+                          <MapPin className="w-3 h-3 text-accent shrink-0" />
+                          <span>{isHe ? entity.locationDetailsHe : entity.locationDetailsEn}</span>
+                        </span>
                       </div>
 
                       <div className="p-5 space-y-3">
-                        <h3 className="font-display text-xl font-bold text-canopy-900 group-hover:text-terracotta-600 transition-colors leading-snug">
-                          {isHe ? entity.titleHe : entity.titleEn}
-                        </h3>
-                        <p className="text-xs text-canopy-700 leading-relaxed line-clamp-3">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <h3 className="font-serif text-xl font-semibold text-ink group-hover:text-accent transition-colors leading-snug">
+                            {isHe ? entity.titleHe : entity.titleEn}
+                          </h3>
+                          <span className="text-sm font-semibold text-ink hallmark-code shrink-0">
+                            {formatPrice(entity)}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-ink-2 leading-relaxed line-clamp-3">
                           {isHe ? entity.descriptionHe : entity.descriptionEn}
                         </p>
 
-                        <div className="pt-2 flex flex-wrap items-center gap-3 text-xs text-canopy-700">
+                        <div className="pt-2 flex flex-wrap items-center gap-3 text-xs text-muted">
                           {entity.type === 'event' && (
-                            <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-                              <Clock className="w-3.5 h-3.5 text-terracotta-500" />
-                              {entity.date} | {entity.startTime} to {entity.endTime}
+                            <span className="inline-flex items-center gap-1 font-medium hallmark-code text-ink-2">
+                              <Clock className="w-3.5 h-3.5 text-accent" />
+                              {entity.date} · {entity.startTime} to {entity.endTime}
                             </span>
                           )}
                           {entity.type === 'workshop' && (
-                            <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-                              <Clock className="w-3.5 h-3.5 text-canopy-600" />
-                              {isHe ? 'קבוע שבועי' : 'Weekly'} | {entity.startTime} to {entity.endTime}
+                            <span className="inline-flex items-center gap-1 font-medium hallmark-code text-ink-2">
+                              <Clock className="w-3.5 h-3.5 text-forest" />
+                              {isHe ? 'קבוע שבועי' : 'Weekly'} · {entity.startTime} to {entity.endTime}
                             </span>
                           )}
                           {entity.type === 'service' && (
-                            <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-ochre-600" />
+                            <span className="inline-flex items-center gap-1 font-medium hallmark-code text-ink-2">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
                               {entity.timeSlots?.length || 4}{' '}
                               {isHe ? 'משבצות יומן פנויות' : 'slots available'}
                             </span>
                           )}
                           {entity.type === 'rental' && (
-                            <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-                              <Home className="w-3.5 h-3.5 text-lagoon-600" />
-                              {entity.availableFrom} / {entity.availableTo}
+                            <span className="inline-flex items-center gap-1 font-medium hallmark-code text-ink-2">
+                              <Home className="w-3.5 h-3.5 text-ink" />
+                              {entity.availableFrom} · {entity.availableTo}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="px-5 py-3.5 bg-sand-100 border-t border-sand-200 flex items-center justify-between">
-                      <div className="text-xs text-canopy-600 truncate max-w-[60%]">
+                    <div className="px-5 py-3.5 bg-paper border-t border-rule flex items-center justify-between">
+                      <div className="text-xs text-muted truncate max-w-[60%]">
                         {isHe ? entity.hostName : entity.hostNameEn || entity.hostName}
                       </div>
-                      <span className="text-xs font-semibold text-terracotta-600 group-hover:underline">
+                      <span className="text-xs font-semibold text-ink group-hover:text-accent underline decoration-rule group-hover:decoration-accent transition-colors">
                         {entity.type === 'rental'
                           ? isHe
                             ? 'בדיקת תאריכים ושריון'
@@ -693,13 +661,46 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                           : 'RSVP & Reminder'}
                       </span>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
-            </div>
+            </section>
           )}
         </>
       )}
+
+      {/* Hallmark Closing Ink Band (layout.md § 5.10 Band) */}
+      <section className="hallmark-band-ink p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="space-y-2 max-w-2xl">
+          <h2 className="font-serif text-2xl md:text-3xl font-semibold text-paper">
+            {isHe
+              ? 'מארחים סדנה, משכירים וילה או מציעים שירות בדרום גואה?'
+              : 'Hosting a workshop, subletting a home or offering a local service?'}
+          </h2>
+          <p className="text-sm text-paper/80">
+            {isHe
+              ? 'העלו את המודעה שלכם ללוח הקהילה וקבלו פניות ישירות לוואטסאפ עם קוד אסמכתא #LUZ-XXXX.'
+              : 'List your session or property on the South Goa Almanac and receive direct WhatsApp bookings with a #LUZ-XXXX dispatch code.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 shrink-0">
+          <button
+            type="button"
+            onClick={onGoToProvider}
+            className="hallmark-btn-primary text-sm"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>{isHe ? 'העלאת אירוע או בית' : 'Publish a Listing'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onGoToBusinesses}
+            className="px-4 py-2.5 border border-paper text-paper text-sm font-semibold hover:bg-paper hover:text-ink transition-colors"
+          >
+            {isHe ? 'אינדקס בעלי המקצוע' : 'Local Business Index'}
+          </button>
+        </div>
+      </section>
     </div>
   );
 };

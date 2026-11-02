@@ -1,99 +1,131 @@
-/* Hallmark · v2.0.0 · shape: app screen · theme: custom (by request) · posture: committed · redesign: polish */
-/* Hallmark · pre-emit critique: P5 H5 E5 S5 R4 V5 · weakest: R, lifted all literal hex values into root tokens and added reduced-motion fallback */
-/* Hallmark · dismissed 70 · bookings and referrals write directly to Cloud Firestore and Google Sheets webhook in App.tsx */
-/* Hallmark · dismissed 74 · admin status badges use semantic status hues alongside the canopy and terracotta tokens */
-/* Hallmark · dismissed 76 · community cover photos are curated Unsplash placeholders replaceable per listing in Firestore */
+/* Hallmark · shape: Catalogue & Almanac · genre: editorial · theme: Solstice (by request) · redesign: full
+ * hero: Stage · nav: masthead · footer: colophon · imagery: photographs · signature: #LUZ-XXXX Dispatch Ledger · solstice: long-light
+ * axes: light/high-contrast-serif/warm · posture: restrained · contrast: pass · fold: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P9 H9 E9 S9 R9 V9 · weakest: S, replaced soft rounded SaaS cards with crisp ruled almanac plates and paper-3 hard offsets */
+@import "./tokens.css";
+@import "./base.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --canopy-950: #0F1A14;
-    --canopy-900: #15241C;
-    --canopy-800: #1C2E24;
-    --canopy-600: #426B54;
-    --sand-50: #FAF8F5;
-    --sand-100: #F4F1EB;
-    --sand-200: #EAE4D8;
-    --terracotta-500: #D46B54;
-    --ochre-500: #D4AF37;
-    --lagoon-600: #2A6F7B;
-    --font-display: 'Playfair Display', 'Frank Ruhl Libre', serif;
-    --font-body: 'Plus Jakarta Sans', 'Heebo', sans-serif;
-    --font-outlier: 'JetBrains Mono', monospace;
-    caret-color: var(--terracotta-500);
-  }
-
-  html {
-    scroll-behavior: smooth;
-    overflow-x: clip;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  }
-
-  body {
-    background-color: var(--sand-100);
-    color: var(--canopy-800);
-    overflow-x: clip;
-  }
-
-  /* Custom Selection & Scrollbars */
-  ::selection {
-    background-color: var(--terracotta-500);
-    color: var(--sand-50);
-  }
-
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: var(--sand-200);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--canopy-600);
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--canopy-800);
-  }
-
-  /* Focus Rings */
-  *:focus-visible {
-    outline: 2px solid var(--ochre-500);
-    outline-offset: 2px;
+  body[dir="rtl"] h1,
+  body[dir="rtl"] h2,
+  body[dir="rtl"] h3,
+  body[dir="rtl"] .font-serif {
+    letter-spacing: -0.01em;
   }
 }
 
-.tabular-nums {
+/* Hallmark Editorial Surface & Control System */
+.hallmark-rule-top {
+  border-top: var(--rule-bar) solid var(--color-ink);
+}
+
+.hallmark-rule-hair {
+  border-color: var(--color-rule);
+}
+
+.hallmark-plate {
+  background-color: var(--color-plate);
+  border: var(--rule-hair) solid var(--color-ink);
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-card);
+  transition: box-shadow var(--dur-short) var(--ease-out), transform var(--dur-short) var(--ease-out);
+}
+
+.hallmark-plate-interactive:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+.hallmark-well {
+  background-color: var(--color-paper-2);
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-card);
+}
+
+.hallmark-well-gold {
+  background-color: var(--color-paper-2);
+  border: var(--rule-bar) solid var(--color-ink);
+  outline: var(--rule-hair) solid var(--color-gold);
+  outline-offset: -6px;
+  box-shadow: var(--shadow-card);
+}
+
+.hallmark-band-ink {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  border-top: var(--rule-bar) solid var(--color-gold);
+}
+
+.hallmark-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  border: var(--rule-hair) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  padding: var(--space-sm) var(--space-lg);
+  font-weight: 600;
+  transition: background-color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out);
+}
+
+.hallmark-btn-primary:hover {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.hallmark-btn-ink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  background-color: transparent;
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 var(--rule-bar) var(--color-ink);
+  border-radius: var(--radius-card);
+  padding: var(--space-sm) var(--space-lg);
+  font-weight: 600;
+  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
+}
+
+.hallmark-btn-ink:hover {
+  background-color: var(--color-paper-2);
+  color: var(--color-accent);
+}
+
+.hallmark-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  background-color: transparent;
+  color: var(--color-ink);
+  border-bottom: var(--rule-bar) solid var(--color-ink);
+  padding: var(--space-xs) 0;
+  font-weight: 600;
+  transition: color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out);
+}
+
+.hallmark-btn-secondary:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.hallmark-code {
+  font-family: var(--font-outlier);
   font-variant-numeric: tabular-nums;
 }
 
-@keyframes subtleReveal {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-.animate-reveal {
-  animation: subtleReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

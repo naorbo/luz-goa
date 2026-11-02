@@ -7,11 +7,31 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Heebo', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-        display: ['Frank Ruhl Libre', 'Playfair Display', 'Georgia', 'serif'],
+        sans: ['Plus Jakarta Sans', 'Heebo', 'system-ui', 'sans-serif'],
+        serif: ['Fraunces', 'Frank Ruhl Libre', 'Georgia', 'serif'],
+        display: ['Fraunces', 'Frank Ruhl Libre', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
+        paper: {
+          DEFAULT: 'var(--color-paper)',
+          2: 'var(--color-paper-2)',
+          3: 'var(--color-paper-3)',
+        },
+        plate: 'var(--color-plate)',
+        ink: {
+          DEFAULT: 'var(--color-ink)',
+          2: 'var(--color-ink-2)',
+        },
+        muted: 'var(--color-muted)',
+        rule: 'var(--color-rule)',
+        accent: {
+          DEFAULT: 'var(--color-accent)',
+          soft: 'var(--color-accent-soft)',
+          ink: 'var(--color-accent-ink)',
+        },
+        gold: 'var(--color-gold)',
+        forest: 'var(--color-forest)',
         canopy: {
           950: '#0F1A14',
           900: '#15241C',
@@ -52,6 +72,8 @@ export default {
         }
       },
       boxShadow: {
+        'card': 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
         'surface': '0 4px 20px -2px rgba(28, 46, 36, 0.06), 0 1px 3px 0 rgba(28, 46, 36, 0.04)',
         'elevated': '0 12px 32px -4px rgba(28, 46, 36, 0.12), 0 2px 6px 0 rgba(28, 46, 36, 0.06)',
       }

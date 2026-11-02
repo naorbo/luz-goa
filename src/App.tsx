@@ -694,61 +694,63 @@ export function App() {
       : []),
   ];
 
+  const todayFormatted = new Intl.DateTimeFormat(isHe ? 'he-IL' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date());
+
   return (
-    <div className="min-h-screen flex flex-col bg-sand-100 text-canopy-800">
-      {/* Committed Deep Tropical Canopy Header Shell */}
-      <header className="bg-canopy-900 text-sand-50 border-b border-canopy-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-16 gap-3">
-            {/* Brand Identity */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div
+    <div className="min-h-screen flex flex-col bg-paper text-ink">
+      {/* Hallmark Editorial Masthead */}
+      <header className="bg-paper border-b border-ink hallmark-rule-top sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          {/* Masthead Top Folio Bar */}
+          <div className="flex items-center justify-between py-3.5 gap-4 border-b border-rule">
+            {/* Brand Wordmark & Editorial Subtitle */}
+            <div className="flex items-center gap-4 min-w-0">
+              <button
+                type="button"
                 onClick={() => setActiveTab('explore')}
-                className="flex items-center gap-3 cursor-pointer"
+                aria-label="LUZ Goa Home"
+                className="flex items-baseline gap-3 text-start group focus:outline-none"
               >
-                <div className="w-10 h-10 rounded-xl bg-terracotta-500 text-white font-display font-bold text-xl flex items-center justify-center shrink-0">
-                  L
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h1 className="font-display text-xl font-bold tracking-tight text-sand-50 truncate">
-                      LUZ GOA
-                    </h1>
-                    <span className="hidden sm:inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-canopy-800 text-ochre-400 border border-canopy-700">
-                      Community OS
-                    </span>
-                  </div>
-                  <p className="text-xs text-sand-300 hidden lg:block truncate">
-                    {isHe
-                      ? 'קולום, פטנם, פאלולם: אירועים, בעלי עסקים בקהילה, מתנ"ס והשכרת בתים'
-                      : 'Colomb, Patnem, Palolem: Events, Community Businesses, Youth Center & Homes'}
-                  </p>
-                </div>
-              </div>
+                <span className="font-serif text-2xl md:text-3xl font-semibold tracking-tight text-ink group-hover:text-accent transition-colors">
+                  LUZ Goa
+                </span>
+                <span className="hidden sm:inline-block h-4 w-px bg-rule self-center" />
+                <span className="hidden sm:inline-block text-xs text-muted">
+                  {isHe
+                    ? 'אלמנך הקהילה, אירועים, בתים ובעלי מקצוע בדרום גואה'
+                    : 'South Goa Almanac · Palolem, Patnem, Colomb & Agonda'}
+                </span>
+              </button>
             </div>
 
-            {/* Right Controls: Language for all users; PROD/TEST & Reset strictly for Verified Admin */}
-            <div className="flex items-center gap-2">
-              <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-canopy-800 text-xs text-sand-200 border border-canopy-700">
-                <MapPin className="w-3.5 h-3.5 text-terracotta-400" />
-                <span>South Goa</span>
+            {/* Right Folio Controls: Date Stamp, Admin Controls (if authenticated), Language Switch */}
+            <div className="flex items-center gap-2.5">
+              <div className="hidden lg:flex items-center gap-2 pr-3 border-r border-rule text-xs text-muted">
+                <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
+                <span>Canacona, South Goa</span>
+                <span>·</span>
+                <time className="hallmark-code">{todayFormatted}</time>
               </div>
 
               {isAdminAuthenticated && (
                 <>
                   {/* Dual Environment Switcher: PROD vs TEST (Admin Only) */}
                   <div
-                    className="inline-flex items-center rounded-xl bg-canopy-950 p-1 border border-canopy-700"
+                    className="inline-flex items-center bg-paper-2 p-0.5 border border-ink"
                     role="group"
                     aria-label="Environment Switcher"
                   >
                     <button
                       type="button"
                       onClick={() => handleSwitchEnvironment('prod')}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors ${
                         appEnv === 'prod'
-                          ? 'bg-canopy-700 text-ochre-300'
-                          : 'text-sand-300 hover:text-white'
+                          ? 'bg-ink text-paper'
+                          : 'text-ink-2 hover:text-ink'
                       }`}
                       title={
                         isHe
@@ -762,10 +764,10 @@ export function App() {
                     <button
                       type="button"
                       onClick={() => handleSwitchEnvironment('test')}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors ${
                         appEnv === 'test'
-                          ? 'bg-ochre-500 text-canopy-950'
-                          : 'text-sand-300 hover:text-white'
+                          ? 'bg-accent text-accent-ink'
+                          : 'text-ink-2 hover:text-ink'
                       }`}
                       title={
                         isHe
@@ -790,9 +792,9 @@ export function App() {
                         ? 'איפוס אחסון מקומי לנתוני PROD המאומתים'
                         : 'Reset local storage to verified PROD data'
                     }
-                    className="p-2 rounded-xl bg-canopy-800 hover:bg-canopy-700 text-sand-200 border border-canopy-700 transition-colors"
+                    className="p-1.5 bg-plate hover:bg-paper-2 text-ink border border-ink transition-colors"
                   >
-                    <RotateCcw className="w-4 h-4" />
+                    <RotateCcw className="w-3.5 h-3.5" />
                   </button>
 
                   <button
@@ -803,9 +805,9 @@ export function App() {
                         ? `התנתקות ממצב אדמין (${adminEmail || AUTHORIZED_ADMIN_EMAIL})`
                         : `Sign out Admin (${adminEmail || AUTHORIZED_ADMIN_EMAIL})`
                     }
-                    className="p-2 rounded-xl bg-canopy-800 hover:bg-terracotta-600 text-sand-200 border border-canopy-700 transition-colors"
+                    className="p-1.5 bg-plate hover:bg-accent hover:text-accent-ink text-ink border border-ink transition-colors"
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-3.5 h-3.5" />
                   </button>
                 </>
               )}
@@ -813,16 +815,19 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setLang(lang === 'he' ? 'en' : 'he')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ochre-500 text-canopy-950 font-bold text-xs hover:bg-ochre-400 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-plate hover:bg-paper-2 text-ink border border-ink font-medium text-xs transition-colors"
               >
-                <Globe className="w-3.5 h-3.5" />
-                <span>{lang === 'he' ? 'EN' : 'עב'}</span>
+                <Globe className="w-3.5 h-3.5 text-accent" />
+                <span>{lang === 'he' ? 'English' : 'עברית'}</span>
               </button>
             </div>
           </div>
 
-          {/* Navigation Bar */}
-          <nav className="flex items-center gap-1.5 overflow-x-auto pb-2.5 pt-1">
+          {/* Masthead Index Navigation Strip (One weight across states per Hallmark craft.md § 9) */}
+          <nav
+            aria-label="Primary Navigation"
+            className="flex items-center gap-1 overflow-x-auto no-scrollbar"
+          >
             {navTabs.map((tab) => {
               const Icon = tab.icon;
               const active = activeTab === tab.id;
@@ -831,23 +836,21 @@ export function App() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                     active
-                      ? 'bg-terracotta-500 text-white'
-                      : 'text-sand-200 hover:bg-canopy-800 hover:text-white'
+                      ? 'border-accent bg-paper-2 text-ink'
+                      : 'border-transparent text-ink-2 hover:text-ink hover:bg-paper-2/60'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={`w-4 h-4 ${active ? 'text-accent' : 'text-muted'}`} />
                   <span>{isHe ? tab.labelHe : tab.labelEn}</span>
                   {tab.badge !== undefined && (
                     <span
-                      className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono tabular-nums ${
-                        active
-                          ? 'bg-white/20 text-white'
-                          : 'bg-canopy-800 text-ochre-400'
+                      className={`px-1.5 py-0.2 text-xs hallmark-code ${
+                        active ? 'text-accent' : 'text-muted'
                       }`}
                     >
-                      {tab.badge}
+                      ({tab.badge})
                     </span>
                   )}
                 </button>
@@ -859,10 +862,10 @@ export function App() {
 
       {/* Unmistakable Sandbox Banner when viewing TEST environment (Admin Only) */}
       {isAdminAuthenticated && appEnv === 'test' && (
-        <div className="bg-ochre-100 border-b border-ochre-500/40 text-canopy-950">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="bg-paper-2 border-b border-ink text-ink">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2 font-medium">
-              <FlaskConical className="w-4 h-4 text-ochre-600 shrink-0" />
+              <FlaskConical className="w-4 h-4 text-accent shrink-0" />
               <span>
                 {isHe
                   ? 'סביבת TEST (הדגמה ובדיקות למנהל בלבד): הנתונים המוצגים כאן הם דוגמאות להמחשה בלבד. סביבת PROD מופרדת לחלוטין למשתמשים.'
@@ -872,7 +875,7 @@ export function App() {
             <button
               type="button"
               onClick={() => handleSwitchEnvironment('prod')}
-              className="font-bold underline hover:text-terracotta-600 shrink-0"
+              className="font-semibold underline hover:text-accent shrink-0"
             >
               {isHe ? 'חזרה לסביבת PROD (אמת)' : 'Switch to PROD (Live)'}
             </button>
@@ -880,8 +883,8 @@ export function App() {
         </div>
       )}
 
-      {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-6 md:py-8">
+      {/* Main Editorial Workspace Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8 md:py-12">
         {activeTab === 'explore' && (
           <ExploreView
             entities={entities}
@@ -964,21 +967,56 @@ export function App() {
         )}
       </main>
 
-      {/* Community Footer with Discreet Admin Lock */}
-      <footer className="border-t border-sand-300 bg-sand-50 text-canopy-700 py-5 px-4 md:px-6 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-display font-bold text-canopy-900">LUZ GOA</span>
-            <span>
+      {/* Hallmark Editorial Colophon Footer */}
+      <footer className="hallmark-rule-top bg-paper-2 text-ink-2 py-10 px-4 md:px-8 mt-auto">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 pb-8 border-b border-rule">
+          <div className="md:col-span-5 space-y-2">
+            <div className="font-serif text-2xl font-semibold text-ink">LUZ Goa</div>
+            <p className="text-sm text-ink-2 max-w-md">
               {isHe
-                ? 'מערכת הפעלה קהילתית לדרום גואה (קולום, פטנם, פאלולם ואגונדה)'
-                : 'South Goa Community OS (Colomb, Patnem, Palolem & Agonda)'}
-            </span>
+                ? 'לוח האירועים, המטפלים, הבתים להשכרה ומרכז הנוער של קהילת דרום גואה: פאלולם, פטנם, קולום ואגונדה.'
+                : 'The daily schedule, trusted practitioners, long-stay homes and youth center for the South Goa coast: Palolem, Patnem, Colomb and Agonda.'}
+            </p>
+          </div>
+
+          <div className="md:col-span-4 space-y-2">
+            <div className="text-sm font-semibold text-ink">
+              {isHe ? 'מדורי האלמנך' : 'Almanac Sections'}
+            </div>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              {navTabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTab(t.id)}
+                  className="text-ink-2 hover:text-accent underline decoration-rule hover:decoration-accent transition-colors"
+                >
+                  {isHe ? t.labelHe : t.labelEn}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="md:col-span-3 space-y-2 md:text-end">
+            <div className="text-sm font-semibold text-ink">
+              {isHe ? 'ייחוס ואימות קהילתי' : 'Verified Dispatch'}
+            </div>
+            <p className="text-xs text-muted">
+              {isHe
+                ? 'כל פנייה או הזמנה נושאת קוד אסמכתא ישיר מול המארח בוואטסאפ.'
+                : 'Every booking carries a direct WhatsApp dispatch code with the host.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto pt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+          <div>
+            <span>Canacona: Palolem, Patnem, Colomb and Agonda</span>
           </div>
           <div className="flex items-center gap-3">
             {isAdminAuthenticated ? (
-              <span className="inline-flex items-center gap-1.5 text-canopy-800 font-semibold">
-                <ShieldCheck className="w-3.5 h-3.5 text-terracotta-500" />
+              <span className="inline-flex items-center gap-1.5 text-ink font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5 text-accent" />
                 <span>{adminEmail || AUTHORIZED_ADMIN_EMAIL}</span>
               </span>
             ) : (
@@ -988,7 +1026,7 @@ export function App() {
                   setAdminAuthError('');
                   setShowAdminLoginModal(true);
                 }}
-                className="inline-flex items-center gap-1 text-canopy-600/70 hover:text-canopy-900 transition-colors"
+                className="inline-flex items-center gap-1 text-muted hover:text-ink transition-colors"
                 title={isHe ? 'כניסת הנהלה בלבד' : 'Admin Sign-In'}
               >
                 <Lock className="w-3 h-3" />
@@ -1001,18 +1039,18 @@ export function App() {
 
       {/* Discreet Admin Google Sign-In Modal (Restricted to luzschedu@gmail.com) */}
       {showAdminLoginModal && !isAdminAuthenticated && (
-        <div className="fixed inset-0 z-50 bg-canopy-950/70 flex items-center justify-center p-4">
-          <div className="bg-sand-50 border border-sand-300 rounded-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-ink/70 flex items-center justify-center p-4">
+          <div className="hallmark-plate max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-rule pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-canopy-900 text-ochre-400 flex items-center justify-center">
+                <div className="w-9 h-9 bg-ink text-paper flex items-center justify-center">
                   <Lock className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-display text-lg font-bold text-canopy-900">
+                  <h3 className="font-serif text-lg font-semibold text-ink">
                     {isHe ? 'אימות מנהל מערכת (LUZ Admin)' : 'LUZ Admin Authentication'}
                   </h3>
-                  <p className="text-xs text-canopy-600">
+                  <p className="text-xs text-muted">
                     {isHe
                       ? 'הגישה לממשק הניהול ולסביבת ה-TEST מוגבלת לחשבון המורשה בלבד'
                       : 'Access to Admin & TEST environment is restricted to the authorized owner'}
@@ -1022,14 +1060,14 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setShowAdminLoginModal(false)}
-                className="text-xs font-semibold text-canopy-600 hover:text-canopy-900 px-2 py-1"
+                className="text-xs font-semibold text-muted hover:text-ink px-2 py-1"
               >
                 {isHe ? 'סגור' : 'Close'}
               </button>
             </div>
 
             {adminAuthError && (
-              <div className="p-3 rounded-xl bg-terracotta-100 border border-terracotta-500/40 text-xs text-terracotta-600 font-medium">
+              <div className="p-3 bg-accent-soft border border-accent text-xs text-ink font-medium">
                 {adminAuthError}
               </div>
             )}
@@ -1038,7 +1076,7 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setShowAdminLoginModal(false)}
-                className="px-4 py-2 rounded-xl border border-sand-300 bg-white text-xs font-semibold text-canopy-800 hover:bg-sand-100 transition-colors"
+                className="px-4 py-2 border border-ink bg-plate text-xs font-semibold text-ink hover:bg-paper-2 transition-colors"
               >
                 {isHe ? 'ביטול' : 'Cancel'}
               </button>
@@ -1046,9 +1084,9 @@ export function App() {
                 type="button"
                 disabled={adminSigningIn}
                 onClick={handleAdminSignIn}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-canopy-900 text-sand-50 text-xs font-semibold hover:bg-canopy-800 transition-colors disabled:opacity-50"
+                className="hallmark-btn-ink text-xs disabled:opacity-50"
               >
-                <ShieldCheck className="w-4 h-4 text-ochre-400" />
+                <ShieldCheck className="w-4 h-4 text-gold" />
                 <span>
                   {adminSigningIn
                     ? isHe
