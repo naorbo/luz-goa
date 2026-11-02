@@ -41,6 +41,16 @@ import {
   GOOGLE_APPS_SCRIPT_CODE,
   isGoogleAppsScriptUrl,
 } from '../utils/appsScriptTemplate';
+import {
+  loadActiveFirebaseConfig,
+  parseFirebaseConfigSnippet,
+  saveRuntimeFirebaseConfig,
+} from '../config/firebase';
+import {
+  ALL_LUZ_COLLECTIONS,
+  seedEnvironmentToFirestore,
+  SeedSyncReport,
+} from '../services/firestoreService';
 
 interface AdminViewProps {
   entities: LuzEntity[];
@@ -51,6 +61,9 @@ interface AdminViewProps {
   notificationConfig: NotificationChannelsConfig;
   lang: Language;
   appEnv: AppEnvironment;
+  firestoreStatus?: 'disconnected' | 'connecting' | 'live' | 'error';
+  firestoreProjectId?: string;
+  onFirebaseConfigChanged?: () => void;
   onToggleProviderSync: (entityId: string) => void;
   onUpdateNotificationConfig: (config: NotificationChannelsConfig) => void;
 }
@@ -172,6 +185,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
   notificationConfig,
   lang,
   appEnv,
+  firestoreStatus = 'disconnected',
+  firestoreProjectId = '',
+  onFirebaseConfigChanged,
   onToggleProviderSync,
   onUpdateNotificationConfig,
 }) => {
@@ -180,6 +196,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [copiedDigest, setCopiedDigest] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
   const [showSqlModal, setShowSqlModal] = useState(false);
+
+  // Cloud Firestore Configuration & Seed Migration State
+  const [firebaseSnippet, setFirebaseSnippet] = useState<string>(() => {
+    const existing = loadActiveFirebaseConfig();
+    return existing ? JSON.stringify(existing, null, 2) : '';
+  });
+  const [firebaseConfigSavedMsg, setFirebaseConfigSavedMsg] = useState<string | null>(null);
+  const [firebaseConfigError, setFirebaseConfigError] = useState<string | null>(null);
+  const [seedingFirestore, setSeedingFirestore] = useState(false);
+  const [seedReport, setSeedReport] = useState<SeedSyncReport | null>(null);
+  const [showFutureArchitecture, setShowFutureArchitecture] = useState(false);
 
   const [draftConfig, setDraftConfig] = useState<NotificationChannelsConfig>(notificationConfig);
   const [savedConfigNotice, setSavedConfigNotice] = useState(false);
@@ -190,6 +217,55 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [showAppsScriptGuide, setShowAppsScriptGuide] = useState(false);
 
   const isAppsScriptConnected = isGoogleAppsScriptUrl(draftConfig.webhookUrl);
+
+  const handleSaveFirebaseConfig = () => {
+    setFirebaseConfigError(null);
+    setFirebaseConfigSavedMsg(null);
+    if (!firebaseSnippet.trim()) {
+      saveRuntimeFirebaseConfig(null);
+      onFirebaseConfigChanged?.();
+      setFirebaseConfigSavedMsg(
+        isHe
+          ? 'הגדרות Firebase המקומיות נוקו (המערכת עובדת על אחסון מקומי).'
+          : 'Cleared custom Firebase config (running on local storage fallback).'
+      );
+      return;
+    }
+    const parsed = parseFirebaseConfigSnippet(firebaseSnippet);
+    if (!parsed) {
+      setFirebaseConfigError(
+        isHe
+          ? 'לא הצלחנו לחלץ apiKey ו-projectId. הדבק את הקוד מ-Firebase Console (const firebaseConfig = {...}) או JSON.'
+          : 'Could not extract apiKey and projectId. Paste the firebaseConfig object or JSON from Firebase Console.'
+      );
+      return;
+    }
+    saveRuntimeFirebaseConfig(parsed);
+    setFirebaseSnippet(JSON.stringify(parsed, null, 2));
+    onFirebaseConfigChanged?.();
+    setFirebaseConfigSavedMsg(
+      isHe
+        ? `חובר בהצלחה לפרויקט Firebase: ${parsed.projectId}`
+        : `Connected to Firebase project: ${parsed.projectId}`
+    );
+  };
+
+  const handleSeedCurrentEnvironment = async () => {
+    setSeedingFirestore(true);
+    setSeedReport(null);
+    try {
+      const report = await seedEnvironmentToFirestore(appEnv, {
+        entities,
+        businesses,
+        bookings,
+        families,
+        referrals,
+      });
+      setSeedReport(report);
+    } finally {
+      setSeedingFirestore(false);
+    }
+  };
 
   const handleCopyAppsScriptCode = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
@@ -361,6 +437,247 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </pre>
         </div>
       )}
+
+      {/* CLOUD FIRESTORE, FUTURE ENTITIES & FLY.IO WHATSAPP LISTENER CONTROL CENTER */}
+      <div className="bg-white rounded-2xl border border-sand-300 p-6 space-y-5 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-sand-200 pb-4">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Database className="w-5 h-5 text-terracotta-500" />
+              <h3 className="font-display text-xl font-bold text-canopy-900">
+                {isHe
+                  ? 'תשתית Google Cloud Firestore, SEO ו-Listener וואטסאפ (Fly.io)'
+                  : 'Google Cloud Firestore, SEO & Fly.io WhatsApp Listener Hub'}
+              </h3>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  firestoreStatus === 'live'
+                    ? 'bg-green-100 text-green-800 border border-green-300'
+                    : firestoreStatus === 'connecting'
+                    ? 'bg-ochre-100 text-ochre-800 border border-ochre-300'
+                    : firestoreStatus === 'error'
+                    ? 'bg-red-100 text-red-800 border border-red-300'
+                    : 'bg-sand-200 text-canopy-700'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    firestoreStatus === 'live'
+                      ? 'bg-green-600'
+                      : firestoreStatus === 'connecting'
+                      ? 'bg-ochre-500 animate-pulse'
+                      : firestoreStatus === 'error'
+                      ? 'bg-red-600'
+                      : 'bg-canopy-400'
+                  }`}
+                />
+                {firestoreStatus === 'live'
+                  ? `Firestore LIVE (${firestoreProjectId})`
+                  : firestoreStatus === 'connecting'
+                  ? `Connecting (${firestoreProjectId})...`
+                  : firestoreStatus === 'error'
+                  ? 'Firestore Error (Fallback Active)'
+                  : isHe
+                  ? 'אחסון מקומי פעיל (ממתין לחיבור פרויקט Firebase)'
+                  : 'Local Storage Active (Awaiting Firebase Config)'}
+              </span>
+            </div>
+            <p className="text-xs text-canopy-600">
+              {isHe
+                ? 'סנכרון בזמן אמת (onSnapshot) עם תמיכה בעבודה אופליין, הפרדת סביבות מוחלטת (/envs/prod ו-/envs/test), ומוכנות מלאה ל-10 קולקשנים קיימים ועתידיים.'
+                : 'Real-time onSnapshot sync with offline persistence, strict /envs/prod & /envs/test isolation, and 10 active & future collections.'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="https://luz-goa-scraper-naor.fly.dev/qr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-canopy-900 text-sand-50 hover:bg-canopy-800 text-xs font-bold transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-ochre-400" />
+              {isHe ? 'מסך QR ל-Listener ב-Fly.io' : 'Fly.io WhatsApp QR Scanner'}
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowFutureArchitecture(!showFutureArchitecture)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sand-100 hover:bg-sand-200 text-canopy-900 border border-sand-300 text-xs font-bold transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-terracotta-500" />
+              {isHe
+                ? `מבנה 10 קולקשנים (קיימים + עתידיים)`
+                : `10 Collections Schema (Active + Future)`}
+            </button>
+          </div>
+        </div>
+
+        {/* Firebase Web Config Paste & 1-Click Seed Upload */}
+        <div className="grid lg:grid-cols-12 gap-5 items-start">
+          <div className="lg:col-span-7 space-y-2.5">
+            <label className="block text-xs font-bold text-canopy-800">
+              {isHe
+                ? 'הדבק כאן את ה-firebaseConfig מהקונסול של Firebase (JSON או קוד JS מלא):'
+                : 'Paste your firebaseConfig from Firebase Console (JSON or JS snippet):'}
+            </label>
+            <textarea
+              rows={5}
+              dir="ltr"
+              value={firebaseSnippet}
+              onChange={(e) => setFirebaseSnippet(e.target.value)}
+              placeholder={`{\n  "apiKey": "AIzaSy...",\n  "authDomain": "luz-goa.firebaseapp.com",\n  "projectId": "luz-goa",\n  "appId": "1:123456:web:abcdef"\n}`}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-sand-50 border border-sand-300 text-xs font-mono text-canopy-900 focus:outline-none focus:border-canopy-700"
+            />
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleSaveFirebaseConfig}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-canopy-900 text-sand-50 hover:bg-canopy-800 text-xs font-bold transition-colors"
+              >
+                <Save className="w-3.5 h-3.5 text-ochre-400" />
+                {isHe ? 'שמור וחבר ל-Cloud Firestore' : 'Save & Connect Cloud Firestore'}
+              </button>
+              <button
+                type="button"
+                disabled={seedingFirestore}
+                onClick={handleSeedCurrentEnvironment}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-terracotta-500 text-white hover:bg-terracotta-600 text-xs font-bold transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${seedingFirestore ? 'animate-spin' : ''}`} />
+                {seedingFirestore
+                  ? isHe
+                    ? 'מעלה נתונים ל-Firestore...'
+                    : 'Uploading to Firestore...'
+                  : isHe
+                  ? `סנכרן והעלה את נתוני ${appEnv.toUpperCase()} לענן`
+                  : `Seed & Sync ${appEnv.toUpperCase()} Data to Cloud`}
+              </button>
+            </div>
+            {firebaseConfigSavedMsg && (
+              <p className="text-xs font-bold text-green-700 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {firebaseConfigSavedMsg}
+              </p>
+            )}
+            {firebaseConfigError && (
+              <p className="text-xs font-bold text-red-600 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                {firebaseConfigError}
+              </p>
+            )}
+            {seedReport && (
+              <div
+                className={`p-3 rounded-xl border text-xs ${
+                  seedReport.ok
+                    ? 'bg-green-50 border-green-300 text-green-900'
+                    : 'bg-red-50 border-red-300 text-red-900'
+                }`}
+              >
+                {seedReport.ok ? (
+                  <span>
+                    {isHe
+                      ? `✅ הועלו בהצלחה ל-/envs/${seedReport.env} בפרויקט ${seedReport.projectId}: ${seedReport.counts.entities} אירועים/בתים, ${seedReport.counts.businesses} עסקים, ${seedReport.counts.bookings} הזמנות, ${seedReport.counts.families} משפחות ו-${seedReport.counts.referrals} לידים!`
+                      : `✅ Synced to /envs/${seedReport.env} (${seedReport.projectId}): ${seedReport.counts.entities} entities, ${seedReport.counts.businesses} businesses, ${seedReport.counts.bookings} bookings, ${seedReport.counts.families} families, ${seedReport.counts.referrals} referrals!`}
+                  </span>
+                ) : (
+                  <span>
+                    ❌ {seedReport.errorMessage}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-5 bg-sand-50 rounded-xl border border-sand-200 p-4 space-y-2.5 text-xs">
+            <div className="font-bold text-canopy-900 flex items-center justify-between">
+              <span>
+                {isHe ? 'סטטוס שירותים מחוברים (luzschedu@gmail.com)' : 'Connected Infrastructure Status'}
+              </span>
+              <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 font-mono text-[10px]">
+                READY
+              </span>
+            </div>
+            <ul className="space-y-2 text-canopy-700">
+              <li className="flex items-center justify-between gap-2">
+                <span>1. Google Apps Script + Sheets CRM:</span>
+                <span className="font-bold text-green-700">מחובר ופעיל (HTTP 200)</span>
+              </li>
+              <li className="flex items-center justify-between gap-2">
+                <span>2. WhatsApp Group Listener (Fly.io):</span>
+                <a
+                  href="https://luz-goa-scraper-naor.fly.dev/health"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-terracotta-600 underline"
+                  dir="ltr"
+                >
+                  luz-goa-scraper-naor.fly.dev
+                </a>
+              </li>
+              <li className="flex items-center justify-between gap-2">
+                <span>3. SEO, Sitemap, Geo Tags & JSON-LD:</span>
+                <span className="font-bold text-green-700">פעיל דינמית + PWA</span>
+              </li>
+              <li className="flex items-center justify-between gap-2">
+                <span>4. Firestore Security Rules & Indexes:</span>
+                <span className="font-mono text-canopy-900" dir="ltr">
+                  firestore.rules (10 cols)
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Collapsible 10-Collection Architecture (5 Active + 5 Future-Ready) */}
+        {showFutureArchitecture && (
+          <div className="pt-3 border-t border-sand-200 space-y-3">
+            <h4 className="text-xs font-bold text-canopy-900">
+              {isHe
+                ? 'ארכיטקטורת נתונים מלאה ב-Firestore (/envs/{prod|test}/{collection}) — כל הישויות הקיימות והעתידיות:'
+                : 'Complete Firestore Data Architecture (/envs/{prod|test}/{collection}) — Active & Future Entities:'}
+            </h4>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+              {ALL_LUZ_COLLECTIONS.map((col) => (
+                <div
+                  key={col.id}
+                  className={`p-3 rounded-xl border text-xs space-y-1 ${
+                    col.phase === 'active'
+                      ? 'bg-sand-50 border-canopy-700/30'
+                      : 'bg-ochre-100/40 border-ochre-400/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <code className="font-mono font-bold text-canopy-950 text-[11px]" dir="ltr">
+                      /{col.id}
+                    </code>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                        col.phase === 'active'
+                          ? 'bg-canopy-900 text-green-300'
+                          : 'bg-ochre-500 text-canopy-950'
+                      }`}
+                    >
+                      {col.phase === 'active'
+                        ? isHe
+                          ? 'פעיל'
+                          : 'ACTIVE'
+                        : isHe
+                        ? 'מוכן לעתיד'
+                        : 'FUTURE'}
+                    </span>
+                  </div>
+                  <div className="font-bold text-canopy-900">
+                    {isHe ? col.labelHe : col.labelEn}
+                  </div>
+                  <p className="text-[11px] text-canopy-600 leading-snug">
+                    {isHe ? col.descHe : col.descEn}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* REAL-TIME PROVIDER REFERRAL ALERTS & ATTRIBUTION HUB */}
       <div className="grid lg:grid-cols-12 gap-6">

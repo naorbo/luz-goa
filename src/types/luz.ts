@@ -14,6 +14,10 @@ export type IngestionSource = 'web' | 'whatsapp_dm' | 'scraper';
 
 export type CalendarSyncStatus = 'connected' | 'manual' | 'error';
 
+export type UserRole = 'guest' | 'member' | 'provider' | 'youth_staff' | 'admin';
+
+export type EntityModerationStatus = 'approved' | 'pending_review' | 'archived';
+
 export type VolunteerRole =
   | 'activities'
   | 'community'
@@ -68,6 +72,8 @@ export interface CommunityBusiness {
   servicesMenu: BusinessServiceOffer[];
   tags: string[];
   verifiedCommunityMember: boolean;
+  endorsementsCount?: number;
+  updatedAt?: string;
 }
 
 export interface BookedRange {
@@ -99,10 +105,14 @@ export interface LuzEntity {
   priceCurrency: 'INR' | 'ILS' | 'USD' | 'FREE' | 'CONTACT';
   audience: AudienceGroup;
   ingestionSource: IngestionSource;
+  moderationStatus?: EntityModerationStatus;
   imageUrl: string;
   tags: string[];
   rsvpCount: number;
   maxCapacity?: number;
+  endorsementsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 
   // 1. One-time Event ('event')
   date?: string; // YYYY-MM-DD
@@ -155,7 +165,7 @@ export interface BookingRecord {
   reminderChannel: 'whatsapp' | 'calendar_ics' | 'both';
   notes?: string;
   createdAt: string;
-  status: 'confirmed' | 'pending';
+  status: 'confirmed' | 'pending' | 'cancelled';
 }
 
 export type ReferralActionType =
@@ -223,13 +233,18 @@ export interface YouthCenterFamily {
 }
 
 export interface UserProfile {
+  uid?: string;
+  role?: UserRole;
   name: string;
   phone: string;
+  email?: string;
   preferredArea: GoaArea | 'All';
   kidsAges: number[];
   interests: string[];
   digestFrequency: 'weekly' | 'monthly';
   rawPreferenceText: string;
+  savedEntityIds?: string[];
+  savedBusinessIds?: string[];
 }
 
 export interface ChatMessage {
@@ -241,4 +256,122 @@ export interface ChatMessage {
   recommendedBusinessIds?: string[];
   createdEntityId?: string;
   profileUpdated?: boolean;
+}
+
+// ============================================================================
+// FUTURE-PROOF COMMUNITY OS ENTITIES (Phase 2 & 3 Expansion Ready)
+// ============================================================================
+
+/**
+ * 1. WhatsApp Scraper & AI Moderation Queue ('moderation_queue')
+ * Holds events/listings auto-detected from WhatsApp groups before or after publishing
+ */
+export interface ScrapedListingDraft {
+  id: string;
+  rawText: string;
+  sourceGroupName: string;
+  senderPhone: string;
+  detectedType: EntityType | 'marketplace' | 'rideshare';
+  titleHe: string;
+  titleEn: string;
+  area: GoaArea;
+  date?: string;
+  startTime?: string;
+  priceAmount: number;
+  priceCurrency: 'INR' | 'ILS' | 'USD' | 'FREE' | 'CONTACT';
+  confidenceScore: number; // 0..100
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+}
+
+/**
+ * 2. Community Marketplace & Scooter/Gear Board ('marketplace')
+ * For buying/selling/renting scooters (Activa/Enfield), baby gear, inverters, surfboards
+ */
+export type MarketplaceCategory =
+  | 'scooter_bike'
+  | 'baby_kids_gear'
+  | 'power_internet_tech'
+  | 'surf_sports'
+  | 'furniture_kitchen'
+  | 'giveaway_free';
+
+export interface MarketplaceListing {
+  id: string;
+  category: MarketplaceCategory;
+  titleHe: string;
+  titleEn: string;
+  descriptionHe: string;
+  descriptionEn: string;
+  priceAmount: number;
+  priceCurrency: 'INR' | 'ILS' | 'USD' | 'FREE';
+  isRental: boolean; // e.g., Scooter monthly rental vs outright sale
+  area: GoaArea;
+  sellerName: string;
+  sellerPhone: string;
+  imageUrl?: string;
+  availableFrom?: string;
+  status: 'available' | 'reserved' | 'sold';
+  createdAt: string;
+}
+
+/**
+ * 3. Airport Taxi Pool & Israel-Goa Courier Mule ('rideshares')
+ * For sharing taxis to Dabolim (GOI) / Mopa (GOX) or bringing small items/meds from Israel
+ */
+export type RideshareType = 'airport_taxi' | 'israel_goa_mule' | 'local_carpool';
+
+export interface RideshareOffer {
+  id: string;
+  type: RideshareType;
+  direction: 'to_goa' | 'from_goa' | 'local';
+  airportCode?: 'GOI' | 'GOX'; // Dabolim or Mopa
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  fromLocation: string;
+  toLocation: string;
+  seatsOrWeightAvailable: string;
+  organizerName: string;
+  organizerPhone: string;
+  notesHe?: string;
+  notesEn?: string;
+  status: 'open' | 'full' | 'completed';
+  createdAt: string;
+}
+
+/**
+ * 4. Community Urgent Board & Infrastructure Alerts ('urgent_board')
+ * For power cuts, fiber internet outages, lost & found, and medical recommendations
+ */
+export type AlertCategory = 'power_internet' | 'medical_urgent' | 'lost_found' | 'community_notice';
+
+export interface CommunityAlert {
+  id: string;
+  category: AlertCategory;
+  severity: 'info' | 'warning' | 'urgent';
+  titleHe: string;
+  titleEn: string;
+  bodyHe: string;
+  bodyEn: string;
+  area: GoaArea | 'All';
+  reporterName: string;
+  reporterPhone?: string;
+  active: boolean;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+/**
+ * 5. Community Trust & Vouching ('endorsements')
+ * Residents vouching for trusted local drivers, nannies, therapists, and villa owners
+ */
+export interface CommunityEndorsement {
+  id: string;
+  targetId: string; // entityId or businessId
+  targetType: 'entity' | 'business';
+  authorName: string;
+  authorPhoneHash?: string;
+  commentHe?: string;
+  commentEn?: string;
+  createdAt: string;
 }

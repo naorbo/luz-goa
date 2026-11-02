@@ -35,6 +35,11 @@ import {
   createBookingReferralCode,
   dispatchLeadReferralAlerts,
 } from './utils/referralAndAlerts';
+import { syncSeoAndStructuredData } from './utils/seoAndSchema';
+import {
+  subscribeToEnvironmentFirestore,
+  saveDocumentToFirestore,
+} from './services/firestoreService';
 import {
   PROD_ENTITIES,
   PROD_BUSINESSES,
@@ -154,6 +159,11 @@ export function App() {
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('explore');
   const [selectedEntity, setSelectedEntity] = useState<LuzEntity | null>(null);
+  const [firestoreStatus, setFirestoreStatus] = useState<
+    'disconnected' | 'connecting' | 'live' | 'error'
+  >('disconnected');
+  const [firestoreProjectId, setFirestoreProjectId] = useState<string>('');
+  const [firebaseEpoch, setFirebaseEpoch] = useState<number>(0);
 
   const { env: appEnv, entities, businesses, bookings, families, referrals, userProfile } = store;
 
@@ -163,6 +173,57 @@ export function App() {
     document.documentElement.lang = lang;
     localStorage.setItem('luz_lang_v2', lang);
   }, [lang]);
+
+  // Dynamic SEO Meta Tags & Schema.org JSON-LD Structured Data
+  useEffect(() => {
+    syncSeoAndStructuredData({
+      activeTab,
+      lang,
+      entities,
+      businesses,
+      selectedEntity,
+    });
+  }, [activeTab, lang, entities, businesses, selectedEntity]);
+
+  // Real-time Cloud Firestore Subscription for active environment (/envs/{prod|test}/*)
+  useEffect(() => {
+    const unsubscribe = subscribeToEnvironmentFirestore(appEnv, {
+      onEntities: (cloudEntities) => {
+        setStore((prev) =>
+          prev.env === appEnv
+            ? { ...prev, entities: mergeWithSeedById(cloudEntities, prev.entities) }
+            : prev
+        );
+      },
+      onBusinesses: (cloudBusinesses) => {
+        setStore((prev) =>
+          prev.env === appEnv
+            ? { ...prev, businesses: mergeWithSeedById(cloudBusinesses, prev.businesses) }
+            : prev
+        );
+      },
+      onBookings: (cloudBookings) => {
+        setStore((prev) =>
+          prev.env === appEnv ? { ...prev, bookings: cloudBookings } : prev
+        );
+      },
+      onFamilies: (cloudFamilies) => {
+        setStore((prev) =>
+          prev.env === appEnv ? { ...prev, families: cloudFamilies } : prev
+        );
+      },
+      onReferrals: (cloudReferrals) => {
+        setStore((prev) =>
+          prev.env === appEnv ? { ...prev, referrals: cloudReferrals } : prev
+        );
+      },
+      onStatusChange: (status, detail) => {
+        setFirestoreStatus(status);
+        if (detail) setFirestoreProjectId(detail);
+      },
+    });
+    return () => unsubscribe();
+  }, [appEnv, firebaseEpoch]);
 
   // Persist strictly to the active environment's isolated storage namespace
   useEffect(() => {
@@ -194,6 +255,8 @@ export function App() {
       status: 'confirmed',
     };
 
+    let updatedEntityToSync: LuzEntity | null = null;
+
     setStore((prev) => ({
       ...prev,
       bookings: [record, ...prev.bookings],
@@ -220,9 +283,15 @@ export function App() {
           ];
         }
 
+        updatedEntityToSync = updated;
         return updated;
       }),
     }));
+
+    void saveDocumentToFirestore(appEnv, 'bookings', record);
+    if (updatedEntityToSync) {
+      void saveDocumentToFirestore(appEnv, 'entities', updatedEntityToSync);
+    }
   };
 
   const handleAddEntity = (newEntity: LuzEntity) => {
@@ -230,6 +299,7 @@ export function App() {
       ...prev,
       entities: [newEntity, ...prev.entities],
     }));
+    void saveDocumentToFirestore(appEnv, 'entities', newEntity);
   };
 
   const handleAddBusiness = (newBiz: CommunityBusiness) => {
@@ -237,6 +307,7 @@ export function App() {
       ...prev,
       businesses: [newBiz, ...prev.businesses],
     }));
+    void saveDocumentToFirestore(appEnv, 'businesses', newBiz);
   };
 
   const handleBookBusinessSlot = (
@@ -250,6 +321,8 @@ export function App() {
       status: 'confirmed',
     };
 
+    let updatedBizToSync: CommunityBusiness | null = null;
+
     setStore((prev) => ({
       ...prev,
       bookings: [record, ...prev.bookings],
@@ -257,15 +330,22 @@ export function App() {
         if (biz.id !== businessId) return biz;
         if (!newBk.selectedDate || !newBk.selectedSlot) return biz;
         const existing = biz.bookedSlots[newBk.selectedDate] || [];
-        return {
+        const updatedBiz = {
           ...biz,
           bookedSlots: {
             ...biz.bookedSlots,
             [newBk.selectedDate]: [...existing, newBk.selectedSlot],
           },
         };
+        updatedBizToSync = updatedBiz;
+        return updatedBiz;
       }),
     }));
+
+    void saveDocumentToFirestore(appEnv, 'bookings', record);
+    if (updatedBizToSync) {
+      void saveDocumentToFirestore(appEnv, 'businesses', updatedBizToSync);
+    }
   };
 
   const handleUpdateNotificationConfig = (next: NotificationChannelsConfig) => {
@@ -309,6 +389,7 @@ export function App() {
       referrals: [fullEvent, ...prev.referrals],
     }));
 
+    void saveDocumentToFirestore(appEnv, 'referrals', fullEvent);
     void dispatchLeadReferralAlerts(fullEvent, notificationConfig);
   };
 
@@ -322,6 +403,8 @@ export function App() {
       ...prev,
       families: [newFam, ...prev.families],
     }));
+
+    void saveDocumentToFirestore(appEnv, 'families', newFam);
 
     const refCode = createBookingReferralCode();
     handleTrackReferral({
@@ -351,17 +434,23 @@ export function App() {
   };
 
   const handleToggleProviderSync = (entityId: string) => {
+    let toggledEntity: LuzEntity | null = null;
     setStore((prev) => ({
       ...prev,
       entities: prev.entities.map((ent) => {
         if (ent.id !== entityId) return ent;
-        return {
+        const next: LuzEntity = {
           ...ent,
           calendarSyncStatus:
             ent.calendarSyncStatus === 'connected' ? 'manual' : 'connected',
         };
+        toggledEntity = next;
+        return next;
       }),
     }));
+    if (toggledEntity) {
+      void saveDocumentToFirestore(appEnv, 'entities', toggledEntity);
+    }
   };
 
   const handleResetEnvironment = () => {
@@ -673,6 +762,9 @@ export function App() {
             notificationConfig={notificationConfig}
             lang={lang}
             appEnv={appEnv}
+            firestoreStatus={firestoreStatus}
+            firestoreProjectId={firestoreProjectId}
+            onFirebaseConfigChanged={() => setFirebaseEpoch((n) => n + 1)}
             onToggleProviderSync={handleToggleProviderSync}
             onUpdateNotificationConfig={handleUpdateNotificationConfig}
           />

@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+
+# Allow WhatsApp, Telegram, Facebook & Twitter preview crawlers
+User-agent: WhatsApp
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+Sitemap: https://naorbo.github.io/luz-goa/sitemap.xml

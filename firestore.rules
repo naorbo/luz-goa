@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidEnv(env) {
+      return env == 'prod' || env == 'test';
+    }
+
+    function hasRequiredString(field, minLen, maxLen) {
+      return field is string && field.size() >= minLen && field.size() <= maxLen;
+    }
+
+    // Environment-isolated collections: /envs/{env}/{collection}/{docId}
+    match /envs/{env} {
+      allow read: if isValidEnv(env);
+
+      // 1. Entities (Events, Workshops, Hourly Services, Property Rentals)
+      match /entities/{entityId} {
+        allow read: if isValidEnv(env);
+        allow create, update: if isValidEnv(env)
+          && hasRequiredString(request.resource.data.titleEn, 1, 200);
+        allow delete: if request.auth != null;
+      }
+
+      // 2. Community Business Directory
+      match /businesses/{businessId} {
+        allow read: if isValidEnv(env);
+        allow create, update: if isValidEnv(env)
+          && hasRequiredString(request.resource.data.businessNameEn, 1, 200);
+        allow delete: if request.auth != null;
+      }
+
+      // 3. Bookings & RSVPs
+      match /bookings/{bookingId} {
+        allow read: if isValidEnv(env);
+        allow create: if isValidEnv(env)
+          && hasRequiredString(request.resource.data.customerName, 1, 120);
+        allow update, delete: if request.auth != null;
+      }
+
+      // 4. Youth Center Families Registration
+      match /families/{familyId} {
+        allow read: if isValidEnv(env);
+        allow create: if isValidEnv(env)
+          && hasRequiredString(request.resource.data.parentName, 1, 120);
+        allow update, delete: if request.auth != null;
+      }
+
+      // 5. Provider Lead Attribution & Referrals (#LUZ-XXXX)
+      match /referrals/{referralId} {
+        allow read: if isValidEnv(env);
+        allow create: if isValidEnv(env)
+          && hasRequiredString(request.resource.data.referralCode, 3, 40);
+        allow update, delete: if request.auth != null;
+      }
+
+      // 6. WhatsApp Scraper & AI Moderation Queue
+      match /moderation_queue/{draftId} {
+        allow read: if isValidEnv(env);
+        allow create, update: if isValidEnv(env);
+        allow delete: if isValidEnv(env);
+      }
+
+      // 7. Future Entities: Marketplace (Scooters, Baby Gear, Tech)
+      match /marketplace/{itemId} {
+        allow read: if isValidEnv(env);
+        allow create, update: if isValidEnv(env);
+        allow delete: if request.auth != null;
+      }
+
+      // 8. Future Entities: Airport Taxi Rideshares & Israel-Goa Courier Mule
+      match /rideshares/{rideId} {
+        allow read: if isValidEnv(env);
+        allow create, update: if isValidEnv(env);
+        allow delete: if request.auth != null;
+      }
+
+      // 9. Future Entities: Urgent Community Board (Power, Fiber, Medical, Lost & Found)
+      match /urgent_board/{alertId} {
+        allow read: if isValidEnv(env);
+        allow create, update: if isValidEnv(env);
+        allow delete: if request.auth != null;
+      }
+
+      // 10. Community Endorsements & Vouching
+      match /endorsements/{endorsementId} {
+        allow read: if isValidEnv(env);
+        allow create: if isValidEnv(env);
+        allow update, delete: if request.auth != null;
+      }
+    }
+  }
+}
