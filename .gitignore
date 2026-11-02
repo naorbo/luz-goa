@@ -3,4 +3,22 @@ node_modules/
 *.local
 .env
 .env.*
+!.env.example
 .impeccable/
+
+# Security & Secrets — NEVER commit private keys, service accounts, or auth sessions
+*service-account*.json
+*firebase-adminsdk*.json
+*credentials*.json
+*secret*.json
+*.pem
+*.key
+*.p12
+.secrets/
+secrets/
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+services/whatsapp-scraper/auth_info_baileys/
+services/whatsapp-scraper/data/

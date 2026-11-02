@@ -36,6 +36,7 @@ import {
   dispatchLeadReferralAlerts,
 } from './utils/referralAndAlerts';
 import { syncSeoAndStructuredData } from './utils/seoAndSchema';
+import { autoDiscoverFirebaseHostingConfig } from './config/firebase';
 import {
   subscribeToEnvironmentFirestore,
   saveDocumentToFirestore,
@@ -184,6 +185,15 @@ export function App() {
       selectedEntity,
     });
   }, [activeTab, lang, entities, businesses, selectedEntity]);
+
+  // Zero-Secret Auto-Discovery when hosted on Firebase Hosting (/__/firebase/init.json)
+  useEffect(() => {
+    void autoDiscoverFirebaseHostingConfig().then((discovered) => {
+      if (discovered) {
+        setFirebaseEpoch((n) => n + 1);
+      }
+    });
+  }, []);
 
   // Real-time Cloud Firestore Subscription for active environment (/envs/{prod|test}/*)
   useEffect(() => {

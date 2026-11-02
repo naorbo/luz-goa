@@ -19,18 +19,6 @@ export interface LuzFirebaseWebConfig {
 
 const RUNTIME_FIREBASE_CONFIG_KEY = 'luz_firebase_config_v1';
 
-const viteEnv = (import.meta as any).env || {};
-
-const ENV_FIREBASE_CONFIG: LuzFirebaseWebConfig = {
-  apiKey: viteEnv.VITE_FIREBASE_API_KEY || '',
-  authDomain: viteEnv.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: viteEnv.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: viteEnv.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: viteEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: viteEnv.VITE_FIREBASE_APP_ID || '',
-  measurementId: viteEnv.VITE_FIREBASE_MEASUREMENT_ID || '',
-};
-
 /**
  * Parses either a raw JSON object or a pasted Firebase Console JS snippet (`const firebaseConfig = { ... };`)
  */
@@ -81,10 +69,6 @@ export function loadActiveFirebaseConfig(): LuzFirebaseWebConfig | null {
     // Ignore storage parse error
   }
 
-  if (ENV_FIREBASE_CONFIG.apiKey && ENV_FIREBASE_CONFIG.projectId) {
-    return ENV_FIREBASE_CONFIG;
-  }
-
   return null;
 }
 
@@ -94,6 +78,30 @@ export function saveRuntimeFirebaseConfig(config: LuzFirebaseWebConfig | null): 
     return;
   }
   localStorage.setItem(RUNTIME_FIREBASE_CONFIG_KEY, JSON.stringify(config));
+}
+
+/**
+ * Zero-Secret Auto-Discovery when hosted on Firebase Hosting (`/__/firebase/init.json`).
+ * Avoids embedding any keys in source code or Git bundles.
+ */
+export async function autoDiscoverFirebaseHostingConfig(): Promise<LuzFirebaseWebConfig | null> {
+  const existing = loadActiveFirebaseConfig();
+  if (existing) return existing;
+
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const res = await fetch('/__/firebase/init.json', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = (await res.json()) as LuzFirebaseWebConfig;
+    if (data && data.apiKey && data.projectId) {
+      saveRuntimeFirebaseConfig(data);
+      return data;
+    }
+  } catch {
+    // Not running on Firebase Hosting or offline
+  }
+  return null;
 }
 
 let cachedApp: FirebaseApp | null = null;
