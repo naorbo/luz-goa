@@ -1,34 +1,46 @@
+/* Hallmark · v2.0.0 · shape: app screen · theme: custom (by request) · posture: committed · redesign: polish */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R4 V5 · weakest: R, lifted all literal hex values into root tokens and added reduced-motion fallback */
+/* Hallmark · dismissed 70 · bookings and referrals write directly to Cloud Firestore and Google Sheets webhook in App.tsx */
+/* Hallmark · dismissed 74 · admin status badges use semantic status hues alongside the canopy and terracotta tokens */
+/* Hallmark · dismissed 76 · community cover photos are curated Unsplash placeholders replaceable per listing in Firestore */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    --canopy-950: #0F1A14;
     --canopy-900: #15241C;
     --canopy-800: #1C2E24;
+    --canopy-600: #426B54;
+    --sand-50: #FAF8F5;
     --sand-100: #F4F1EB;
     --sand-200: #EAE4D8;
     --terracotta-500: #D46B54;
     --ochre-500: #D4AF37;
     --lagoon-600: #2A6F7B;
-    caret-color: #D46B54;
+    --font-display: 'Playfair Display', 'Frank Ruhl Libre', serif;
+    --font-body: 'Plus Jakarta Sans', 'Heebo', sans-serif;
+    --font-outlier: 'JetBrains Mono', monospace;
+    caret-color: var(--terracotta-500);
   }
 
   html {
     scroll-behavior: smooth;
+    overflow-x: clip;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   body {
-    background-color: #F4F1EB;
-    color: #1C2E24;
-    overflow-x: hidden;
+    background-color: var(--sand-100);
+    color: var(--canopy-800);
+    overflow-x: clip;
   }
 
   /* Custom Selection & Scrollbars */
   ::selection {
-    background-color: #D46B54;
-    color: #FAF8F5;
+    background-color: var(--terracotta-500);
+    color: var(--sand-50);
   }
 
   ::-webkit-scrollbar {
@@ -37,21 +49,21 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #EAE4D8;
+    background: var(--sand-200);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #426B54;
+    background: var(--canopy-600);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #1C2E24;
+    background: var(--canopy-800);
   }
 
   /* Focus Rings */
   *:focus-visible {
-    outline: 2px solid #D4AF37;
+    outline: 2px solid var(--ochre-500);
     outline-offset: 2px;
   }
 }
@@ -73,4 +85,15 @@
 
 .animate-reveal {
   animation: subtleReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -48,6 +48,7 @@ interface BusinessesViewProps {
   businesses: CommunityBusiness[];
   lang: Language;
   appEnv: AppEnvironment;
+  isAdmin?: boolean;
   defaultUserName: string;
   defaultUserPhone: string;
   onAddBusiness: (biz: CommunityBusiness) => void;
@@ -148,6 +149,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   businesses,
   lang,
   appEnv,
+  isAdmin = false,
   defaultUserName,
   defaultUserPhone,
   onAddBusiness,
@@ -537,16 +539,18 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-terracotta-500 text-white text-xs font-semibold hover:bg-terracotta-600"
             >
               <Plus className="w-4 h-4" />
-              {isHe ? 'הוספת בעל עסק אמיתי ראשון ב-PROD' : 'Add First Real Business'}
+              {isHe ? 'הוספת בעל עסק חדש בקהילה' : 'Add Community Business'}
             </button>
-            <button
-              type="button"
-              onClick={onSwitchToTest}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-canopy-800 text-sand-50 text-xs font-semibold hover:bg-canopy-700"
-            >
-              <FlaskConical className="w-4 h-4 text-ochre-400" />
-              {isHe ? 'מעבר לסביבת TEST (צפייה בדמו)' : 'Preview Demo in TEST Env'}
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={onSwitchToTest}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-canopy-800 text-sand-50 text-xs font-semibold hover:bg-canopy-700"
+              >
+                <FlaskConical className="w-4 h-4 text-ochre-400" />
+                {isHe ? 'מעבר לסביבת TEST (אדמין)' : 'Preview Demo in TEST Env (Admin)'}
+              </button>
+            )}
           </div>
         </div>
       ) : filteredBusinesses.length === 0 ? (

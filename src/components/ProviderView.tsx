@@ -371,7 +371,7 @@ export const ProviderView: React.FC<ProviderViewProps> = ({ lang, onAddEntity })
                   key={item.id}
                   type="button"
                   onClick={() => setType(item.id as EntityType)}
-                  className={`p-3 rounded-xl border text-start transition-all ${
+                  className={`p-3 rounded-xl border text-start transition-colors ${
                     active
                       ? 'bg-canopy-800 text-sand-50 border-canopy-800 shadow-sm'
                       : 'bg-white text-canopy-800 border-sand-300 hover:border-canopy-600'

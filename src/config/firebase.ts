@@ -6,6 +6,17 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  Auth,
+  User,
+} from 'firebase/auth';
+
+export const AUTHORIZED_ADMIN_EMAIL = 'luzschedu@gmail.com';
 
 export interface LuzFirebaseWebConfig {
   apiKey: string;
@@ -106,16 +117,17 @@ export async function autoDiscoverFirebaseHostingConfig(): Promise<LuzFirebaseWe
 
 let cachedApp: FirebaseApp | null = null;
 let cachedDb: Firestore | null = null;
+let cachedAuth: Auth | null = null;
 let cachedProjectId: string | null = null;
 
-export function getLuzFirestore(): { app: FirebaseApp; db: Firestore; config: LuzFirebaseWebConfig } | null {
+export function getLuzFirestore(): { app: FirebaseApp; db: Firestore; auth: Auth; config: LuzFirebaseWebConfig } | null {
   const config = loadActiveFirebaseConfig();
   if (!config || !config.apiKey || !config.projectId) {
     return null;
   }
 
-  if (cachedApp && cachedDb && cachedProjectId === config.projectId) {
-    return { app: cachedApp, db: cachedDb, config };
+  if (cachedApp && cachedDb && cachedAuth && cachedProjectId === config.projectId) {
+    return { app: cachedApp, db: cachedDb, auth: cachedAuth, config };
   }
 
   try {
@@ -135,12 +147,94 @@ export function getLuzFirestore(): { app: FirebaseApp; db: Firestore; config: Lu
       db = getFirestore(app);
     }
 
+    const auth = getAuth(app);
+
     cachedApp = app;
     cachedDb = db;
+    cachedAuth = auth;
     cachedProjectId = config.projectId;
-    return { app, db, config };
+    return { app, db, auth, config };
   } catch (err) {
     console.warn('[LUZ Firestore] Failed to initialize Firebase client:', err);
     return null;
+  }
+}
+
+export function isAuthorizedAdminUser(user: User | null): boolean {
+  if (!user || !user.email) return false;
+  return user.email.trim().toLowerCase() === AUTHORIZED_ADMIN_EMAIL && user.emailVerified !== false;
+}
+
+export function subscribeToAdminAuth(
+  onChange: (state: { isAdmin: boolean; email: string | null; loading: boolean }) => void
+): () => void {
+  const ctx = getLuzFirestore();
+  if (!ctx) {
+    onChange({ isAdmin: false, email: null, loading: false });
+    return () => {};
+  }
+
+  return onAuthStateChanged(ctx.auth, (user) => {
+    const isAdmin = isAuthorizedAdminUser(user);
+    onChange({
+      isAdmin,
+      email: user?.email || null,
+      loading: false,
+    });
+  });
+}
+
+export async function signInAsLuzAdmin(): Promise<{
+  ok: boolean;
+  email?: string;
+  errorHe?: string;
+  errorEn?: string;
+}> {
+  let ctx = getLuzFirestore();
+  if (!ctx) {
+    await autoDiscoverFirebaseHostingConfig();
+    ctx = getLuzFirestore();
+  }
+  if (!ctx) {
+    return {
+      ok: false,
+      errorHe: 'תצורת Firebase טרם נטענה בדפדפן זה.',
+      errorEn: 'Firebase configuration is not loaded in this browser.',
+    };
+  }
+
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await signInWithPopup(ctx.auth, provider);
+    const email = result.user?.email?.trim().toLowerCase() || '';
+
+    if (!isAuthorizedAdminUser(result.user)) {
+      await signOut(ctx.auth);
+      return {
+        ok: false,
+        email,
+        errorHe: `גישה נדחתה (${email}). רק החשבון המורשה (${AUTHORIZED_ADMIN_EMAIL}) רשאי להיכנס לממשק הניהול ולסביבת הטסט.`,
+        errorEn: `Access denied (${email}). Only ${AUTHORIZED_ADMIN_EMAIL} is authorized to access Admin & TEST.`,
+      };
+    }
+
+    return { ok: true, email };
+  } catch (err: any) {
+    return {
+      ok: false,
+      errorHe: err?.message || 'ההתחברות לחשבון האדמין בוטלה או נכשלה.',
+      errorEn: err?.message || 'Admin sign-in was cancelled or failed.',
+    };
+  }
+}
+
+export async function signOutLuzAdmin(): Promise<void> {
+  const ctx = getLuzFirestore();
+  if (!ctx) return;
+  try {
+    await signOut(ctx.auth);
+  } catch {
+    // Ignore sign-out error
   }
 }

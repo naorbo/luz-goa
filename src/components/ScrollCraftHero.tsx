@@ -203,7 +203,7 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
       ref={heroRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative rounded-3xl overflow-hidden bg-canopy-950 text-sand-50 shadow-elevated border border-canopy-800/80 mb-8 transition-all"
+      className="relative rounded-3xl overflow-hidden bg-canopy-950 text-sand-50 shadow-elevated border border-canopy-800/80 mb-8 transition-colors"
     >
       {/* ============================================================
           DIMENSIONAL LAYER 1: Far Plane (Sky, Twilight Sun Glow)
@@ -216,16 +216,14 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
           transition: 'transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1)',
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-[#102318] via-[#1B3224] to-[#121E17]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-canopy-950 via-canopy-900 to-canopy-950" />
         {/* Soft Golden Sunset Radial Light */}
         <div
-          className="absolute top-0 end-1/4 w-[480px] h-[480px] rounded-full bg-gradient-to-br from-ochre-400/25 via-terracotta-500/15 to-transparent blur-3xl opacity-80"
+          className="absolute top-0 end-1/4 w-[480px] h-[480px] rounded-full bg-gradient-to-br from-ochre-400/20 via-terracotta-500/10 to-transparent opacity-80"
           style={{
             transform: `translate3d(${tiltX * -1.5}px, ${tiltY * -1.5}px, 0)`,
           }}
         />
-        {/* Subtle Constellation / Star Dust Texture */}
-        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#FAF8F5_1px,transparent_1px)] [background-size:24px_24px]" />
       </div>
 
       {/* ============================================================
@@ -240,6 +238,7 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
       >
         {/* Soft wave and hill curves */}
         <svg
+          aria-hidden="true"
           className="absolute bottom-0 inset-x-0 w-full h-44 text-canopy-900"
           viewBox="0 0 1440 220"
           fill="none"
@@ -252,7 +251,7 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
           />
           <path
             d="M0,160 C320,110 640,200 960,130 C1200,80 1360,150 1440,140 L1440,220 L0,220 Z"
-            fill="#0F1A14"
+            fill="currentColor"
           />
         </svg>
       </div>
@@ -267,7 +266,7 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
           transform: `translate3d(${tiltX * -2}px, ${foreParallax + tiltY * -2}px, 0)`,
         }}
       >
-        <svg viewBox="0 0 100 100" className="w-full h-full text-ochre-400 fill-current">
+        <svg aria-hidden="true" viewBox="0 0 100 100" className="w-full h-full text-ochre-400 fill-current">
           {/* Stylized tropical palm frond leaves */}
           <path d="M10,0 C30,25 35,65 10,95 C45,70 50,30 25,0 Z" />
           <path d="M25,0 C50,20 60,60 40,85 C65,55 60,20 35,0 Z" opacity="0.6" />
@@ -280,17 +279,17 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
       <div className="relative z-10 px-6 py-10 md:px-12 md:py-16 flex flex-col justify-between min-h-[480px]">
         {/* Top Eyebrow Banner */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-canopy-800/90 border border-ochre-400/40 text-xs text-ochre-300 font-medium tracking-wide">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-canopy-800/90 border border-ochre-400/40 text-xs text-ochre-300 font-medium">
             <Sparkles className="w-3.5 h-3.5 text-ochre-400 animate-pulse" />
             <span>
               {isHe
-                ? 'פלטפורמת הקהילה של דרום גואה • קולום, פטנם ופאלולם'
-                : 'South Goa Community Operating System • Colomb, Patnem & Palolem'}
+                ? 'פלטפורמת הקהילה של דרום גואה: קולום, פטנם ופאלולם'
+                : 'South Goa Community Operating System: Colomb, Patnem & Palolem'}
             </span>
           </div>
 
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sand-200/10 border border-sand-200/20 text-[11px] text-sand-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+            <span className="w-2 h-2 rounded-full bg-ochre-400 inline-block" />
             <span>{isHe ? 'סביבת בדיקות (Scroll-Craft הדגמה)' : 'TEST Sandbox (Scroll-Craft Motion)'}</span>
           </div>
         </div>
@@ -301,14 +300,14 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
             {isHe ? (
               <>
                 איפה שקצב הקהילה פוגש את חופי{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-ochre-400 via-ochre-300 to-terracotta-400">
+                <span className="text-ochre-400">
                   דרום גואה.
                 </span>
               </>
             ) : (
               <>
                 Where community rhythms meet{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-ochre-400 via-ochre-300 to-terracotta-400">
+                <span className="text-ochre-400">
                   South Goa shores.
                 </span>
               </>
@@ -317,8 +316,8 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
 
           <p className="text-sm md:text-base lg:text-lg text-sand-200/90 max-w-2xl leading-relaxed font-sans font-normal">
             {isHe
-              ? 'אירועים חד-פעמיים, מפגשי מתנ"ס קבועים, מטפלים ובעלי עסקים אמינים, ובתים להשכרה — מרוכז, מסונכרן ומאומת ע״י התושבים.'
-              : 'One-time events, weekly youth center sessions, verified therapists, and homes with fiber wifi — curated and coordinated in one community OS.'}
+              ? 'אירועים חד-פעמיים, מפגשי מתנ"ס קבועים, מטפלים ובעלי עסקים אמינים, ובתים להשכרה: מרוכז, מסונכרן ומאומת ע״י התושבים.'
+              : 'One-time events, weekly youth center sessions, verified therapists, and homes with fiber wifi, curated and coordinated in one community OS.'}
           </p>
 
           {/* Quick Action Buttons */}
@@ -326,7 +325,7 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
             <button
               type="button"
               onClick={onScrollToCatalog}
-              className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 text-white text-xs md:text-sm font-bold shadow-elevated hover:from-terracotta-600 hover:to-terracotta-700 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 text-white text-xs md:text-sm font-bold shadow-elevated hover:from-terracotta-600 hover:to-terracotta-700 transition-transform hover:scale-[1.02] active:scale-[0.98]"
             >
               <Compass className="w-4 h-4" />
               <span>{isHe ? 'ללוח השבועי והקטלוג' : 'Explore Weekly Timetable'}</span>
@@ -379,7 +378,7 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
           </div>
 
           <div className="space-y-1">
-            <div className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-emerald-400 tabular-nums">
+            <div className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-ochre-300 tabular-nums">
               {displayCounts.community}%
             </div>
             <div className="text-xs text-sand-300 font-medium">
@@ -393,7 +392,7 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
             ============================================================ */}
         <div className="mt-8 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-sand-300/80">
+            <span className="text-xs font-bold text-sand-300/80">
               {isHe ? 'בחר קטגוריה לקפיצה ישירה ביומן:' : 'Jump straight into a category:'}
             </span>
           </div>
@@ -409,11 +408,11 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
                     onSelectCategory(cat.type);
                     onScrollToCatalog();
                   }}
-                  className={`group relative p-4 rounded-2xl bg-gradient-to-b ${cat.gradient} bg-canopy-900/60 border border-canopy-700/60 ${cat.border} text-start transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated flex flex-col justify-between`}
+                  className={`group relative p-4 rounded-2xl bg-gradient-to-b ${cat.gradient} bg-canopy-900/60 border border-canopy-700/60 ${cat.border} text-start transition-colors duration-300 flex flex-col justify-between`}
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 rounded-xl bg-canopy-800 text-ochre-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <div className="w-8 h-8 rounded-xl bg-canopy-800 text-ochre-400 flex items-center justify-center">
                         <Icon className="w-4 h-4" />
                       </div>
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${cat.tagColor}`}>

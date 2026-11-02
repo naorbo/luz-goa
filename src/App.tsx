@@ -10,6 +10,8 @@ import {
   Globe,
   MapPin,
   RotateCcw,
+  Lock,
+  LogOut,
 } from 'lucide-react';
 import {
   LuzEntity,
@@ -26,6 +28,7 @@ import {
   detectInitialEnvironment,
   getStorageKeys,
   updateUrlForEnvironment,
+  isAdminUnlockRequestedInUrl,
 } from './config/environment';
 import {
   loadNotificationConfig,
@@ -36,7 +39,13 @@ import {
   dispatchLeadReferralAlerts,
 } from './utils/referralAndAlerts';
 import { syncSeoAndStructuredData } from './utils/seoAndSchema';
-import { autoDiscoverFirebaseHostingConfig } from './config/firebase';
+import {
+  autoDiscoverFirebaseHostingConfig,
+  subscribeToAdminAuth,
+  signInAsLuzAdmin,
+  signOutLuzAdmin,
+  AUTHORIZED_ADMIN_EMAIL,
+} from './config/firebase';
 import {
   enforceRateLimit,
   sanitizeInputText,
@@ -171,6 +180,15 @@ export function App() {
   const [firestoreProjectId, setFirestoreProjectId] = useState<string>('');
   const [firebaseEpoch, setFirebaseEpoch] = useState<number>(0);
 
+  // Strict Admin Authentication State (only luzschedu@gmail.com unlocks Admin & TEST)
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(() =>
+    isAdminUnlockRequestedInUrl()
+  );
+  const [adminAuthError, setAdminAuthError] = useState<string>('');
+  const [adminSigningIn, setAdminSigningIn] = useState<boolean>(false);
+
   const { env: appEnv, entities, businesses, bookings, families, referrals, userProfile } = store;
 
   // Sync RTL/LTR direction & language preference (English LTR is default across PROD, TEST & Dev)
@@ -200,36 +218,50 @@ export function App() {
     });
   }, []);
 
+  // Subscribe to Firebase Auth & strictly lock non-admins to PROD and non-Admin tabs
+  useEffect(() => {
+    const unsubscribeAuth = subscribeToAdminAuth((authState) => {
+      setIsAdminAuthenticated(authState.isAdmin);
+      setAdminEmail(authState.email);
+      if (!authState.isAdmin) {
+        setActiveTab((prev) => (prev === 'admin' ? 'explore' : prev));
+        setStore((prev) => (prev.env === 'test' ? loadStoreForEnvironment('prod') : prev));
+      }
+    });
+    return () => unsubscribeAuth();
+  }, [firebaseEpoch]);
+
   // Real-time Cloud Firestore Subscription for active environment (/envs/{prod|test}/*)
   useEffect(() => {
-    const unsubscribe = subscribeToEnvironmentFirestore(appEnv, {
+    const safeEnv: AppEnvironment = isAdminAuthenticated ? appEnv : 'prod';
+    const unsubscribe = subscribeToEnvironmentFirestore(safeEnv, {
       onEntities: (cloudEntities) => {
         setStore((prev) =>
-          prev.env === appEnv
+          prev.env === safeEnv
             ? { ...prev, entities: mergeWithSeedById(cloudEntities, prev.entities) }
             : prev
         );
       },
       onBusinesses: (cloudBusinesses) => {
         setStore((prev) =>
-          prev.env === appEnv
+          prev.env === safeEnv
             ? { ...prev, businesses: mergeWithSeedById(cloudBusinesses, prev.businesses) }
             : prev
         );
       },
       onBookings: (cloudBookings) => {
         setStore((prev) =>
-          prev.env === appEnv ? { ...prev, bookings: cloudBookings } : prev
+          prev.env === safeEnv ? { ...prev, bookings: cloudBookings } : prev
         );
       },
       onFamilies: (cloudFamilies) => {
         setStore((prev) =>
-          prev.env === appEnv ? { ...prev, families: cloudFamilies } : prev
+          prev.env === safeEnv ? { ...prev, families: cloudFamilies } : prev
         );
       },
       onReferrals: (cloudReferrals) => {
         setStore((prev) =>
-          prev.env === appEnv ? { ...prev, referrals: cloudReferrals } : prev
+          prev.env === safeEnv ? { ...prev, referrals: cloudReferrals } : prev
         );
       },
       onStatusChange: (status, detail) => {
@@ -238,7 +270,7 @@ export function App() {
       },
     });
     return () => unsubscribe();
-  }, [appEnv, firebaseEpoch]);
+  }, [appEnv, firebaseEpoch, isAdminAuthenticated]);
 
   // Persist strictly to the active environment's isolated storage namespace
   useEffect(() => {
@@ -254,10 +286,37 @@ export function App() {
   const isHe = lang === 'he';
 
   const handleSwitchEnvironment = (nextEnv: AppEnvironment) => {
+    if (nextEnv === 'test' && !isAdminAuthenticated) return;
     if (nextEnv === appEnv) return;
     setSelectedEntity(null);
     updateUrlForEnvironment(nextEnv);
     setStore(loadStoreForEnvironment(nextEnv));
+  };
+
+  const handleAdminSignIn = async () => {
+    setAdminAuthError('');
+    setAdminSigningIn(true);
+    const res = await signInAsLuzAdmin();
+    setAdminSigningIn(false);
+    if (res.ok) {
+      setIsAdminAuthenticated(true);
+      setAdminEmail(res.email || AUTHORIZED_ADMIN_EMAIL);
+      setShowAdminLoginModal(false);
+      setActiveTab('admin');
+    } else {
+      setAdminAuthError((isHe ? res.errorHe : res.errorEn) || 'Sign-in failed');
+    }
+  };
+
+  const handleAdminSignOut = async () => {
+    await signOutLuzAdmin();
+    setIsAdminAuthenticated(false);
+    setAdminEmail(null);
+    if (activeTab === 'admin') setActiveTab('explore');
+    if (appEnv === 'test') {
+      updateUrlForEnvironment('prod');
+      setStore(loadStoreForEnvironment('prod'));
+    }
   };
 
   const handleConfirmBooking = (
@@ -622,13 +681,17 @@ export function App() {
       labelEn: 'Provider Studio',
       icon: PlusCircle,
     },
-    {
-      id: 'admin',
-      labelHe: 'אדמין ולידים',
-      labelEn: 'Admin & Leads',
-      icon: ShieldCheck,
-      badge: Math.max(referrals.length, bookings.length),
-    },
+    ...(isAdminAuthenticated
+      ? [
+          {
+            id: 'admin' as ActiveTab,
+            labelHe: 'אדמין ולידים',
+            labelEn: 'Admin & Leads',
+            icon: ShieldCheck,
+            badge: Math.max(referrals.length, bookings.length),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -657,70 +720,95 @@ export function App() {
                   </div>
                   <p className="text-xs text-sand-300 hidden lg:block truncate">
                     {isHe
-                      ? 'קולום • פטנם • פאלולם — אירועים, בעלי עסקים בקהילה, מתנ"ס והשכרת בתים'
-                      : 'Colomb • Patnem • Palolem — Events, Community Businesses, Youth Center & Homes'}
+                      ? 'קולום, פטנם, פאלולם: אירועים, בעלי עסקים בקהילה, מתנ"ס והשכרת בתים'
+                      : 'Colomb, Patnem, Palolem: Events, Community Businesses, Youth Center & Homes'}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Right Controls: Environment Switcher (PROD / TEST), Reset, Language */}
+            {/* Right Controls: Language for all users; PROD/TEST & Reset strictly for Verified Admin */}
             <div className="flex items-center gap-2">
               <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-canopy-800 text-xs text-sand-200 border border-canopy-700">
                 <MapPin className="w-3.5 h-3.5 text-terracotta-400" />
                 <span>South Goa</span>
               </div>
 
-              {/* Dual Environment Switcher: PROD vs TEST */}
-              <div
-                className="inline-flex items-center rounded-xl bg-canopy-950 p-1 border border-canopy-700"
-                role="group"
-                aria-label="Environment Switcher"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSwitchEnvironment('prod')}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
-                    appEnv === 'prod'
-                      ? 'bg-canopy-700 text-green-300'
-                      : 'text-sand-300 hover:text-white'
-                  }`}
-                  title={isHe ? 'סביבת פרודקשן — מידע אמיתי בלבד' : 'PROD — Verified Real Data Only'}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>PROD</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchEnvironment('test')}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
-                    appEnv === 'test'
-                      ? 'bg-ochre-500 text-canopy-950'
-                      : 'text-sand-300 hover:text-white'
-                  }`}
-                  title={isHe ? 'סביבת טסט — נתוני דמו להדגמות ובדיקות' : 'TEST — Demo & Sandbox Data'}
-                >
-                  <FlaskConical className="w-3.5 h-3.5" />
-                  <span>TEST</span>
-                </button>
-              </div>
+              {isAdminAuthenticated && (
+                <>
+                  {/* Dual Environment Switcher: PROD vs TEST (Admin Only) */}
+                  <div
+                    className="inline-flex items-center rounded-xl bg-canopy-950 p-1 border border-canopy-700"
+                    role="group"
+                    aria-label="Environment Switcher"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchEnvironment('prod')}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                        appEnv === 'prod'
+                          ? 'bg-canopy-700 text-ochre-300'
+                          : 'text-sand-300 hover:text-white'
+                      }`}
+                      title={
+                        isHe
+                          ? 'סביבת פרודקשן: מידע אמיתי בלבד'
+                          : 'PROD: Verified Real Data Only'
+                      }
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>PROD</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchEnvironment('test')}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                        appEnv === 'test'
+                          ? 'bg-ochre-500 text-canopy-950'
+                          : 'text-sand-300 hover:text-white'
+                      }`}
+                      title={
+                        isHe
+                          ? 'סביבת טסט: נתוני דמו להדגמות ובדיקות'
+                          : 'TEST: Demo & Sandbox Data'
+                      }
+                    >
+                      <FlaskConical className="w-3.5 h-3.5" />
+                      <span>TEST</span>
+                    </button>
+                  </div>
 
-              <button
-                type="button"
-                onClick={handleResetEnvironment}
-                title={
-                  appEnv === 'test'
-                    ? isHe
-                      ? 'איפוס נתוני ההדגמה ב-TEST'
-                      : 'Reset TEST Demo Data'
-                    : isHe
-                    ? 'איפוס אחסון מקומי לנתוני PROD המאומתים'
-                    : 'Reset local storage to verified PROD data'
-                }
-                className="p-2 rounded-xl bg-canopy-800 hover:bg-canopy-700 text-sand-200 border border-canopy-700 transition-colors"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
+                  <button
+                    type="button"
+                    onClick={handleResetEnvironment}
+                    title={
+                      appEnv === 'test'
+                        ? isHe
+                          ? 'איפוס נתוני ההדגמה ב-TEST'
+                          : 'Reset TEST Demo Data'
+                        : isHe
+                        ? 'איפוס אחסון מקומי לנתוני PROD המאומתים'
+                        : 'Reset local storage to verified PROD data'
+                    }
+                    className="p-2 rounded-xl bg-canopy-800 hover:bg-canopy-700 text-sand-200 border border-canopy-700 transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAdminSignOut}
+                    title={
+                      isHe
+                        ? `התנתקות ממצב אדמין (${adminEmail || AUTHORIZED_ADMIN_EMAIL})`
+                        : `Sign out Admin (${adminEmail || AUTHORIZED_ADMIN_EMAIL})`
+                    }
+                    className="p-2 rounded-xl bg-canopy-800 hover:bg-terracotta-600 text-sand-200 border border-canopy-700 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </>
+              )}
 
               <button
                 type="button"
@@ -769,16 +857,16 @@ export function App() {
         </div>
       </header>
 
-      {/* Unmistakable Sandbox Banner when viewing TEST environment */}
-      {appEnv === 'test' && (
+      {/* Unmistakable Sandbox Banner when viewing TEST environment (Admin Only) */}
+      {isAdminAuthenticated && appEnv === 'test' && (
         <div className="bg-ochre-100 border-b border-ochre-500/40 text-canopy-950">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2 font-medium">
               <FlaskConical className="w-4 h-4 text-ochre-600 shrink-0" />
               <span>
                 {isHe
-                  ? 'סביבת TEST (הדגמה ובדיקות): הנתונים המוצגים כאן הם דוגמאות להמחשה בלבד. סביבת PROD מופרדת לחלוטין ומכילה רק מידע אמיתי.'
-                  : 'TEST Environment (Sandbox): Displaying illustrative demo data only. PROD is strictly isolated for verified real data.'}
+                  ? 'סביבת TEST (הדגמה ובדיקות למנהל בלבד): הנתונים המוצגים כאן הם דוגמאות להמחשה בלבד. סביבת PROD מופרדת לחלוטין למשתמשים.'
+                  : 'TEST Environment (Admin Sandbox): Displaying illustrative demo data only. Public users see strictly PROD.'}
               </span>
             </div>
             <button
@@ -786,7 +874,7 @@ export function App() {
               onClick={() => handleSwitchEnvironment('prod')}
               className="font-bold underline hover:text-terracotta-600 shrink-0"
             >
-              {isHe ? 'מעבר לסביבת PROD (אמת) ←' : 'Switch to PROD (Live) →'}
+              {isHe ? 'חזרה לסביבת PROD (אמת)' : 'Switch to PROD (Live)'}
             </button>
           </div>
         </div>
@@ -798,7 +886,8 @@ export function App() {
           <ExploreView
             entities={entities}
             lang={lang}
-            appEnv={appEnv}
+            appEnv={isAdminAuthenticated ? appEnv : 'prod'}
+            isAdmin={isAdminAuthenticated}
             userProfile={userProfile}
             onSelectEntity={(ent) => setSelectedEntity(ent)}
             onOpenBenBot={() => setActiveTab('ben')}
@@ -812,7 +901,8 @@ export function App() {
           <BusinessesView
             businesses={businesses}
             lang={lang}
-            appEnv={appEnv}
+            appEnv={isAdminAuthenticated ? appEnv : 'prod'}
+            isAdmin={isAdminAuthenticated}
             defaultUserName={userProfile.name}
             defaultUserPhone={userProfile.phone}
             onAddBusiness={handleAddBusiness}
@@ -828,7 +918,7 @@ export function App() {
             businesses={businesses}
             userProfile={userProfile}
             lang={lang}
-            appEnv={appEnv}
+            appEnv={isAdminAuthenticated ? appEnv : 'prod'}
             onUpdateProfile={handleUpdateProfile}
             onSelectEntity={(ent) => setSelectedEntity(ent)}
             onNavigateToBusinesses={() => setActiveTab('businesses')}
@@ -855,7 +945,7 @@ export function App() {
           />
         )}
 
-        {activeTab === 'admin' && (
+        {isAdminAuthenticated && activeTab === 'admin' && (
           <AdminView
             entities={entities}
             businesses={businesses}
@@ -873,6 +963,106 @@ export function App() {
           />
         )}
       </main>
+
+      {/* Community Footer with Discreet Admin Lock */}
+      <footer className="border-t border-sand-300 bg-sand-50 text-canopy-700 py-5 px-4 md:px-6 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-display font-bold text-canopy-900">LUZ GOA</span>
+            <span>
+              {isHe
+                ? 'מערכת הפעלה קהילתית לדרום גואה (קולום, פטנם, פאלולם ואגונדה)'
+                : 'South Goa Community OS (Colomb, Patnem, Palolem & Agonda)'}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {isAdminAuthenticated ? (
+              <span className="inline-flex items-center gap-1.5 text-canopy-800 font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5 text-terracotta-500" />
+                <span>{adminEmail || AUTHORIZED_ADMIN_EMAIL}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminAuthError('');
+                  setShowAdminLoginModal(true);
+                }}
+                className="inline-flex items-center gap-1 text-canopy-600/70 hover:text-canopy-900 transition-colors"
+                title={isHe ? 'כניסת הנהלה בלבד' : 'Admin Sign-In'}
+              >
+                <Lock className="w-3 h-3" />
+                <span>{isHe ? 'ניהול' : 'Admin'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </footer>
+
+      {/* Discreet Admin Google Sign-In Modal (Restricted to luzschedu@gmail.com) */}
+      {showAdminLoginModal && !isAdminAuthenticated && (
+        <div className="fixed inset-0 z-50 bg-canopy-950/70 flex items-center justify-center p-4">
+          <div className="bg-sand-50 border border-sand-300 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-canopy-900 text-ochre-400 flex items-center justify-center">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-display text-lg font-bold text-canopy-900">
+                    {isHe ? 'אימות מנהל מערכת (LUZ Admin)' : 'LUZ Admin Authentication'}
+                  </h3>
+                  <p className="text-xs text-canopy-600">
+                    {isHe
+                      ? 'הגישה לממשק הניהול ולסביבת ה-TEST מוגבלת לחשבון המורשה בלבד'
+                      : 'Access to Admin & TEST environment is restricted to the authorized owner'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdminLoginModal(false)}
+                className="text-xs font-semibold text-canopy-600 hover:text-canopy-900 px-2 py-1"
+              >
+                {isHe ? 'סגור' : 'Close'}
+              </button>
+            </div>
+
+            {adminAuthError && (
+              <div className="p-3 rounded-xl bg-terracotta-100 border border-terracotta-500/40 text-xs text-terracotta-600 font-medium">
+                {adminAuthError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAdminLoginModal(false)}
+                className="px-4 py-2 rounded-xl border border-sand-300 bg-white text-xs font-semibold text-canopy-800 hover:bg-sand-100 transition-colors"
+              >
+                {isHe ? 'ביטול' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                disabled={adminSigningIn}
+                onClick={handleAdminSignIn}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-canopy-900 text-sand-50 text-xs font-semibold hover:bg-canopy-800 transition-colors disabled:opacity-50"
+              >
+                <ShieldCheck className="w-4 h-4 text-ochre-400" />
+                <span>
+                  {adminSigningIn
+                    ? isHe
+                      ? 'מתחבר דרך Google...'
+                      : 'Signing in with Google...'
+                    : isHe
+                    ? 'התחברות עם חשבון Google מורשה'
+                    : 'Sign in with Authorized Google Account'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Booking & Smart Reminder Modal */}
       <BookingModal

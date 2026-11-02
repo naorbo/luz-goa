@@ -309,7 +309,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* SECTION A: PARENT DETAILS */}
                 <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-canopy-700">
+                  <h4 className="text-xs font-bold text-canopy-700">
                     {isHe ? '1. פרטי הורה ויצירת קשר' : '1. Parent Details'}
                   </h4>
                   <div className="grid sm:grid-cols-2 gap-4">
@@ -373,7 +373,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 {/* SECTION B: DYNAMIC CHILDREN LIST */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-canopy-700">
+                    <h4 className="text-xs font-bold text-canopy-700">
                       {isHe
                         ? `2. פרטי הילדים (${children.length} ילדים)`
                         : `2. Children Details (${children.length})`}

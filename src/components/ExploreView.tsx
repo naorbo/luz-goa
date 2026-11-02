@@ -31,6 +31,7 @@ interface ExploreViewProps {
   entities: LuzEntity[];
   lang: Language;
   appEnv: AppEnvironment;
+  isAdmin?: boolean;
   userProfile: UserProfile;
   onSelectEntity: (entity: LuzEntity) => void;
   onOpenBenBot: () => void;
@@ -51,6 +52,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   entities,
   lang,
   appEnv,
+  isAdmin = false,
   userProfile,
   onSelectEntity,
   onOpenBenBot,
@@ -339,7 +341,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 className="bg-transparent text-canopy-800 font-medium focus:outline-none"
               >
                 <option value="all">{isHe ? 'כל הגילאים' : 'All Ages'}</option>
-                <option value="youth_11_15">{isHe ? 'נוער מתנ"ס (11–15)' : 'Youth (11–15)'}</option>
+                <option value="youth_11_15">{isHe ? 'נוער מתנ"ס (11 עד 15)' : 'Youth (11 to 15)'}</option>
                 <option value="families">{isHe ? 'משפחות וילדים' : 'Families & Kids'}</option>
                 <option value="adults">{isHe ? 'מבוגרים ויזמים' : 'Adults'}</option>
               </select>
@@ -357,13 +359,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           <div className="max-w-xl mx-auto space-y-2">
             <h2 className="font-display text-2xl md:text-3xl font-bold text-canopy-900">
               {isHe
-                ? 'סביבת PROD נקייה — ממתינה לנתוני אמת בלבד'
-                : 'PROD Environment Ready — Verified Real Data Only'}
+                ? 'לוח הקהילה של דרום גואה מתעדכן'
+                : 'South Goa Community Board Ready'}
             </h2>
             <p className="text-sm text-canopy-700 leading-relaxed">
               {isHe
-                ? 'לבקשתך, סביבת הפרודקשן מכילה אך ורק אירועים, מפגשי מתנ"ס, בתים ובעלי עסקים אמיתיים שתספק. לצפייה בלוח מלא עם נתוני הדגמה (כולל שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף ועוד), עבור לסביבת ה-TEST.'
-                : 'Production holds strictly verified Goa community listings. Switch to the TEST environment to explore full demo data, or publish your first verified listing now.'}
+                ? 'לוח הקהילה מציג אירועים, מפגשי מתנ"ס, בתים ובעלי עסקים מאומתים בדרום גואה. ניתן להעלות אירוע או בית חדש כבר עכשיו.'
+                : 'Discover verified Goa community events, Youth Center sessions, homes, and local businesses. Publish a new listing below.'}
             </p>
           </div>
 
@@ -374,7 +376,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-terracotta-500 text-white text-xs md:text-sm font-semibold hover:bg-terracotta-600 transition-colors"
             >
               <PlusCircle className="w-4 h-4" />
-              {isHe ? 'העלאת אירוע / בית אמיתי ראשון' : 'Publish First Real Listing'}
+              {isHe ? 'העלאת אירוע / בית חדש' : 'Publish New Listing'}
             </button>
 
             <button
@@ -386,14 +388,16 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               {isHe ? 'למתחם בעלי עסקים בקהילה' : 'Community Business Directory'}
             </button>
 
-            <button
-              type="button"
-              onClick={onSwitchToTest}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-sand-300 text-canopy-900 text-xs md:text-sm font-semibold hover:bg-sand-100 transition-colors"
-            >
-              <FlaskConical className="w-4 h-4 text-ochre-600" />
-              {isHe ? 'מעבר לסביבת TEST (הדגמה מלאה)' : 'Switch to TEST (Demo Data)'}
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={onSwitchToTest}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-sand-300 text-canopy-900 text-xs md:text-sm font-semibold hover:bg-sand-100 transition-colors"
+              >
+                <FlaskConical className="w-4 h-4 text-ochre-600" />
+                {isHe ? 'מעבר לסביבת TEST (אדמין)' : 'Switch to TEST (Admin)'}
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -407,8 +411,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                     <div>
                       <h2 className="font-display text-lg font-bold">
                         {isHe
-                          ? 'לוח השבוע של הקהילה ומרכז הנוער (ב׳–ו׳)'
-                          : 'Goa Community & Youth Center Weekly Timetable (Mon–Fri)'}
+                          ? 'לוח השבוע של הקהילה ומרכז הנוער (ב׳ עד ו׳)'
+                          : 'Goa Community & Youth Center Weekly Timetable (Mon to Fri)'}
                       </h2>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-sand-200">
@@ -459,7 +463,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                   <div
                                     key={`${day.dayIndex}-${item.id}`}
                                     onClick={() => onSelectEntity(item)}
-                                    className="group p-3 rounded-xl bg-white border border-sand-300 hover:border-canopy-700 transition-all cursor-pointer space-y-2"
+                                    className="group p-3 rounded-xl bg-white border border-sand-300 hover:border-canopy-700 transition-colors cursor-pointer space-y-2"
                                   >
                                     <div className="flex items-center justify-between gap-1">
                                       <span
@@ -539,13 +543,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                       <div
                         key={rental.id}
                         onClick={() => onSelectEntity(rental)}
-                        className="group bg-white rounded-xl border border-sand-300 overflow-hidden hover:border-lagoon-600 transition-all cursor-pointer flex flex-col sm:flex-row"
+                        className="group bg-white rounded-xl border border-sand-300 overflow-hidden hover:border-lagoon-600 transition-colors cursor-pointer flex flex-col sm:flex-row"
                       >
                         <div className="sm:w-48 h-44 sm:h-auto relative shrink-0 overflow-hidden">
                           <img
                             src={rental.imageUrl}
                             alt={isHe ? rental.titleHe : rental.titleEn}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            className="w-full h-full object-cover"
                           />
                           <span className="absolute top-2.5 start-2.5 px-2.5 py-1 rounded-md bg-canopy-950/80 text-sand-50 text-xs font-semibold tabular-nums">
                             {rental.bedrooms} {isHe ? 'חדרי שינה' : 'BHK'}
@@ -557,7 +561,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                             <div className="flex items-center justify-between gap-2 text-xs text-lagoon-700 font-semibold mb-1">
                               <span>{rental.area}</span>
                               <span className="tabular-nums">
-                                {rental.availableFrom} → {rental.availableTo}
+                                {rental.availableFrom} / {rental.availableTo}
                               </span>
                             </div>
                             <h3 className="font-display text-lg font-bold text-canopy-900 group-hover:text-lagoon-700 transition-colors">
@@ -605,14 +609,14 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                   <div
                     key={entity.id}
                     onClick={() => onSelectEntity(entity)}
-                    className="group bg-sand-50 rounded-2xl border border-sand-300 hover:border-canopy-700 overflow-hidden flex flex-col justify-between transition-all cursor-pointer"
+                    className="group bg-sand-50 rounded-2xl border border-sand-300 hover:border-canopy-700 overflow-hidden flex flex-col justify-between transition-colors cursor-pointer"
                   >
                     <div>
                       <div className="relative h-44 overflow-hidden bg-canopy-900">
                         <img
                           src={entity.imageUrl}
                           alt={isHe ? entity.titleHe : entity.titleEn}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-canopy-950/80 via-transparent to-transparent" />
                         <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
@@ -645,13 +649,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                           {entity.type === 'event' && (
                             <span className="inline-flex items-center gap-1 font-medium tabular-nums">
                               <Clock className="w-3.5 h-3.5 text-terracotta-500" />
-                              {entity.date} | {entity.startTime}–{entity.endTime}
+                              {entity.date} | {entity.startTime} to {entity.endTime}
                             </span>
                           )}
                           {entity.type === 'workshop' && (
                             <span className="inline-flex items-center gap-1 font-medium tabular-nums">
                               <Clock className="w-3.5 h-3.5 text-canopy-600" />
-                              {isHe ? 'קבוע שבועי' : 'Weekly'} | {entity.startTime}–{entity.endTime}
+                              {isHe ? 'קבוע שבועי' : 'Weekly'} | {entity.startTime} to {entity.endTime}
                             </span>
                           )}
                           {entity.type === 'service' && (
@@ -664,7 +668,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                           {entity.type === 'rental' && (
                             <span className="inline-flex items-center gap-1 font-medium tabular-nums">
                               <Home className="w-3.5 h-3.5 text-lagoon-600" />
-                              {entity.availableFrom} → {entity.availableTo}
+                              {entity.availableFrom} / {entity.availableTo}
                             </span>
                           )}
                         </div>
@@ -678,15 +682,15 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                       <span className="text-xs font-semibold text-terracotta-600 group-hover:underline">
                         {entity.type === 'rental'
                           ? isHe
-                            ? 'בדיקת תאריכים ושריון ←'
-                            : 'Check Dates →'
+                            ? 'בדיקת תאריכים ושריון'
+                            : 'Check Dates'
                           : entity.type === 'service'
                           ? isHe
-                            ? 'בחירת משבצת ביומן ←'
-                            : 'Pick Time Slot →'
+                            ? 'בחירת משבצת ביומן'
+                            : 'Pick Time Slot'
                           : isHe
-                          ? 'הרשמה + תזכורת ←'
-                          : 'RSVP & Reminder →'}
+                          ? 'הרשמה ותזכורת'
+                          : 'RSVP & Reminder'}
                       </span>
                     </div>
                   </div>

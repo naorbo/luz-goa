@@ -1,22 +1,15 @@
 import { AppEnvironment } from '../types/luz';
 
 export function detectInitialEnvironment(): AppEnvironment {
-  if (typeof window !== 'undefined') {
-    const params = new URLSearchParams(window.location.search);
-    const queryEnv = params.get('env');
-    if (queryEnv === 'test') return 'test';
-    if (queryEnv === 'prod') return 'prod';
-
-    const path = window.location.pathname.toLowerCase();
-    if (path.endsWith('/test') || path.endsWith('/test/') || path.includes('/test/index.html')) {
-      return 'test';
-    }
-  }
-
-  const buildEnv = (import.meta as any).env?.VITE_APP_ENV;
-  if (buildEnv === 'test') return 'test';
-
+  // Public launch lockdown: all visitors start strictly in PROD.
+  // Switching to TEST requires verified Admin authentication in the app.
   return 'prod';
+}
+
+export function isAdminUnlockRequestedInUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('admin') === '1' || window.location.hash === '#admin';
 }
 
 export function getStorageKeys(env: AppEnvironment) {

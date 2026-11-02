@@ -588,12 +588,12 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 {seedReport.ok ? (
                   <span>
                     {isHe
-                      ? `✅ הועלו בהצלחה ל-/envs/${seedReport.env} בפרויקט ${seedReport.projectId}: ${seedReport.counts.entities} אירועים/בתים, ${seedReport.counts.businesses} עסקים, ${seedReport.counts.bookings} הזמנות, ${seedReport.counts.families} משפחות ו-${seedReport.counts.referrals} לידים!`
-                      : `✅ Synced to /envs/${seedReport.env} (${seedReport.projectId}): ${seedReport.counts.entities} entities, ${seedReport.counts.businesses} businesses, ${seedReport.counts.bookings} bookings, ${seedReport.counts.families} families, ${seedReport.counts.referrals} referrals!`}
+                      ? `הועלו בהצלחה ל-/envs/${seedReport.env} בפרויקט ${seedReport.projectId}: ${seedReport.counts.entities} אירועים/בתים, ${seedReport.counts.businesses} עסקים, ${seedReport.counts.bookings} הזמנות, ${seedReport.counts.families} משפחות ו-${seedReport.counts.referrals} לידים!`
+                      : `Synced to /envs/${seedReport.env} (${seedReport.projectId}): ${seedReport.counts.entities} entities, ${seedReport.counts.businesses} businesses, ${seedReport.counts.bookings} bookings, ${seedReport.counts.families} families, ${seedReport.counts.referrals} referrals!`}
                   </span>
                 ) : (
                   <span>
-                    ❌ {seedReport.errorMessage}
+                    {seedReport.errorMessage}
                   </span>
                 )}
               </div>
@@ -605,8 +605,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
               <span>
                 {isHe ? 'סטטוס שירותים מחוברים (luzschedu@gmail.com)' : 'Connected Infrastructure Status'}
               </span>
-              <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 font-mono text-[10px]">
-                READY
+              <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 font-semibold text-[10px]">
+                Ready
               </span>
             </div>
             <ul className="space-y-2 text-canopy-700">
@@ -645,8 +645,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div className="pt-3 border-t border-sand-200 space-y-3">
             <h4 className="text-xs font-bold text-canopy-900">
               {isHe
-                ? 'ארכיטקטורת נתונים מלאה ב-Firestore (/envs/{prod|test}/{collection}) — כל הישויות הקיימות והעתידיות:'
-                : 'Complete Firestore Data Architecture (/envs/{prod|test}/{collection}) — Active & Future Entities:'}
+                ? 'ארכיטקטורת נתונים מלאה ב-Firestore (/envs/{prod|test}/{collection}) עבור כל הישויות הקיימות והעתידיות:'
+                : 'Complete Firestore Data Architecture (/envs/{prod|test}/{collection}) for Active & Future Entities:'}
             </h4>
             <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
               {ALL_LUZ_COLLECTIONS.map((col) => (
@@ -663,7 +663,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                       /{col.id}
                     </code>
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                         col.phase === 'active'
                           ? 'bg-canopy-900 text-green-300'
                           : 'bg-ochre-500 text-canopy-950'
@@ -672,10 +672,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
                       {col.phase === 'active'
                         ? isHe
                           ? 'פעיל'
-                          : 'ACTIVE'
+                          : 'Active'
                         : isHe
                         ? 'מוכן לעתיד'
-                        : 'FUTURE'}
+                        : 'Future'}
                     </span>
                   </div>
                   <div className="font-bold text-canopy-900">
@@ -1081,7 +1081,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                         <AlertTriangle className="w-4 h-4 text-terracotta-500 shrink-0 mt-0.5" />
                       )}
                       <div>
-                        <span className="font-bold uppercase">{r.channel}:</span> {r.detail}
+                        <span className="font-bold">{r.channel}:</span> {r.detail}
                       </div>
                     </div>
                   ))}
@@ -1144,7 +1144,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     <div className="font-bold text-canopy-900">
                       {isHe ? ref.providerNameHe : ref.providerNameEn}{' '}
                       <span className="font-normal text-canopy-600">
-                        ({ref.ownerOrHostName} • {ref.area})
+                        ({ref.ownerOrHostName} | {ref.area})
                       </span>
                     </div>
 
@@ -1171,7 +1171,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                             {ref.customerPhone ? ` (${ref.customerPhone})` : ''}
                           </span>
                         )}
-                        {ref.customerName && ref.serviceOrDateSummary ? ' • ' : ''}
+                        {ref.customerName && ref.serviceOrDateSummary ? ' | ' : ''}
                         {ref.serviceOrDateSummary && <span>{ref.serviceOrDateSummary}</span>}
                       </div>
                     )}
@@ -1182,7 +1182,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                         ref.channelsDispatched.map((ch) => (
                           <span
                             key={ch}
-                            className="px-1.5 py-0.5 rounded bg-canopy-100 text-canopy-800 font-mono uppercase"
+                            className="px-1.5 py-0.5 rounded bg-canopy-100 text-canopy-800 font-mono"
                           >
                             {ch}
                           </span>

@@ -428,7 +428,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                       <div
                         key={biz.id}
                         onClick={onNavigateToBusinesses}
-                        className="p-3 rounded-xl bg-white border border-sand-300 hover:border-terracotta-500 cursor-pointer transition-all flex items-center justify-between gap-3"
+                        className="p-3 rounded-xl bg-white border border-sand-300 hover:border-terracotta-500 cursor-pointer transition-colors flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0">
                           <div className="text-[11px] font-semibold text-ochre-600 flex items-center gap-1">
@@ -439,7 +439,7 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                             {isHe ? biz.businessNameHe : biz.businessNameEn}
                           </div>
                           <div className="text-[11px] text-canopy-600">
-                            {isHe ? biz.ownerNameHe : biz.ownerNameEn} • {biz.area}
+                            {isHe ? biz.ownerNameHe : biz.ownerNameEn} | {biz.area}
                           </div>
                         </div>
                         <span className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg bg-terracotta-500 text-white">
@@ -457,11 +457,11 @@ export const BenBotView: React.FC<BenBotViewProps> = ({
                       <div
                         key={item.id}
                         onClick={() => onSelectEntity(item)}
-                        className="p-3 rounded-xl bg-white border border-sand-300 hover:border-terracotta-500 cursor-pointer transition-all flex items-center justify-between gap-3"
+                        className="p-3 rounded-xl bg-white border border-sand-300 hover:border-terracotta-500 cursor-pointer transition-colors flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0">
                           <div className="text-[11px] font-semibold text-terracotta-600 tabular-nums">
-                            {item.area} • {item.startTime || item.availableFrom || 'Slot'}
+                            {item.area} | {item.startTime || item.availableFrom || 'Slot'}
                           </div>
                           <div className="font-bold text-xs text-canopy-900 truncate">
                             {isHe ? item.titleHe : item.titleEn}
