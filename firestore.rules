@@ -4,7 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ============================================================================
-    // LUZ GOA COMMUNITY OS — HARDENED ZERO-TRUST SECURITY RULES
+    // LUZ GOA COMMUNITY OS — PRODUCTION ZERO-TRUST FIRESTORE SECURITY RULES
+    // Strict Schema Validation, Field Allowlists, Regex Checks & Rate-Limit Guards
     // ============================================================================
 
     function isSignedIn() {
@@ -22,9 +23,36 @@ service cloud.firestore {
       return env == 'prod' || env == 'test';
     }
 
-    // Strict payload size & type validation helpers to prevent abuse / injection
-    function isValidString(val, maxLen) {
-      return val is string && val.size() > 0 && val.size() <= maxLen;
+    // String validation: non-empty, bounded length, and no raw <script> or HTML injection tags
+    function isSafeString(val, minLen, maxLen) {
+      return val is string
+        && val.size() >= minLen
+        && val.size() <= maxLen
+        && !val.matches('.*<\\s*script.*')
+        && !val.matches('.*javascript:.*');
+    }
+
+    // Phone validation: international digits, spaces, +, - only (7 to 25 chars)
+    function isValidPhone(val) {
+      return val is string
+        && val.size() >= 7
+        && val.size() <= 25
+        && val.matches('^[+0-9()\\-\\s]+$');
+    }
+
+    // Area validation: strict enum allowlist
+    function isValidGoaArea(val) {
+      return val in ['Patnem', 'Palolem', 'Colomb', 'Agonda', 'Galgibaga', 'Canacona'];
+    }
+
+    // Rate-limit state tracking collection (2-second minimum write cooldown per bucket)
+    match /rate_limits/{bucketId} {
+      allow read: if isSignedIn();
+      allow create, update: if request.resource.data.keys().hasOnly(['lastWriteAt', 'action', 'count'])
+        && request.resource.data.lastWriteAt == request.time
+        && (!exists(/databases/$(database)/documents/rate_limits/$(bucketId)) ||
+            request.time > resource.data.lastWriteAt + duration.value(2, 's'));
+      allow delete: if isAdmin();
     }
 
     // Environment metadata document: public read, admin-only write
@@ -34,123 +62,160 @@ service cloud.firestore {
     }
 
     // 1. Entities (Events, Workshops, Services, Rentals)
-    // Public directory read; creation requires valid schema & size bounds; destructive edits/deletes require Admin
     match /envs/{env}/entities/{entityId} {
       allow read: if isValidEnv(env);
       allow create: if isValidEnv(env)
         && request.resource.data.id == entityId
         && request.resource.data.type in ['event', 'workshop', 'service', 'rental']
-        && isValidString(request.resource.data.titleHe, 200)
-        && isValidString(request.resource.data.hostName, 120)
+        && isSafeString(request.resource.data.titleHe, 2, 180)
+        && isSafeString(request.resource.data.titleEn, 2, 180)
+        && isSafeString(request.resource.data.hostName, 2, 100)
+        && isValidPhone(request.resource.data.hostPhone)
+        && isValidGoaArea(request.resource.data.area)
+        && request.resource.data.priceAmount is number
+        && request.resource.data.priceAmount >= 0
+        && request.resource.data.priceAmount <= 500000
+        && request.resource.data.priceCurrency in ['INR', 'ILS', 'USD', 'FREE']
         && request.resource.data.keys().size() <= 40;
       allow update: if isValidEnv(env) && (
         isAdmin() ||
-        // Allow booking slot/range & rsvpCount updates without altering core host identity
-        (request.resource.data.id == resource.data.id &&
-         request.resource.data.type == resource.data.type &&
-         request.resource.data.hostPhone == resource.data.hostPhone)
+        // Customers booking a slot/range can only increment rsvpCount by 1..10 and update bookedSlots/bookedRanges
+        (request.resource.data.id == resource.data.id
+         && request.resource.data.type == resource.data.type
+         && request.resource.data.titleHe == resource.data.titleHe
+         && request.resource.data.hostName == resource.data.hostName
+         && request.resource.data.hostPhone == resource.data.hostPhone
+         && request.resource.data.priceAmount == resource.data.priceAmount
+         && request.resource.data.rsvpCount >= resource.data.rsvpCount
+         && request.resource.data.rsvpCount <= resource.data.rsvpCount + 10)
       );
       allow delete: if isValidEnv(env) && isAdmin();
     }
 
     // 2. Community Businesses Directory
-    // Public directory read; new business submissions cannot self-mark verified without Admin
     match /envs/{env}/businesses/{businessId} {
       allow read: if isValidEnv(env);
       allow create: if isValidEnv(env)
         && request.resource.data.id == businessId
-        && isValidString(request.resource.data.businessNameHe, 200)
-        && isValidString(request.resource.data.phone, 40)
+        && request.resource.data.category in [
+          'body_therapy', 'beauty_cosmetics', 'tattoo_art', 'fitness_martial',
+          'food_culinary', 'kids_education', 'transport_local', 'pro_services'
+        ]
+        && isSafeString(request.resource.data.businessNameHe, 2, 160)
+        && isSafeString(request.resource.data.ownerNameHe, 2, 100)
+        && isValidPhone(request.resource.data.phone)
+        && isValidGoaArea(request.resource.data.area)
         && request.resource.data.keys().size() <= 35;
       allow update: if isValidEnv(env) && (
         isAdmin() ||
-        // Allow booking slot updates without altering owner phone or verification status
-        (request.resource.data.id == resource.data.id &&
-         request.resource.data.phone == resource.data.phone &&
-         request.resource.data.verifiedCommunityMember == resource.data.verifiedCommunityMember)
+        // Customers booking a business slot cannot modify phone, owner, or verified badge
+        (request.resource.data.id == resource.data.id
+         && request.resource.data.phone == resource.data.phone
+         && request.resource.data.ownerNameHe == resource.data.ownerNameHe
+         && request.resource.data.verifiedCommunityMember == resource.data.verifiedCommunityMember)
       );
       allow delete: if isValidEnv(env) && isAdmin();
     }
 
-    // 3. Bookings & Appointments (PII Protected: customerName, customerPhone)
-    // Create-only for customers with strict validation; only Admin can read full booking list or delete
+    // 3. Bookings & Appointments (PII Protected — Admin-only read)
     match /envs/{env}/bookings/{bookingId} {
       allow read: if isValidEnv(env) && isAdmin();
       allow create: if isValidEnv(env)
         && request.resource.data.id == bookingId
-        && isValidString(request.resource.data.customerName, 120)
-        && isValidString(request.resource.data.customerPhone, 40)
-        && request.resource.data.keys().size() <= 25;
+        && isSafeString(request.resource.data.customerName, 2, 100)
+        && isValidPhone(request.resource.data.customerPhone)
+        && request.resource.data.participantsCount is number
+        && request.resource.data.participantsCount >= 1
+        && request.resource.data.participantsCount <= 20
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.keys().size() <= 22;
       allow update, delete: if isValidEnv(env) && isAdmin();
     }
 
-    // 4. Youth Center Families (PII Protected: parentPhone & children names/ages)
-    // Create-only for family registration; only Admin can read or modify full family records
+    // 4. Youth Center Families Registration (PII Protected — Admin-only read)
     match /envs/{env}/families/{familyId} {
       allow read: if isValidEnv(env) && isAdmin();
       allow create: if isValidEnv(env)
         && request.resource.data.id == familyId
-        && isValidString(request.resource.data.parentName, 120)
-        && isValidString(request.resource.data.parentPhone, 40)
-        && request.resource.data.keys().size() <= 20;
+        && isSafeString(request.resource.data.parentName, 2, 100)
+        && isValidPhone(request.resource.data.parentPhone)
+        && isValidGoaArea(request.resource.data.area)
+        && request.resource.data.children is list
+        && request.resource.data.children.size() >= 1
+        && request.resource.data.children.size() <= 10
+        && request.resource.data.keys().size() <= 15;
       allow update, delete: if isValidEnv(env) && isAdmin();
     }
 
-    // 5. Lead Referrals (#LUZ-XXXX) — Write-only telemetry for clients, Admin-only read/audit
+    // 5. Lead Referrals (#LUZ-XXXX) — Write-only telemetry, Admin-only read
     match /envs/{env}/referrals/{referralId} {
       allow read: if isValidEnv(env) && isAdmin();
       allow create: if isValidEnv(env)
         && request.resource.data.id == referralId
-        && isValidString(request.resource.data.referralCode, 40)
-        && request.resource.data.keys().size() <= 25;
+        && isSafeString(request.resource.data.referralCode, 6, 32)
+        && request.resource.data.referralCode.matches('^LUZ-[0-9]{4}-[A-Z0-9]{4}$')
+        && request.resource.data.actionType in [
+          'whatsapp_click', 'website_click', 'group_join',
+          'phone_call', 'slot_booking', 'youth_center_signup'
+        ]
+        && request.resource.data.keys().size() <= 22;
       allow update, delete: if isValidEnv(env) && isAdmin();
     }
 
-    // 6. Future Module: WhatsApp Scraper Moderation Queue — Strictly Admin / Backend Service Account only!
-    // (Note: Backend Service Accounts bypass security rules via Admin SDK; client access is locked to Admin)
+    // 6. WhatsApp Scraper Moderation Queue — Strictly Admin / Backend Service Account only
     match /envs/{env}/moderation_queue/{draftId} {
       allow read, write: if isValidEnv(env) && isAdmin();
     }
 
-    // 7. Future Module: Community Marketplace (Scooters, Gear, Kid Items)
+    // 7. Community Marketplace (Scooters, Gear, Kid Items)
     match /envs/{env}/marketplace/{itemId} {
       allow read: if isValidEnv(env);
       allow create: if isValidEnv(env)
         && request.resource.data.id == itemId
-        && isValidString(request.resource.data.titleHe, 200)
-        && request.resource.data.keys().size() <= 25;
+        && isSafeString(request.resource.data.titleHe, 2, 160)
+        && isValidPhone(request.resource.data.sellerPhone)
+        && request.resource.data.priceAmount is number
+        && request.resource.data.priceAmount >= 0
+        && request.resource.data.priceAmount <= 500000
+        && request.resource.data.keys().size() <= 22;
       allow update, delete: if isValidEnv(env) && isAdmin();
     }
 
-    // 8. Future Module: Airport Taxi Rideshares & Israel-Goa Courier Mule
+    // 8. Airport Taxi Rideshares & Israel-Goa Courier Mule
     match /envs/{env}/rideshares/{rideId} {
       allow read: if isValidEnv(env);
       allow create: if isValidEnv(env)
         && request.resource.data.id == rideId
-        && isValidString(request.resource.data.contactName, 120)
-        && request.resource.data.keys().size() <= 25;
+        && isSafeString(request.resource.data.contactName, 2, 100)
+        && isValidPhone(request.resource.data.contactPhone)
+        && request.resource.data.availableSeatsOrKg is number
+        && request.resource.data.availableSeatsOrKg >= 1
+        && request.resource.data.availableSeatsOrKg <= 50
+        && request.resource.data.keys().size() <= 22;
       allow update, delete: if isValidEnv(env) && isAdmin();
     }
 
-    // 9. Future Module: Urgent Community Board (Power/Fiber/Medical/Lost & Found)
+    // 9. Urgent Community Board (Power/Fiber/Medical/Lost & Found)
     match /envs/{env}/urgent_board/{alertId} {
       allow read: if isValidEnv(env);
       allow create: if isValidEnv(env)
         && request.resource.data.id == alertId
-        && isValidString(request.resource.data.titleHe, 200)
-        && request.resource.data.keys().size() <= 20;
+        && isSafeString(request.resource.data.titleHe, 2, 180)
+        && isValidGoaArea(request.resource.data.area)
+        && request.resource.data.keys().size() <= 18;
       allow update, delete: if isValidEnv(env) && isAdmin();
     }
 
-    // 10. Future Module: Community Endorsements & Vouches
+    // 10. Community Endorsements & Vouches
     match /envs/{env}/endorsements/{vouchId} {
       allow read: if isValidEnv(env);
       allow create: if isValidEnv(env)
         && request.resource.data.id == vouchId
-        && isValidString(request.resource.data.authorName, 120)
+        && isSafeString(request.resource.data.authorName, 2, 100)
+        && request.resource.data.rating is number
         && request.resource.data.rating >= 1
         && request.resource.data.rating <= 5
-        && request.resource.data.keys().size() <= 15;
+        && request.resource.data.keys().size() <= 14;
       allow update, delete: if isValidEnv(env) && isAdmin();
     }
 

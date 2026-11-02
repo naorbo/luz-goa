@@ -38,6 +38,11 @@ import {
 import { syncSeoAndStructuredData } from './utils/seoAndSchema';
 import { autoDiscoverFirebaseHostingConfig } from './config/firebase';
 import {
+  enforceRateLimit,
+  sanitizeInputText,
+  sanitizeAndValidatePhone,
+} from './utils/securityGuard';
+import {
   subscribeToEnvironmentFirestore,
   saveDocumentToFirestore,
 } from './services/firestoreService';
@@ -258,8 +263,23 @@ export function App() {
   const handleConfirmBooking = (
     newBk: Omit<BookingRecord, 'id' | 'createdAt' | 'status'>
   ) => {
+    const rl = enforceRateLimit('booking_submit');
+    if (!rl.allowed) {
+      alert(isHe ? rl.errorHe : rl.errorEn);
+      return;
+    }
+
+    const phoneCheck = sanitizeAndValidatePhone(newBk.customerPhone);
+    if (!phoneCheck.valid) {
+      alert(isHe ? 'מספר טלפון לא תקין.' : 'Invalid phone number.');
+      return;
+    }
+
     const record: BookingRecord = {
       ...newBk,
+      customerName: sanitizeInputText(newBk.customerName, 100),
+      customerPhone: phoneCheck.cleaned,
+      participantsCount: Math.max(1, Math.min(20, Number(newBk.participantsCount) || 1)),
       id: `bk-${Date.now()}`,
       createdAt: new Date().toISOString(),
       status: 'confirmed',
@@ -272,7 +292,7 @@ export function App() {
       bookings: [record, ...prev.bookings],
       entities: prev.entities.map((ent) => {
         if (ent.id !== newBk.entityId) return ent;
-        const updated = { ...ent, rsvpCount: ent.rsvpCount + newBk.participantsCount };
+        const updated = { ...ent, rsvpCount: ent.rsvpCount + record.participantsCount };
 
         if (ent.type === 'service' && newBk.selectedDate && newBk.selectedSlot) {
           const prevSlots = ent.bookedSlots?.[newBk.selectedDate] || [];
@@ -288,7 +308,7 @@ export function App() {
             {
               from: newBk.rentalFrom,
               to: newBk.rentalTo,
-              guestName: newBk.customerName,
+              guestName: record.customerName,
             },
           ];
         }
@@ -305,27 +325,72 @@ export function App() {
   };
 
   const handleAddEntity = (newEntity: LuzEntity) => {
+    const rl = enforceRateLimit('entity_create');
+    if (!rl.allowed) {
+      alert(isHe ? rl.errorHe : rl.errorEn);
+      return;
+    }
+
+    const phoneCheck = sanitizeAndValidatePhone(newEntity.hostPhone);
+    const sanitizedEntity: LuzEntity = {
+      ...newEntity,
+      titleHe: sanitizeInputText(newEntity.titleHe, 180),
+      titleEn: sanitizeInputText(newEntity.titleEn || newEntity.titleHe, 180),
+      descriptionHe: sanitizeInputText(newEntity.descriptionHe, 1500),
+      descriptionEn: sanitizeInputText(newEntity.descriptionEn || newEntity.descriptionHe, 1500),
+      hostName: sanitizeInputText(newEntity.hostName, 100),
+      hostPhone: phoneCheck.valid ? phoneCheck.cleaned : '+972-50-000-0000',
+      priceAmount: Math.max(0, Math.min(500000, Number(newEntity.priceAmount) || 0)),
+    };
+
     setStore((prev) => ({
       ...prev,
-      entities: [newEntity, ...prev.entities],
+      entities: [sanitizedEntity, ...prev.entities],
     }));
-    void saveDocumentToFirestore(appEnv, 'entities', newEntity);
+    void saveDocumentToFirestore(appEnv, 'entities', sanitizedEntity);
   };
 
   const handleAddBusiness = (newBiz: CommunityBusiness) => {
+    const rl = enforceRateLimit('business_create');
+    if (!rl.allowed) {
+      alert(isHe ? rl.errorHe : rl.errorEn);
+      return;
+    }
+
+    const phoneCheck = sanitizeAndValidatePhone(newBiz.phone);
+    const sanitizedBiz: CommunityBusiness = {
+      ...newBiz,
+      businessNameHe: sanitizeInputText(newBiz.businessNameHe, 160),
+      businessNameEn: sanitizeInputText(newBiz.businessNameEn || newBiz.businessNameHe, 160),
+      ownerNameHe: sanitizeInputText(newBiz.ownerNameHe, 100),
+      ownerNameEn: sanitizeInputText(newBiz.ownerNameEn || newBiz.ownerNameHe, 100),
+      bioHe: sanitizeInputText(newBiz.bioHe, 1500),
+      bioEn: sanitizeInputText(newBiz.bioEn || newBiz.bioHe, 1500),
+      phone: phoneCheck.valid ? phoneCheck.cleaned : newBiz.phone,
+    };
+
     setStore((prev) => ({
       ...prev,
-      businesses: [newBiz, ...prev.businesses],
+      businesses: [sanitizedBiz, ...prev.businesses],
     }));
-    void saveDocumentToFirestore(appEnv, 'businesses', newBiz);
+    void saveDocumentToFirestore(appEnv, 'businesses', sanitizedBiz);
   };
 
   const handleBookBusinessSlot = (
     businessId: string,
     newBk: Omit<BookingRecord, 'id' | 'createdAt' | 'status'>
   ) => {
+    const rl = enforceRateLimit('booking_submit');
+    if (!rl.allowed) {
+      alert(isHe ? rl.errorHe : rl.errorEn);
+      return;
+    }
+
+    const phoneCheck = sanitizeAndValidatePhone(newBk.customerPhone);
     const record: BookingRecord = {
       ...newBk,
+      customerName: sanitizeInputText(newBk.customerName, 100),
+      customerPhone: phoneCheck.valid ? phoneCheck.cleaned : newBk.customerPhone,
       id: `bk-biz-${Date.now()}`,
       createdAt: new Date().toISOString(),
       status: 'confirmed',
@@ -366,6 +431,9 @@ export function App() {
   const handleTrackReferral = (
     partial: Omit<LeadReferralEvent, 'id' | 'createdAt' | 'channelsDispatched' | 'environment'>
   ) => {
+    const rl = enforceRateLimit('referral_dispatch');
+    if (!rl.allowed) return;
+
     const shouldSendReal =
       appEnv === 'prod' || notificationConfig.sendRealAlertsInTestEnv;
 
@@ -388,6 +456,10 @@ export function App() {
 
     const fullEvent: LeadReferralEvent = {
       ...partial,
+      providerNameHe: sanitizeInputText(partial.providerNameHe, 160),
+      providerNameEn: sanitizeInputText(partial.providerNameEn, 160),
+      ownerOrHostName: sanitizeInputText(partial.ownerOrHostName, 100),
+      customerName: partial.customerName ? sanitizeInputText(partial.customerName, 100) : undefined,
       id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       environment: appEnv,
       channelsDispatched: activeChannels,
@@ -404,8 +476,29 @@ export function App() {
   };
 
   const handleRegisterFamily = (fam: Omit<YouthCenterFamily, 'id' | 'createdAt'>) => {
+    const rl = enforceRateLimit('signup_registration');
+    if (!rl.allowed) {
+      alert(isHe ? rl.errorHe : rl.errorEn);
+      return;
+    }
+
+    const phoneCheck = sanitizeAndValidatePhone(fam.parentPhone);
+    if (!phoneCheck.valid) {
+      alert(isHe ? 'מספר טלפון הורה לא תקין.' : 'Invalid parent phone number.');
+      return;
+    }
+
     const newFam: YouthCenterFamily = {
       ...fam,
+      parentName: sanitizeInputText(fam.parentName, 100),
+      parentPhone: phoneCheck.cleaned,
+      children: fam.children.slice(0, 10).map((c) => ({
+        ...c,
+        name: sanitizeInputText(c.name, 60),
+        age: Math.max(0, Math.min(18, Number(c.age) || 5)),
+        grade: sanitizeInputText(c.grade, 40),
+        interests: sanitizeInputText(c.interests, 200),
+      })),
       id: `fam-${Date.now()}`,
       createdAt: new Date().toISOString(),
     };

@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// ============================================================================
+// LUZ GOA COMMUNITY OS — FIREBASE CLOUD STORAGE SECURITY RULES
+// Strict File Upload Size Limits, MIME Type Allowlist & Caller Verification
+// ============================================================================
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'luzschedu@gmail.com' ||
+        request.auth.token.admin == true
+      );
+    }
+
+    function isValidEnv(env) {
+      return env == 'prod' || env == 'test';
+    }
+
+    // Strict MIME type allowlist: ONLY safe raster images (JPEG, PNG, WebP).
+    // Blocks SVG (XSS vector), HTML, JS, executables, and archives.
+    function isSafeImageType() {
+      return request.resource != null
+        && request.resource.contentType.matches('image/(jpeg|png|webp)')
+        && (
+           fileName.matches('.*\\.(jpg|jpeg|png|webp|JPG|JPEG|PNG|WEBP)$')
+        );
+    }
+
+    // 1. Entity & Property Photos (/envs/{env}/uploads/{category}/{fileName})
+    // Max size: 5 MB, safe image MIME types only, authenticated caller required
+    match /envs/{env}/uploads/{category}/{fileName} {
+      allow read: if isValidEnv(env);
+      allow create, update: if isValidEnv(env)
+        && isSignedIn()
+        && category in ['events', 'rentals', 'businesses', 'marketplace']
+        && request.resource.size > 0
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)')
+        && fileName.size() <= 120
+        && fileName.matches('^[a-zA-Z0-9._-]+\\.(jpg|jpeg|png|webp)$');
+      allow delete: if isValidEnv(env) && isAdmin();
+    }
+
+    // 2. User / Provider Avatars (/envs/{env}/avatars/{userId}/{fileName})
+    // Max size: 2 MB, owner or admin only
+    match /envs/{env}/avatars/{userId}/{fileName} {
+      allow read: if isValidEnv(env);
+      allow create, update: if isValidEnv(env)
+        && isSignedIn()
+        && (request.auth.uid == userId || isAdmin())
+        && request.resource.size > 0
+        && request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)')
+        && fileName.size() <= 100
+        && fileName.matches('^[a-zA-Z0-9._-]+\\.(jpg|jpeg|png|webp)$');
+      allow delete: if isValidEnv(env) && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Default deny-all for any other storage path
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

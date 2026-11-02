@@ -21,6 +21,10 @@ import {
   ServiceSubtype,
 } from '../types/luz';
 import { parseWhatsAppMessageToDraft } from '../utils/calendarAndParser';
+import {
+  enforceRateLimit,
+  validateSafeImageUpload,
+} from '../utils/securityGuard';
 
 interface ProviderViewProps {
   lang: Language;
@@ -95,6 +99,39 @@ export const ProviderView: React.FC<ProviderViewProps> = ({ lang, onAddEntity })
   const [pricePerMonth, setPricePerMonth] = useState<number>(90000);
 
   const [createdSuccess, setCreatedSuccess] = useState(false);
+  const [customImageUrl, setCustomImageUrl] = useState<string>('');
+  const [uploadNotice, setUploadNotice] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const handleImageFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const rl = enforceRateLimit('file_upload');
+    if (!rl.allowed) {
+      setUploadNotice({ ok: false, text: (isHe ? rl.errorHe : rl.errorEn) || 'Rate limit' });
+      e.target.value = '';
+      return;
+    }
+
+    const check = await validateSafeImageUpload(file);
+    if (!check.valid) {
+      setUploadNotice({
+        ok: false,
+        text: (isHe ? check.errorHe : check.errorEn) || 'Invalid file',
+      });
+      e.target.value = '';
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setCustomImageUrl(objectUrl);
+    setUploadNotice({
+      ok: true,
+      text: isHe
+        ? `הקובץ אומת בהצלחה (${check.sanitizedFileName}, ${(file.size / 1024).toFixed(0)}KB)`
+        : `Verified safe image (${check.sanitizedFileName}, ${(file.size / 1024).toFixed(0)}KB)`,
+    });
+  };
 
   const handleParseWhatsApp = () => {
     if (!rawWhatsApp.trim()) return;
@@ -146,7 +183,7 @@ export const ProviderView: React.FC<ProviderViewProps> = ({ lang, onAddEntity })
       priceCurrency,
       audience,
       ingestionSource,
-      imageUrl: defaultImages[type],
+      imageUrl: customImageUrl || defaultImages[type],
       tags: [area, type],
       rsvpCount: 1,
       maxCapacity,
@@ -716,6 +753,29 @@ export const ProviderView: React.FC<ProviderViewProps> = ({ lang, onAddEntity })
               onChange={(e) => setDescriptionHe(e.target.value)}
               className="w-full rounded-xl border border-sand-300 bg-white p-3 text-sm"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-canopy-800 mb-1">
+              {isHe
+                ? 'העלאת תמונה מאובטחת (JPG / PNG / WebP בלבד, עד 5MB — בדיקת חתימה בינארית)'
+                : 'Secure Image Upload (JPG / PNG / WebP only, max 5MB — Magic-Byte verified)'}
+            </label>
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              onChange={handleImageFileSelect}
+              className="w-full rounded-xl border border-sand-300 bg-white px-3 py-2 text-xs text-canopy-800"
+            />
+            {uploadNotice && (
+              <p
+                className={`mt-1.5 text-xs font-semibold ${
+                  uploadNotice.ok ? 'text-green-700' : 'text-red-600'
+                }`}
+              >
+                {uploadNotice.text}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end">

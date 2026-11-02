@@ -51,6 +51,7 @@ import {
   seedEnvironmentToFirestore,
   SeedSyncReport,
 } from '../services/firestoreService';
+import { enforceRateLimit } from '../utils/securityGuard';
 
 interface AdminViewProps {
   entities: LuzEntity[];
@@ -174,7 +175,13 @@ create table public.luz_referrals (
   service_or_date_summary text,
   channels_dispatched jsonb default '[]'::jsonb,
   created_at timestamptz default now()
-);`;
+);
+
+-- ZERO-TRUST ROW LEVEL SECURITY (RLS) & PARAMETERIZED QUERIES ONLY (NO STRING CONCATENATION)
+alter table public.luz_entities enable row level security;
+alter table public.luz_businesses enable row level security;
+alter table public.luz_bookings enable row level security;
+alter table public.luz_referrals enable row level security;`;
 
 export const AdminView: React.FC<AdminViewProps> = ({
   entities,
@@ -219,6 +226,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const isAppsScriptConnected = isGoogleAppsScriptUrl(draftConfig.webhookUrl);
 
   const handleSaveFirebaseConfig = () => {
+    const rl = enforceRateLimit('auth_attempt');
+    if (!rl.allowed) {
+      setFirebaseConfigError((isHe ? rl.errorHe : rl.errorEn) || 'Rate limit exceeded');
+      return;
+    }
     setFirebaseConfigError(null);
     setFirebaseConfigSavedMsg(null);
     if (!firebaseSnippet.trim()) {
