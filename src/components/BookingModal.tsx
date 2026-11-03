@@ -16,7 +16,9 @@ import {
   Users,
   Globe,
   Hash,
+  Share2,
 } from 'lucide-react';
+import { shareLuzEvent } from '../utils/shareUtils';
 import {
   LuzEntity,
   BookingRecord,
@@ -92,6 +94,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [referralNonce, setReferralNonce] = useState(1);
   const [confirmedRefCode, setConfirmedRefCode] = useState('');
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+
+  const handleShare = async (wasRegistered = false) => {
+    const scheduleSummary =
+      entity.type === 'rental'
+        ? `${rentalFrom} → ${rentalTo}`
+        : `${selectedDate} ${isHe ? 'בשעה' : 'at'} ${selectedSlot}`;
+    const res = await shareLuzEvent(entity, {
+      isHe,
+      wasRegistered,
+      customSchedule: scheduleSummary,
+      customerName,
+    });
+    if (res.method === 'clipboard') {
+      setShareFeedback(isHe ? 'הקישור הועתק!' : 'Link copied!');
+      setTimeout(() => setShareFeedback(null), 3000);
+    } else if (res.method === 'native') {
+      setShareFeedback(isHe ? 'שותף!' : 'Shared!');
+      setTimeout(() => setShareFeedback(null), 2500);
+    }
+  };
 
   const entityTypeLabelHe =
     entity.type === 'rental'
@@ -304,13 +327,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             className="w-full h-full object-cover opacity-55"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-canopy-950 via-canopy-950/50 to-transparent" />
-          <button
-            onClick={onClose}
-            className="absolute top-4 end-4 w-9 h-9 rounded-full bg-canopy-950/60 text-sand-50 flex items-center justify-center hover:bg-canopy-900 transition-colors"
-            aria-label="Close modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="absolute top-4 end-4 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleShare(submitted)}
+              className="h-9 px-3.5 rounded-full bg-canopy-950/70 text-sand-50 flex items-center gap-1.5 hover:bg-canopy-900 transition-colors text-xs font-semibold backdrop-blur-xs border border-white/10"
+              title={isHe ? 'שיתוף אירוע' : 'Share event'}
+            >
+              <Share2 className="w-4 h-4 text-ochre-400" />
+              <span>{shareFeedback || (isHe ? 'שיתוף' : 'Share')}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-canopy-950/70 text-sand-50 flex items-center justify-center hover:bg-canopy-900 transition-colors border border-white/10"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
           <div className="absolute bottom-4 inset-x-6 text-sand-50">
             <h2 className="font-display text-2xl md:text-3xl font-bold leading-snug">
@@ -450,6 +484,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 >
                   <Download className="w-4 h-4 text-terracotta-500" />
                   {isHe ? 'הורדת קובץ יומן (.ics)' : 'Download .ics File'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleShare(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-all shadow-sm active:scale-[0.98]"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>{shareFeedback || (isHe ? 'שיתוף האירוע עם חברים' : 'Share Event with Friends')}</span>
                 </button>
               </div>
 

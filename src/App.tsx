@@ -76,6 +76,7 @@ import {
   TEST_FAMILIES,
   TEST_USER_PROFILE,
 } from './data/testData';
+import { CORE_YOUTH_CENTER_EVENTS } from './data/youthCenterEvents';
 import { ExploreView } from './components/ExploreView';
 import { BusinessesView } from './components/BusinessesView';
 import { ProviderView } from './components/ProviderView';
@@ -225,6 +226,21 @@ export function App() {
       selectedEntity,
     });
   }, [activeTab, lang, entities, businesses, selectedEntity]);
+
+  // Deep-linking: auto-open modal if URL contains ?event=EVENT_ID
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('event');
+    if (eventId) {
+      const match =
+        entities.find((e) => e.id === eventId) ||
+        CORE_YOUTH_CENTER_EVENTS.find((e) => e.id === eventId);
+      if (match) {
+        setSelectedEntity(match);
+      }
+    }
+  }, [entities]);
 
   // Zero-Secret Auto-Discovery when hosted on Firebase Hosting (/__/firebase/init.json)
   useEffect(() => {

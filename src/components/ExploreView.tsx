@@ -13,6 +13,8 @@ import {
   LayoutGrid,
   CalendarDays,
   CalendarPlus,
+  Share2,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   LuzEntity,
@@ -28,6 +30,7 @@ import {
   buildGoogleCalendarUrl,
   buildChronologicalDateGroups,
 } from '../utils/calendarAndParser';
+import { shareLuzEvent } from '../utils/shareUtils';
 
 interface ExploreViewProps {
   entities: LuzEntity[];
@@ -68,11 +71,23 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [selectedArea, setSelectedArea] = useState<GoaArea | 'all'>('all');
   const [selectedDate, setSelectedDate] = useState<string | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [shareToast, setShareToast] = useState<string | null>(null);
 
   const catalogSectionRef = useRef<HTMLDivElement>(null);
 
   const handleScrollToCatalog = () => {
     catalogSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleShareEvent = async (ev: LuzEntity) => {
+    const res = await shareLuzEvent(ev, { isHe });
+    if (res.method === 'clipboard') {
+      setShareToast(isHe ? 'הקישור הועתק! אפשר להדביק ולשתף בוואטסאפ' : 'Link copied to clipboard!');
+      setTimeout(() => setShareToast(null), 3500);
+    } else if (res.method === 'native') {
+      setShareToast(isHe ? 'האירוע שותף!' : 'Event shared!');
+      setTimeout(() => setShareToast(null), 2500);
+    }
   };
 
   const handleEntityClick = (item: LuzEntity) => {
@@ -554,7 +569,19 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                     {formatPrice(ev)}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleShareEvent(ev);
+                                    }}
+                                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] md:min-h-0"
+                                    title={isHe ? 'שיתוף אירוע' : 'Share event'}
+                                  >
+                                    <Share2 className="w-4 h-4 text-accent shrink-0" />
+                                    <span className="hidden sm:inline">{isHe ? 'שיתוף' : 'Share'}</span>
+                                  </button>
                                   <a
                                     href={gcalLink}
                                     target="_blank"
@@ -713,22 +740,35 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Single Clear Action Bar */}
+                    {/* Action Bar with Share */}
                     <div className="px-5 py-4 bg-paper/60 border-t border-rule flex items-center justify-between gap-3">
                       <div className="font-display text-base font-bold text-ink">
                         {formatPrice(item)}
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEntityClick(item);
-                        }}
-                        className="hallmark-btn-primary text-xs sm:text-sm !py-2 !px-4"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{isHe ? 'פרטים והרשמה' : 'Details & Book'}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShareEvent(item);
+                          }}
+                          className="p-2 rounded-xl border border-rule-strong bg-plate hover:bg-paper-2 text-ink shadow-2xs active:scale-[0.98] transition-all"
+                          title={isHe ? 'שיתוף אירוע' : 'Share event'}
+                        >
+                          <Share2 className="w-4 h-4 text-accent" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEntityClick(item);
+                          }}
+                          className="hallmark-btn-primary text-xs sm:text-sm !py-2 !px-4"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>{isHe ? 'פרטים והרשמה' : 'Details & Book'}</span>
+                        </button>
+                      </div>
                     </div>
                   </article>
                 );
@@ -786,6 +826,14 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           </button>
         </div>
       </section>
+
+      {/* Floating Share Feedback Toast */}
+      {shareToast && (
+        <div className="fixed bottom-6 inset-x-4 max-w-sm mx-auto z-50 bg-ink text-paper px-4 py-3 rounded-2xl shadow-elevated flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold border border-white/10 text-center animate-reveal">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{shareToast}</span>
+        </div>
+      )}
     </div>
   );
 };
