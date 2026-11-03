@@ -7,7 +7,6 @@ import {
   MessageCircle,
   Clock,
   MapPin,
-  CheckCircle2,
 } from 'lucide-react';
 import { EntityType, Language } from '../types/luz';
 
@@ -179,20 +178,15 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
         <div className="lg:col-span-7">
           <div className="hallmark-well-gold p-6 sm:p-8 space-y-6">
             {/* Almanac Plate Header */}
-            <div className="flex flex-wrap items-baseline justify-between gap-4 pb-4 border-b border-ink">
-              <div>
-                <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-ink">
-                  {isHe ? 'מקצב היום בחוף הדרומי' : 'Daily Rhythm Along the Coast'}
-                </h2>
-                <p className="text-xs text-muted mt-1">
-                  {isHe
-                    ? 'לחצו על כל משבצת זמן כדי לסנן את הלוח למטה'
-                    : 'Select any tide slot below to filter the live schedule'}
-                </p>
-              </div>
-              <div className="hallmark-code text-xs text-ink-2 bg-plate px-3 py-1 border border-rule">
-                15.0100° N · 74.0232° E
-              </div>
+            <div className="pb-4 border-b border-ink">
+              <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-ink">
+                {isHe ? 'מקצב היום בחוף הדרומי' : 'Daily Rhythm Along the Coast'}
+              </h2>
+              <p className="text-xs text-muted mt-1">
+                {isHe
+                  ? 'לחצו על כל משבצת זמן כדי לסנן את הלוח למטה'
+                  : 'Select any tide slot below to filter the live schedule'}
+              </p>
             </div>
 
             {/* Three Tides Timetable (Schedule Composition) */}
@@ -226,8 +220,8 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
               ))}
             </ol>
 
-            {/* Real Figures & Direct Dispatch Explanation (Hallmark Figures + Spec Row) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
+            {/* Real Figures (Hallmark Figures Row) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
               <div className="border-s-2 border-ink ps-4">
                 <div className="font-serif text-3xl font-semibold text-ink tabular-nums">
                   {totalEntities}
@@ -243,18 +237,6 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
                 </div>
                 <div className="text-xs text-muted mt-0.5">
                   {isHe ? 'עסקים ונותני שירות בקהילה' : 'Trusted local community businesses'}
-                </div>
-              </div>
-
-              <div className="border-s-2 border-accent ps-4">
-                <div className="hallmark-code text-lg font-semibold text-ink flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
-                  <span>#LUZ-XXXX</span>
-                </div>
-                <div className="text-xs text-muted mt-1">
-                  {isHe
-                    ? 'אסמכתא ישירה בוואטסאפ מול כל מארח'
-                    : 'Direct WhatsApp host dispatch on every booking'}
                 </div>
               </div>
             </div>

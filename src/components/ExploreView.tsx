@@ -679,8 +679,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           </h2>
           <p className="text-sm text-paper/80">
             {isHe
-              ? 'העלו את המודעה שלכם ללוח הקהילה וקבלו פניות ישירות לוואטסאפ עם קוד אסמכתא #LUZ-XXXX.'
-              : 'List your session or property on the South Goa Almanac and receive direct WhatsApp bookings with a #LUZ-XXXX dispatch code.'}
+              ? 'העלו את המודעה שלכם ללוח הקהילה וקבלו פניות והזמנות ישירות לוואטסאפ.'
+              : 'List your session or property on the South Goa Almanac and receive direct WhatsApp bookings.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4 shrink-0">
