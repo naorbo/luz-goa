@@ -482,7 +482,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                             title,
                             description: `${desc}\nHost: ${host} (${ev.hostPhone})`,
                             location: `${loc}, ${ev.area}, South Goa`,
-                            date: ev.date,
+                            startDate: ev.date || new Date().toISOString().slice(0, 10),
                             startTime: ev.startTime || '16:00',
                             endTime: ev.endTime || '18:00',
                           });

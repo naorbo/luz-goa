@@ -30,7 +30,7 @@ export const PROD_ENTITIES: LuzEntity[] = [
     whatsappGroupUrl: 'https://chat.whatsapp.com/LFebgri5RR4DnXkAKS8MD8?mode=gi_t',
     hostName: 'תום (תיאום: מירב)',
     hostNameEn: 'Tom (Coord: Merav)',
-    hostPhone: '+972-50-767-1341',
+    hostPhone: '+972-50-592-0101',
     priceAmount: 0,
     priceCurrency: 'CONTACT',
     audience: 'kids_8_15',

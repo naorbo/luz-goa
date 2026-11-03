@@ -8,7 +8,7 @@ const NOTIFICATION_CONFIG_STORAGE_KEY = 'luz_notification_channels_v2';
  * running under `luzschedu@gmail.com` here (or via `VITE_LUZ_WEBHOOK_URL`) to enable global
  * Google Sheets + Gmail + Telegram alerts across every visitor device.
  */
-const DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL =
+export const DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL =
   (import.meta as any).env?.VITE_LUZ_WEBHOOK_URL ||
   'https://script.google.com/macros/s/AKfycbwGwt1q-aWG9CWNrCqDNBx2NG3w_cKQhNFTTxJ2XmIlHGNIh_aK2xM6jDIjq9Yj2LGp/exec';
 

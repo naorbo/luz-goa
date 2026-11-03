@@ -195,8 +195,46 @@ export function buildBusinessBookingConfirmationWaUrl(
 }
 
 /**
+ * Guard against group admin / platform admin phone numbers being accidentally attached
+ * as a fallback when an event post in a WhatsApp group does not include the publisher's phone.
+ */
+export function isGroupAdminFallbackPhone(
+  phone: string | undefined | null,
+  entity?: Pick<LuzEntity, 'id' | 'hostName' | 'hostNameEn' | 'titleHe' | 'titleEn' | 'isYouthCenter'>
+): boolean {
+  const digits = (phone || '').replace(/[^0-9]/g, '');
+  if (!digits) return true;
+
+  // South Goa WhatsApp group admin (Chabad House Goa: +972-50-767-1341)
+  // Valid ONLY when the listing is actually Chabad House Goa
+  if (digits.endsWith('507671341')) {
+    if (!entity) return true;
+    const combined = `${entity.id} ${entity.hostName} ${entity.hostNameEn || ''} ${entity.titleHe} ${entity.titleEn}`.toLowerCase();
+    const isChabadListing = combined.includes('chabad') || combined.includes('חב"ד') || combined.includes('חבד');
+    return !isChabadListing;
+  }
+
+  return false;
+}
+
+/**
+ * Returns true ONLY if the entity has a verified direct phone number of the event publisher
+ * (at least 8 digits and not an unverified group-admin fallback).
+ */
+export function hasValidPublisherPhone(
+  entity: Pick<LuzEntity, 'id' | 'hostPhone' | 'hostName' | 'hostNameEn' | 'titleHe' | 'titleEn' | 'isYouthCenter'>
+): boolean {
+  const digits = (entity.hostPhone || '').replace(/[^0-9]/g, '');
+  if (digits.length < 8) return false;
+  if (isGroupAdminFallbackPhone(entity.hostPhone, entity)) return false;
+  return true;
+}
+
+/**
  * Builds a WhatsApp URL to an Event / Workshop / Service / Property Rental host
  * with unmistakable LUZ Goa attribution.
+ * If the event has no direct publisher phone, falls back safely to its WhatsApp group or website
+ * and NEVER sends messages to group admins.
  */
 export function buildEntityWhatsAppReferralUrl(
   entity: LuzEntity,
@@ -209,6 +247,12 @@ export function buildEntityWhatsAppReferralUrl(
     participantsCount?: number;
   }
 ): string {
+  if (!hasValidPublisherPhone(entity)) {
+    if (entity.whatsappGroupUrl) return entity.whatsappGroupUrl;
+    if (entity.websiteUrl) return appendLuzAttributionParams(entity.websiteUrl, referralCode);
+    return '#';
+  }
+
   const providerLang = resolveProviderContactLang(
     entity.preferredContactLang,
     entity.hostPhone,

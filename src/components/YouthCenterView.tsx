@@ -44,7 +44,6 @@ interface YouthCenterViewProps {
   bookings?: BookingRecord[];
   onAddEntity?: (entity: LuzEntity) => void;
   onConfirmBooking?: (
-    entityId: string,
     bookingData: Omit<BookingRecord, 'id' | 'createdAt' | 'status'>
   ) => void;
 }
@@ -317,7 +316,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     setRegistrations((prev) => [newReg, ...prev]);
 
     if (onConfirmBooking) {
-      onConfirmBooking(selectedEventForReg.id, {
+      onConfirmBooking({
         referralCode: `YC-${Date.now().toString().slice(-4)}`,
         entityId: selectedEventForReg.id,
         entityTitleHe: selectedEventForReg.titleHe,
