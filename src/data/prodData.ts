@@ -5,6 +5,7 @@ import {
   YouthCenterFamily,
   UserProfile,
 } from '../types/luz';
+import { CORE_YOUTH_CENTER_EVENTS } from './youthCenterEvents';
 
 /**
  * ============================================================================
@@ -15,6 +16,7 @@ import {
  */
 
 export const PROD_ENTITIES: LuzEntity[] = [
+  ...CORE_YOUTH_CENTER_EVENTS,
   {
     id: 'prod-wks-chess-tom',
     type: 'workshop',

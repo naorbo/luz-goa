@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Activity,
   Copy,
@@ -20,6 +20,13 @@ import {
   Hash,
   Save,
   Sparkles,
+  BarChart3,
+  TrendingUp,
+  Eye,
+  MousePointerClick,
+  Share2,
+  Trash2,
+  ExternalLink,
 } from 'lucide-react';
 import {
   LuzEntity,
@@ -30,13 +37,23 @@ import {
   AppEnvironment,
   LeadReferralEvent,
   NotificationChannelsConfig,
+  ClickAnalyticsEvent,
 } from '../types/luz';
 import { generateWhatsAppDigest } from '../utils/calendarAndParser';
 import {
   ChannelDispatchResult,
   getActionTypeLabel,
   sendTestAlertAllChannels,
+  hasValidPublisherPhone,
 } from '../utils/referralAndAlerts';
+import {
+  aggregateProviderExposure,
+  aggregateEventExposure,
+  formatProviderExposureWhatsAppMessage,
+  formatEventExposureWhatsAppMessage,
+  ProviderExposureStats,
+  EventExposureStats,
+} from '../utils/clickAnalytics';
 import {
   GOOGLE_APPS_SCRIPT_CODE,
   isGoogleAppsScriptUrl,
@@ -59,6 +76,8 @@ interface AdminViewProps {
   bookings: BookingRecord[];
   families: YouthCenterFamily[];
   referrals: LeadReferralEvent[];
+  analytics?: ClickAnalyticsEvent[];
+  onClearAnalytics?: () => void;
   notificationConfig: NotificationChannelsConfig;
   lang: Language;
   appEnv: AppEnvironment;
@@ -189,6 +208,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
   bookings,
   families,
   referrals,
+  analytics = [],
+  onClearAnalytics,
   notificationConfig,
   lang,
   appEnv,
@@ -203,6 +224,83 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [copiedDigest, setCopiedDigest] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
   const [showSqlModal, setShowSqlModal] = useState(false);
+
+  // Click Analytics & Provider Exposure State
+  const [analyticsSubTab, setAnalyticsSubTab] = useState<'providers' | 'events' | 'stream'>('providers');
+  const [providerSearch, setProviderSearch] = useState('');
+  const [eventSearch, setEventSearch] = useState('');
+  const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
+
+  const providerStats = useMemo(() => {
+    return aggregateProviderExposure(analytics, businesses);
+  }, [analytics, businesses]);
+
+  const eventStats = useMemo(() => {
+    return aggregateEventExposure(analytics, entities);
+  }, [analytics, entities]);
+
+  const totalAnalyticsClicks = analytics.length;
+  const totalDirectWhatsAppClicks = useMemo(() => {
+    return analytics.filter(
+      (e) => e.eventType === 'whatsapp_direct_click' || e.eventType === 'business_whatsapp_click'
+    ).length;
+  }, [analytics]);
+
+  const totalCardOpens = useMemo(() => {
+    return analytics.filter(
+      (e) =>
+        e.eventType === 'event_card_click' ||
+        e.eventType === 'business_card_click' ||
+        e.eventType === 'modal_open'
+    ).length;
+  }, [analytics]);
+
+  const totalGroupJoins = useMemo(() => {
+    return analytics.filter((e) => e.eventType === 'whatsapp_group_click').length;
+  }, [analytics]);
+
+  const platformCtr = useMemo(() => {
+    if (totalCardOpens === 0) return totalDirectWhatsAppClicks > 0 ? 100 : 0;
+    return Number(((totalDirectWhatsAppClicks / totalCardOpens) * 100).toFixed(1));
+  }, [totalDirectWhatsAppClicks, totalCardOpens]);
+
+  const filteredProviderStats = useMemo(() => {
+    if (!providerSearch.trim()) return providerStats;
+    const q = providerSearch.toLowerCase();
+    return providerStats.filter(
+      (p) =>
+        p.businessNameHe.toLowerCase().includes(q) ||
+        p.businessNameEn.toLowerCase().includes(q) ||
+        p.ownerNameHe.toLowerCase().includes(q) ||
+        p.phone.includes(q)
+    );
+  }, [providerStats, providerSearch]);
+
+  const filteredEventStats = useMemo(() => {
+    if (!eventSearch.trim()) return eventStats;
+    const q = eventSearch.toLowerCase();
+    return eventStats.filter(
+      (ev) =>
+        ev.titleHe.toLowerCase().includes(q) ||
+        ev.titleEn.toLowerCase().includes(q) ||
+        ev.hostName.toLowerCase().includes(q) ||
+        ev.hostPhone.includes(q)
+    );
+  }, [eventStats, eventSearch]);
+
+  const handleCopyProviderReport = (stat: ProviderExposureStats) => {
+    const text = formatProviderExposureWhatsAppMessage(stat, lang);
+    navigator.clipboard.writeText(text);
+    setCopiedReportId(stat.providerId);
+    setTimeout(() => setCopiedReportId(null), 2500);
+  };
+
+  const handleCopyEventReport = (stat: EventExposureStats) => {
+    const text = formatEventExposureWhatsAppMessage(stat, lang);
+    navigator.clipboard.writeText(text);
+    setCopiedReportId(stat.eventId);
+    setTimeout(() => setCopiedReportId(null), 2500);
+  };
 
   // Cloud Firestore Configuration & Seed Migration State
   const [firebaseSnippet, setFirebaseSnippet] = useState<string>(() => {
@@ -1199,6 +1297,455 @@ export const AdminView: React.FC<AdminViewProps> = ({
             )}
           </div>
         </div>
+      </div>
+
+      {/* =====================================================================
+          CLICK ANALYTICS & PROVIDER EXPOSURE HUB
+          ===================================================================== */}
+      <div className="bg-white rounded-2xl border border-sand-300 p-6 space-y-6 shadow-sm">
+        {/* Header Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sand-200 pb-4">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <BarChart3 className="w-5 h-5 text-terracotta-500" />
+              <h3 className="font-display text-xl font-bold text-canopy-900">
+                {isHe
+                  ? 'אנליטיקת קליקים, עניין ודוחות חשיפה לספקים'
+                  : 'Click Analytics, Interest & Provider Exposure Reports'}
+              </h3>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-ochre-100 text-ochre-800 border border-ochre-300 tabular-nums">
+                <MousePointerClick className="w-3 h-3 text-ochre-600" />
+                {totalAnalyticsClicks} {isHe ? 'אינטראקציות' : 'Interactions'}
+              </span>
+            </div>
+            <p className="text-xs text-canopy-600">
+              {isHe
+                ? 'מעקב אחר התעניינות משתמשים באירועים, סדנאות וספקי שירות, ויצירת דוחות חשיפה בלחיצה אחת לשליחה בוואטסאפ לכל ספק.'
+                : 'Track interest across events and services, and generate 1-click WhatsApp exposure reports for providers.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {onClearAnalytics && totalAnalyticsClicks > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      isHe
+                        ? 'האם לאפס את כל נתוני האנליטיקה בסביבה זו?'
+                        : 'Reset all stored click analytics in this environment?'
+                    )
+                  ) {
+                    onClearAnalytics();
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-sand-300 text-xs font-semibold text-canopy-700 hover:text-terracotta-600 hover:border-terracotta-300 transition-colors"
+                title={isHe ? 'איפוס אנליטיקה' : 'Reset Analytics'}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isHe ? 'איפוס נתונים' : 'Reset Data'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 4 KPI Summary Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-4 rounded-xl bg-sand-50 border border-sand-300 space-y-1">
+            <div className="flex items-center justify-between text-xs font-semibold text-canopy-700">
+              <span>{isHe ? 'סה"כ מעורבות וקליקים' : 'Total Interactions'}</span>
+              <MousePointerClick className="w-4 h-4 text-terracotta-500" />
+            </div>
+            <div className="font-display text-2xl font-bold text-canopy-900 tabular-nums">
+              {totalAnalyticsClicks}
+            </div>
+            <div className="text-[11px] text-canopy-500">
+              {isHe ? 'קליקים, פתיחות ושריונים' : 'Clicks, opens & bookings'}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-1">
+            <div className="flex items-center justify-between text-xs font-semibold text-emerald-800">
+              <span>{isHe ? 'פניות ישירות לוואטסאפ' : 'Direct WhatsApp Leads'}</span>
+              <MessageSquare className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="font-display text-2xl font-bold text-emerald-900 tabular-nums">
+              {totalDirectWhatsAppClicks}
+            </div>
+            <div className="text-[11px] text-emerald-700">
+              {isHe ? 'פניות ישירות לספקים ולמארחים' : 'Direct host & business leads'}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-sand-50 border border-sand-300 space-y-1">
+            <div className="flex items-center justify-between text-xs font-semibold text-canopy-700">
+              <span>{isHe ? 'פתיחת כרטיסים ופרטים' : 'Card & Detail Opens'}</span>
+              <Eye className="w-4 h-4 text-ochre-600" />
+            </div>
+            <div className="font-display text-2xl font-bold text-canopy-900 tabular-nums">
+              {totalCardOpens}
+            </div>
+            <div className="text-[11px] text-canopy-500">
+              {isHe ? 'חשיפות מעמיקות לפרטי הפעילות' : 'Detailed listing impressions'}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-sand-50 border border-sand-300 space-y-1">
+            <div className="flex items-center justify-between text-xs font-semibold text-canopy-700">
+              <span>{isHe ? 'יחס המרה קהילתי' : 'Platform CTR'}</span>
+              <TrendingUp className="w-4 h-4 text-canopy-700" />
+            </div>
+            <div className="font-display text-2xl font-bold text-canopy-900 tabular-nums">
+              {platformCtr}%
+            </div>
+            <div className="text-[11px] text-canopy-500">
+              {isHe ? 'פניות לוואטסאפ מתוך פתיחות' : 'WhatsApp clicks per open'}
+            </div>
+          </div>
+        </div>
+
+        {/* Subtabs Selector */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sand-200 pb-3">
+          <div className="inline-flex rounded-xl bg-sand-100 p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setAnalyticsSubTab('providers')}
+              className={`px-3.5 py-1.5 rounded-lg font-bold transition-colors ${
+                analyticsSubTab === 'providers'
+                  ? 'bg-canopy-900 text-sand-50 shadow-sm'
+                  : 'text-canopy-700 hover:text-canopy-900'
+              }`}
+            >
+              {isHe
+                ? `דוחות חשיפה לספקים ולעסקים (${filteredProviderStats.length})`
+                : `Provider Exposure Reports (${filteredProviderStats.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnalyticsSubTab('events')}
+              className={`px-3.5 py-1.5 rounded-lg font-bold transition-colors ${
+                analyticsSubTab === 'events'
+                  ? 'bg-canopy-900 text-sand-50 shadow-sm'
+                  : 'text-canopy-700 hover:text-canopy-900'
+              }`}
+            >
+              {isHe
+                ? `עניין באירועים וסדנאות (${filteredEventStats.length})`
+                : `Events & Workshops Interest (${filteredEventStats.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnalyticsSubTab('stream')}
+              className={`px-3.5 py-1.5 rounded-lg font-bold transition-colors ${
+                analyticsSubTab === 'stream'
+                  ? 'bg-canopy-900 text-sand-50 shadow-sm'
+                  : 'text-canopy-700 hover:text-canopy-900'
+              }`}
+            >
+              {isHe
+                ? `זרם קליקים אחרונים (${analytics.length})`
+                : `Live Activity Feed (${analytics.length})`}
+            </button>
+          </div>
+        </div>
+
+        {/* SUBTAB 1: PROVIDERS & BUSINESSES EXPOSURE */}
+        {analyticsSubTab === 'providers' && (
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <input
+                type="text"
+                value={providerSearch}
+                onChange={(e) => setProviderSearch(e.target.value)}
+                placeholder={
+                  isHe
+                    ? 'חיפוש ספק לפי שם עסק, שם בעלים או טלפון...'
+                    : 'Search provider by business, owner or phone...'
+                }
+                className="w-full sm:max-w-xs rounded-xl border border-sand-300 bg-sand-50 px-3.5 py-2 text-xs"
+              />
+              <span className="text-xs text-canopy-600">
+                {isHe
+                  ? 'לחץ על "שלח דוח בוואטסאפ" לפתיחת הודעה מנוסחת מוכנה לספק עם כל נתוני החשיפה שלו.'
+                  : 'Click "Send Report on WhatsApp" to open a pre-formatted message for the provider.'}
+              </span>
+            </div>
+
+            <div className="rounded-xl border border-sand-300 overflow-hidden overflow-x-auto bg-white">
+              <table className="w-full text-xs text-start">
+                <thead className="bg-sand-100 text-canopy-900 font-bold border-b border-sand-300">
+                  <tr>
+                    <th className="py-2.5 px-3.5 text-start">{isHe ? 'עסק / ספק' : 'Business / Provider'}</th>
+                    <th className="py-2.5 px-3.5 text-start">{isHe ? 'אזור' : 'Area'}</th>
+                    <th className="py-2.5 px-3.5 text-center">{isHe ? 'פניות בוואטסאפ' : 'WhatsApp Leads'}</th>
+                    <th className="py-2.5 px-3.5 text-center">{isHe ? 'פתיחות כרטיס' : 'Card Opens'}</th>
+                    <th className="py-2.5 px-3.5 text-center">{isHe ? 'שריונים / אתר' : 'Bookings/Site'}</th>
+                    <th className="py-2.5 px-3.5 text-center">{isHe ? 'יחס המרה (CTR)' : 'CTR'}</th>
+                    <th className="py-2.5 px-3.5 text-end">{isHe ? 'דוח חשיפה לספק' : 'Exposure Report'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-sand-200">
+                  {filteredProviderStats.map((stat) => {
+                    const waMsg = formatProviderExposureWhatsAppMessage(stat, lang);
+                    const cleanPhone = stat.phone.replace(/[^0-9]/g, '');
+                    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}`;
+                    const isCopied = copiedReportId === stat.providerId;
+
+                    return (
+                      <tr key={stat.providerId} className="hover:bg-sand-50/70 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold text-canopy-900">
+                          <div>{isHe ? stat.businessNameHe : stat.businessNameEn}</div>
+                          <div className="text-[11px] font-normal text-canopy-600">
+                            {stat.ownerNameHe} · <span dir="ltr">{stat.phone}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-canopy-700">{stat.area}</td>
+                        <td className="py-2.5 px-3.5 text-center tabular-nums">
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full font-bold text-xs ${
+                              stat.whatsappClicks > 0
+                                ? 'bg-emerald-100 text-emerald-800 font-bold'
+                                : 'text-canopy-500'
+                            }`}
+                          >
+                            {stat.whatsappClicks}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center tabular-nums text-canopy-800">
+                          {stat.cardClicks}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center tabular-nums text-canopy-800">
+                          {stat.slotBookings + stat.websiteClicks}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center tabular-nums font-semibold text-canopy-900">
+                          {stat.ctr}%
+                        </td>
+                        <td className="py-2.5 px-3.5 text-end">
+                          <div className="inline-flex items-center gap-1.5">
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-colors shadow-xs"
+                              title={isHe ? 'שליחת דוח בוואטסאפ ישירות לספק' : 'Send exposure report on WhatsApp'}
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>{isHe ? 'שלח בוואטסאפ' : 'WhatsApp'}</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyProviderReport(stat)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-sand-300 hover:bg-sand-100 text-canopy-800 font-semibold text-[11px] transition-colors"
+                              title={isHe ? 'העתקת דוח החשיפה ללוח' : 'Copy report text'}
+                            >
+                              {isCopied ? (
+                                <Check className="w-3 h-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                              <span>{isCopied ? (isHe ? 'הועתק!' : 'Copied!') : isHe ? 'העתק' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* SUBTAB 2: EVENTS & WORKSHOPS EXPOSURE */}
+        {analyticsSubTab === 'events' && (
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <input
+                type="text"
+                value={eventSearch}
+                onChange={(e) => setEventSearch(e.target.value)}
+                placeholder={
+                  isHe
+                    ? 'חיפוש אירוע, סדנה, מארח או טלפון...'
+                    : 'Search event, host or phone...'
+                }
+                className="w-full sm:max-w-xs rounded-xl border border-sand-300 bg-sand-50 px-3.5 py-2 text-xs"
+              />
+              <span className="text-xs text-canopy-600">
+                {isHe
+                  ? 'מעקב עניין, פניות ישירות, הצטרפויות לקבוצה ושמירות ביומן עבור כל אירוע.'
+                  : 'Track interest, direct WhatsApp, group joins and calendar saves per event.'}
+              </span>
+            </div>
+
+            <div className="rounded-xl border border-sand-300 overflow-hidden overflow-x-auto bg-white">
+              <table className="w-full text-xs text-start">
+                <thead className="bg-sand-100 text-canopy-900 font-bold border-b border-sand-300">
+                  <tr>
+                    <th className="py-2.5 px-3.5 text-start">{isHe ? 'אירוע / פעילות' : 'Event / Listing'}</th>
+                    <th className="py-2.5 px-3.5 text-start">{isHe ? 'מארח/ת' : 'Host & Phone'}</th>
+                    <th className="py-2.5 px-3.5 text-center">{isHe ? 'פתיחות כרטיס' : 'Opens'}</th>
+                    <th className="py-2.5 px-3.5 text-center">{isHe ? 'וואטסאפ ישיר' : 'Direct WA'}</th>
+                    <th className="py-2.5 px-3.5 text-center">{isHe ? 'קבוצת וואטסאפ' : 'Group Join'}</th>
+                    <th className="py-2.5 px-3.5 text-center">{isHe ? 'יומן / הרשמות' : 'Cal / RSVPs'}</th>
+                    <th className="py-2.5 px-3.5 text-end">{isHe ? 'דוח חשיפה למארח' : 'Host Report'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-sand-200">
+                  {filteredEventStats.map((stat) => {
+                    const hasValidPhone = hasValidPublisherPhone({
+                      id: stat.eventId,
+                      hostPhone: stat.hostPhone,
+                      whatsappGroupUrl: '',
+                    } as LuzEntity);
+                    const waMsg = formatEventExposureWhatsAppMessage(stat, lang);
+                    const cleanPhone = stat.hostPhone.replace(/[^0-9]/g, '');
+                    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMsg)}`;
+                    const isCopied = copiedReportId === stat.eventId;
+
+                    return (
+                      <tr key={stat.eventId} className="hover:bg-sand-50/70 transition-colors">
+                        <td className="py-2.5 px-3.5 font-bold text-canopy-900">
+                          <div>{isHe ? stat.titleHe : stat.titleEn}</div>
+                          <div className="text-[11px] font-normal text-canopy-600">
+                            {stat.type} · {stat.area}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-canopy-700">
+                          <div>{stat.hostName}</div>
+                          <div className="text-[11px] font-mono" dir="ltr">
+                            {hasValidPhone ? (
+                              <span className="text-emerald-700 font-medium">{stat.hostPhone}</span>
+                            ) : (
+                              <span className="text-ochre-700 font-medium">
+                                {isHe ? 'ללא טלפון ישיר (קבוצה בלבד)' : 'No direct phone'}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center tabular-nums text-canopy-800">
+                          {stat.modalOpens}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center tabular-nums">
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full font-bold text-xs ${
+                              stat.whatsappDirectClicks > 0
+                                ? 'bg-emerald-100 text-emerald-800 font-bold'
+                                : 'text-canopy-500'
+                            }`}
+                          >
+                            {stat.whatsappDirectClicks}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center tabular-nums text-canopy-800">
+                          {stat.whatsappGroupClicks}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center tabular-nums text-canopy-800">
+                          {stat.calendarClicks + stat.rsvps}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-end">
+                          <div className="inline-flex items-center gap-1.5">
+                            {hasValidPhone ? (
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-colors shadow-xs"
+                                title={isHe ? 'שליחת דוח בוואטסאפ למארח' : 'Send event report on WhatsApp'}
+                              >
+                                <MessageSquare className="w-3 h-3" />
+                                <span>{isHe ? 'שלח בוואטסאפ' : 'WhatsApp'}</span>
+                              </a>
+                            ) : (
+                              <span
+                                className="text-[11px] text-canopy-500 italic px-1.5"
+                                title={isHe ? 'אין מספר ישיר של המפרסם' : 'No publisher phone'}
+                              >
+                                {isHe ? 'קבוצה בלבד' : 'Group Only'}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleCopyEventReport(stat)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-sand-300 hover:bg-sand-100 text-canopy-800 font-semibold text-[11px] transition-colors"
+                              title={isHe ? 'העתקת דוח האירוע' : 'Copy event report'}
+                            >
+                              {isCopied ? (
+                                <Check className="w-3 h-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                              <span>{isCopied ? (isHe ? 'הועתק!' : 'Copied!') : isHe ? 'העתק' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* SUBTAB 3: LIVE ACTIVITY STREAM */}
+        {analyticsSubTab === 'stream' && (
+          <div className="space-y-3">
+            <div className="text-xs text-canopy-600">
+              {isHe
+                ? 'פיד כרונולוגי של הפעולות האחרונות שבוצעו במערכת (קליקים, פניות, פתיחות כרטיסים ושריונים):'
+                : 'Live chronological feed of recent user interactions:'}
+            </div>
+
+            {analytics.length === 0 ? (
+              <div className="p-8 text-center bg-sand-50 rounded-xl border border-sand-300 text-xs text-canopy-600">
+                {isHe
+                  ? 'טרם נרשמו פעולות קליקים בסביבה זו. גלוש בלוח, פתח כרטיסים או לחץ על וואטסאפ כדי לצפות באינטראקציות חיות.'
+                  : 'No interaction events logged yet. Explore listings or click WhatsApp to see live stream.'}
+              </div>
+            ) : (
+              <div className="divide-y divide-sand-200 rounded-xl border border-sand-300 overflow-hidden bg-white max-h-80 overflow-y-auto">
+                {analytics.slice(0, 30).map((ev) => (
+                  <div key={ev.id} className="p-3 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                          ev.eventType.includes('whatsapp')
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : ev.eventType.includes('booking')
+                            ? 'bg-terracotta-100 text-terracotta-800'
+                            : 'bg-sand-100 text-canopy-800'
+                        }`}
+                      >
+                        {ev.eventType}
+                      </span>
+                      <div className="truncate">
+                        <span className="font-bold text-canopy-900">
+                          {isHe ? ev.targetTitleHe || ev.targetTitleEn : ev.targetTitleEn || ev.targetTitleHe}
+                        </span>
+                        {ev.providerOrHostName && (
+                          <span className="text-canopy-600 text-[11px]">
+                            {' '}
+                            ({ev.providerOrHostName}
+                            {ev.area ? ` · ${ev.area}` : ''})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-end text-[11px] text-canopy-500 tabular-nums shrink-0">
+                      {new Date(ev.timestamp).toLocaleTimeString(isHe ? 'he-IL' : 'en-GB', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Main Grid: Digest Generator + Provider Integrations & Bookings */}

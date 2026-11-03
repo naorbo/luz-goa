@@ -13,7 +13,8 @@ interface ScrollCraftHeroProps {
   lang: Language;
   onSelectCategory: (type: EntityType | 'all') => void;
   onScrollToCatalog: () => void;
-  onOpenBenBot: () => void;
+  onOpenBenBot?: () => void;
+  showBenBot?: boolean;
   totalEntities: number;
   totalBusinesses?: number;
 }
@@ -23,11 +24,14 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
   onSelectCategory,
   onScrollToCatalog,
   onOpenBenBot,
+  showBenBot = false,
 }) => {
   const isHe = lang === 'he';
 
   const visualCategories: Array<{
     id: EntityType;
+    tagHe: string;
+    tagEn: string;
     titleHe: string;
     titleEn: string;
     subtitleHe: string;
@@ -37,6 +41,8 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
   }> = [
     {
       id: 'event',
+      tagHe: 'אירועים',
+      tagEn: 'Events',
       titleHe: 'אירועים ומפגשים',
       titleEn: 'Events & Gatherings',
       subtitleHe: 'הופעות שקיעה, מעגלי שירה וארוחות קהילה',
@@ -47,6 +53,8 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
     },
     {
       id: 'service',
+      tagHe: 'סדנאות ובריאות',
+      tagEn: 'Wellness',
       titleHe: 'סדנאות, יוגה ומטפלים',
       titleEn: 'Yoga, Workshops & Wellness',
       subtitleHe: 'יוגה של בוקר, נשימות, אמבטיית קרח וטיפולים',
@@ -57,6 +65,8 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
     },
     {
       id: 'rental',
+      tagHe: 'בתים ווילות',
+      tagEn: 'Homes & Villas',
       titleHe: 'בתים ווילות להשכרה',
       titleEn: 'Homes & Villas for Rent',
       subtitleHe: 'בתים מאומתים ישירות מבעלי הנכסים בחופים',
@@ -106,18 +116,20 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
               <ArrowDown className="w-4 h-4" />
             </button>
 
-            <button
-              type="button"
-              onClick={onOpenBenBot}
-              className="hallmark-btn-secondary text-sm sm:text-base"
-            >
-              <MessageCircle className="w-4 h-4 text-accent" />
-              <span>{isHe ? 'עזרה מהירה מ"בן" בוואטסאפ' : 'Ask "Ben" Helper'}</span>
-            </button>
+            {showBenBot && onOpenBenBot && (
+              <button
+                type="button"
+                onClick={onOpenBenBot}
+                className="hallmark-btn-secondary text-sm sm:text-base"
+              >
+                <MessageCircle className="w-4 h-4 text-accent" />
+                <span>{isHe ? 'עזרה מהירה מ"בן" בוואטסאפ' : 'Ask "Ben" Helper'}</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Bottom Row: 3 Simple Visual Category Cards with Goa Atmosphere Photos */}
+        {/* Bottom Row: 3 Clean Visual Category Cards with Goa Atmosphere Photos & Crystal Clear Typography */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8 pt-8 border-t border-rule">
           {visualCategories.map((cat) => {
             const Icon = cat.icon;
@@ -129,30 +141,44 @@ export const ScrollCraftHero: React.FC<ScrollCraftHeroProps> = ({
                   onSelectCategory(cat.id);
                   onScrollToCatalog();
                 }}
-                className="group text-start rounded-2xl overflow-hidden border border-rule bg-paper hover:border-accent/50 hover:shadow-md transition-all flex flex-col"
+                className="group text-start rounded-2xl overflow-hidden border border-rule bg-plate hover:border-accent hover:shadow-lg transition-all duration-200 flex flex-col focus-visible:outline-accent"
               >
-                <div className="relative h-40 w-full overflow-hidden bg-paper-2">
+                {/* Photo with category badge */}
+                <div className="relative h-44 w-full overflow-hidden bg-paper-2">
                   <img
                     src={cat.imageUrl}
                     alt={isHe ? cat.titleHe : cat.titleEn}
                     loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
-                  <div className="absolute bottom-3 inset-x-4 flex items-center justify-between text-white">
-                    <span className="inline-flex items-center gap-2 font-display text-lg font-bold">
-                      <Icon className="w-4 h-4 text-amber-300 shrink-0" />
-                      {isHe ? cat.titleHe : cat.titleEn}
+                  <div className="absolute top-3.5 start-3.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-canopy-950/80 backdrop-blur-md text-sand-50 text-xs font-semibold shadow-sm border border-white/15">
+                      <Icon className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                      <span>{isHe ? cat.tagHe : cat.tagEn}</span>
                     </span>
                   </div>
                 </div>
-                <div className="p-4 flex items-center justify-between gap-3">
-                  <p className="text-xs sm:text-sm text-ink-2">
-                    {isHe ? cat.subtitleHe : cat.subtitleEn}
-                  </p>
-                  <span className="text-xs font-semibold text-accent shrink-0 group-hover:underline">
-                    {isHe ? 'הצג ←' : 'Explore →'}
-                  </span>
+
+                {/* Card Content on Clean White Surface: 100% Readable */}
+                <div className="p-5 flex flex-col justify-between flex-1 bg-plate">
+                  <div>
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-ink group-hover:text-accent transition-colors flex items-center justify-between gap-2">
+                      <span>{isHe ? cat.titleHe : cat.titleEn}</span>
+                      <span className="text-accent text-sm font-bold group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">
+                        {isHe ? '←' : '→'}
+                      </span>
+                    </h3>
+                    <p className="text-xs sm:text-sm text-ink-2 mt-2 leading-relaxed font-normal">
+                      {isHe ? cat.subtitleHe : cat.subtitleEn}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-rule flex items-center justify-between text-xs font-semibold text-accent">
+                    <span>{isHe ? 'לכל הפעילויות בלוח' : 'View full schedule'}</span>
+                    <span className="font-bold group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">
+                      {isHe ? '←' : '→'}
+                    </span>
+                  </div>
                 </div>
               </button>
             );

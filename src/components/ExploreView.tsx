@@ -20,6 +20,7 @@ import {
   Language,
   UserProfile,
   AppEnvironment,
+  ClickAnalyticsEvent,
 } from '../types/luz';
 import { ScrollCraftHero } from './ScrollCraftHero';
 import { buildGoogleCalendarUrl } from '../utils/calendarAndParser';
@@ -35,6 +36,9 @@ interface ExploreViewProps {
   onSwitchToTest: () => void;
   onGoToProvider: () => void;
   onGoToBusinesses: () => void;
+  onTrackClick?: (
+    event: Omit<ClickAnalyticsEvent, 'id' | 'sessionId' | 'timestamp' | 'environment'>
+  ) => void;
 }
 
 const DAY_NAMES_HE = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'יום שבת'];
@@ -45,11 +49,13 @@ const DAY_SHORT_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const ExploreView: React.FC<ExploreViewProps> = ({
   entities,
   lang,
+  appEnv,
   isAdmin = false,
   onSelectEntity,
   onOpenBenBot,
   onGoToProvider,
   onGoToBusinesses,
+  onTrackClick,
 }) => {
   const isHe = lang === 'he';
 
@@ -63,6 +69,22 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
   const handleScrollToCatalog = () => {
     catalogSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleEntityClick = (item: LuzEntity) => {
+    onSelectEntity(item);
+    onTrackClick?.({
+      eventType: 'event_card_click',
+      targetId: item.id,
+      targetTitleHe: item.titleHe,
+      targetTitleEn: item.titleEn,
+      targetType: item.type === 'service' ? 'business' : 'event',
+      categoryOrType: item.type,
+      area: item.area,
+      providerOrHostName: isHe ? item.hostName : item.hostNameEn || item.hostName,
+      providerPhone: item.hostPhone,
+      path: '/explore',
+    });
   };
 
   const filteredEntities = useMemo(() => {
@@ -241,6 +263,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         onSelectCategory={(type) => setSelectedType(type)}
         onScrollToCatalog={handleScrollToCatalog}
         onOpenBenBot={onOpenBenBot}
+        showBenBot={appEnv === 'test'}
         totalEntities={entities.length}
       />
 
@@ -491,7 +514,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                           return (
                             <div
                               key={`${dayIdx}-${ev.id}`}
-                              onClick={() => onSelectEntity(ev)}
+                              onClick={() => handleEntityClick(ev)}
                               className="p-4 sm:p-5 hover:bg-paper-2/50 transition-colors cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
                             >
                               {/* Left/Start: Time Column + Event Details */}
@@ -559,7 +582,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      onSelectEntity(ev);
+                                      handleEntityClick(ev);
                                     }}
                                     className="hallmark-btn-primary text-xs !py-1.5 !px-3.5"
                                   >
@@ -617,7 +640,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 return (
                   <article
                     key={item.id}
-                    onClick={() => onSelectEntity(item)}
+                    onClick={() => handleEntityClick(item)}
                     className="hallmark-plate overflow-hidden flex flex-col justify-between cursor-pointer hover:shadow-lg hover:border-rule-strong transition-all group"
                   >
                     <div>
@@ -706,7 +729,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onSelectEntity(item);
+                          handleEntityClick(item);
                         }}
                         className="hallmark-btn-primary text-xs sm:text-sm !py-2 !px-4"
                       >

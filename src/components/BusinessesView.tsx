@@ -33,6 +33,7 @@ import {
   BookingRecord,
   LeadReferralEvent,
   ReferralActionType,
+  ClickAnalyticsEvent,
 } from '../types/luz';
 import { downloadIcsFile, buildGoogleCalendarUrl } from '../utils/calendarAndParser';
 import {
@@ -60,6 +61,9 @@ interface BusinessesViewProps {
     event: Omit<LeadReferralEvent, 'id' | 'createdAt' | 'channelsDispatched' | 'environment'>
   ) => void;
   onSwitchToTest: () => void;
+  onTrackClick?: (
+    event: Omit<ClickAnalyticsEvent, 'id' | 'sessionId' | 'timestamp' | 'environment'>
+  ) => void;
 }
 
 export const BUSINESS_CATEGORIES: Array<{
@@ -156,6 +160,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   onBookBusinessSlot,
   onTrackReferral,
   onSwitchToTest,
+  onTrackClick,
 }) => {
   const isHe = lang === 'he';
 
@@ -246,6 +251,29 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
       customerPhone: extra?.customerPhone ?? (defaultUserPhone || undefined),
       serviceOrDateSummary: extra?.summary || biz.specialtyHe,
     });
+
+    const mappedType =
+      actionType === 'whatsapp_click'
+        ? 'business_whatsapp_click'
+        : actionType === 'slot_booking'
+        ? 'business_slot_click'
+        : actionType === 'website_click'
+        ? 'business_website_click'
+        : 'business_card_click';
+
+    onTrackClick?.({
+      eventType: mappedType,
+      targetId: biz.id,
+      targetTitleHe: biz.businessNameHe,
+      targetTitleEn: biz.businessNameEn,
+      targetType: 'business',
+      categoryOrType: biz.category,
+      area: biz.area,
+      providerOrHostName: biz.ownerNameHe,
+      providerPhone: biz.phone,
+      metadata: { referralCode, ...extra },
+    });
+
     setReferralNonce((n) => n + 1);
   };
 
@@ -255,6 +283,18 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
     setSelectedSlot(biz.timeSlots[0] || '10:00');
     setBookingConfirmed(false);
     setLastBookingRef('');
+
+    onTrackClick?.({
+      eventType: 'business_card_click',
+      targetId: biz.id,
+      targetTitleHe: biz.businessNameHe,
+      targetTitleEn: biz.businessNameEn,
+      targetType: 'business',
+      categoryOrType: biz.category,
+      area: biz.area,
+      providerOrHostName: biz.ownerNameHe,
+      providerPhone: biz.phone,
+    });
   };
 
   const handleConfirmBusinessBooking = (e: React.FormEvent) => {

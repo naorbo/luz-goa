@@ -143,6 +143,15 @@ export interface LuzEntity {
   pricePerNight?: number;
   pricePerMonth?: number;
   bookedRanges?: BookedRange[];
+
+  // 5. Custom Dynamic Fields ('customFields')
+  customFields?: CustomFieldItem[];
+}
+
+export interface CustomFieldItem {
+  id: string;
+  key: string;
+  value: string;
 }
 
 export interface BookingRecord {
@@ -196,6 +205,67 @@ export interface LeadReferralEvent {
   serviceOrDateSummary?: string;
   channelsDispatched: Array<'webhook' | 'telegram' | 'email'>;
   createdAt: string;
+}
+
+export type AnalyticsEventType =
+  | 'event_view'
+  | 'event_card_click'
+  | 'event_whatsapp_click'
+  | 'event_whatsapp_group_click'
+  | 'event_gcal_click'
+  | 'event_ics_download'
+  | 'event_map_click'
+  | 'event_website_click'
+  | 'event_rsvp_submit'
+  | 'event_rsvp'
+  | 'rental_booking'
+  | 'website_click'
+  | 'whatsapp_group_click'
+  | 'business_slot_click'
+  | 'whatsapp_direct_click'
+  | 'modal_open'
+  | 'calendar_add'
+  | 'map_click'
+  | 'business_view'
+  | 'business_card_click'
+  | 'business_whatsapp_click'
+  | 'business_slot_click'
+  | 'business_website_click'
+  | 'business_phone_click'
+  | 'category_filter_click'
+  | 'area_filter_click'
+  | 'day_filter_click'
+  | 'search_performed'
+  | 'hero_cta_click'
+  | 'youth_center_click'
+  | 'tab_switch'
+  | string;
+
+export interface ClickAnalyticsEvent {
+  id: string;
+  sessionId: string;
+  timestamp: string;
+  environment: AppEnvironment;
+  eventType: AnalyticsEventType;
+  targetType?: 'event' | 'business' | 'youth' | 'general';
+  targetId?: string;
+  targetTitleHe?: string;
+  targetTitleEn?: string;
+  providerName?: string;
+  providerOrHostName?: string;
+  providerPhone?: string;
+  area?: GoaArea;
+  category?: string;
+  categoryOrType?: string;
+  path?: string;
+  metadata?: {
+    searchQuery?: string;
+    filterValue?: string;
+    actionLabel?: string;
+    customerName?: string;
+    bookingRef?: string;
+    [key: string]: any;
+  };
 }
 
 export interface NotificationChannelsConfig {

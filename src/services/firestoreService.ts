@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   setDoc,
+  deleteDoc,
   onSnapshot,
   writeBatch,
   Unsubscribe,
@@ -19,6 +20,7 @@ import {
   RideshareOffer,
   CommunityAlert,
   CommunityEndorsement,
+  ClickAnalyticsEvent,
 } from '../types/luz';
 
 export type FirestoreCollectionName =
@@ -27,6 +29,7 @@ export type FirestoreCollectionName =
   | 'bookings'
   | 'families'
   | 'referrals'
+  | 'analytics'
   | 'moderation_queue'
   | 'marketplace'
   | 'rideshares'
@@ -80,6 +83,14 @@ export const ALL_LUZ_COLLECTIONS: Array<{
     phase: 'active',
     descHe: 'תיעוד כל הקלקה לוואטסאפ/טלפון/שריון תור של ספק בזמן אמת',
     descEn: 'Every WhatsApp click, call, and booking lead attributed to LUZ',
+  },
+  {
+    id: 'analytics',
+    labelHe: 'אנליטיקת קליקים, עניין וחשיפת ספקים',
+    labelEn: 'Click Analytics & Provider Exposure',
+    phase: 'active',
+    descHe: 'מעקב קליקים, פתיחות כרטיסים, פניות וואטסאפ וחיפושים להפקת דוחות חשיפה לספקים',
+    descEn: 'Real-time user clicks, card opens, WhatsApp inquiries, and provider exposure metrics',
   },
   {
     id: 'moderation_queue',
@@ -149,6 +160,24 @@ export async function saveDocumentToFirestore<T extends { id: string }>(
     return true;
   } catch (err) {
     console.warn(`[LUZ Firestore] Failed saving to /envs/${env}/${collectionName}/${item.id}:`, err);
+    return false;
+  }
+}
+
+export async function deleteDocumentFromFirestore(
+  env: AppEnvironment,
+  collectionName: FirestoreCollectionName,
+  id: string
+): Promise<boolean> {
+  const conn = getLuzFirestore();
+  if (!conn) return false;
+
+  try {
+    const ref = doc(conn.db, 'envs', env, collectionName, id);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    console.warn(`[LUZ Firestore] Failed deleting /envs/${env}/${collectionName}/${id}:`, err);
     return false;
   }
 }
@@ -269,6 +298,7 @@ export interface EnvRealtimeCallbacks {
   onRideshares?: (items: RideshareOffer[]) => void;
   onUrgentBoard?: (items: CommunityAlert[]) => void;
   onEndorsements?: (items: CommunityEndorsement[]) => void;
+  onAnalytics?: (items: ClickAnalyticsEvent[]) => void;
   onStatusChange?: (status: 'disconnected' | 'connecting' | 'live' | 'error', detail?: string) => void;
 }
 
@@ -320,6 +350,7 @@ export function subscribeToEnvironmentFirestore(
   watchCol('bookings', callbacks.onBookings);
   watchCol('families', callbacks.onFamilies);
   watchCol('referrals', callbacks.onReferrals);
+  watchCol('analytics', callbacks.onAnalytics);
   watchCol('moderation_queue', callbacks.onModerationQueue);
   watchCol('marketplace', callbacks.onMarketplace);
   watchCol('rideshares', callbacks.onRideshares);

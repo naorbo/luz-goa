@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Calendar,
@@ -23,6 +23,7 @@ import {
   Language,
   LeadReferralEvent,
   ReferralActionType,
+  ClickAnalyticsEvent,
 } from '../types/luz';
 import { downloadIcsFile, buildGoogleCalendarUrl } from '../utils/calendarAndParser';
 import {
@@ -44,6 +45,9 @@ interface BookingModalProps {
   onTrackReferral: (
     event: Omit<LeadReferralEvent, 'id' | 'createdAt' | 'channelsDispatched' | 'environment'>
   ) => void;
+  onTrackClick?: (
+    event: Omit<ClickAnalyticsEvent, 'id' | 'sessionId' | 'timestamp' | 'environment'>
+  ) => void;
 }
 
 const UPCOMING_DATES = [
@@ -63,6 +67,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onClose,
   onConfirmBooking,
   onTrackReferral,
+  onTrackClick,
 }) => {
   if (!entity) return null;
 
@@ -126,8 +131,54 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       customerPhone: extra?.customerPhone || customerPhone.trim() || undefined,
       serviceOrDateSummary: extra?.serviceOrDateSummary,
     });
+
+    const mappedAnalyticsType =
+      actionType === 'whatsapp_click'
+        ? 'whatsapp_direct_click'
+        : actionType === 'whatsapp_group_click'
+        ? 'whatsapp_group_click'
+        : actionType === 'website_click'
+        ? 'website_click'
+        : actionType === 'rental_booking'
+        ? 'rental_booking'
+        : actionType === 'slot_booking'
+        ? 'business_slot_click'
+        : 'event_rsvp';
+
+    onTrackClick?.({
+      eventType: mappedAnalyticsType,
+      targetId: entity.id,
+      targetTitleHe: entity.titleHe,
+      targetTitleEn: entity.titleEn,
+      targetType: entity.type === 'service' ? 'business' : 'event',
+      categoryOrType: entity.type,
+      area: entity.area,
+      providerOrHostName: hostDisplay,
+      providerPhone: entity.hostPhone,
+      metadata: {
+        referralCode: refCode,
+        ...extra,
+      },
+    });
+
     setReferralNonce((n) => n + 1);
   };
+
+  useEffect(() => {
+    if (entity) {
+      onTrackClick?.({
+        eventType: 'modal_open',
+        targetId: entity.id,
+        targetTitleHe: entity.titleHe,
+        targetTitleEn: entity.titleEn,
+        targetType: entity.type === 'service' ? 'business' : 'event',
+        categoryOrType: entity.type,
+        area: entity.area,
+        providerOrHostName: hostDisplay,
+        providerPhone: entity.hostPhone,
+      });
+    }
+  }, [entity?.id]);
 
   const modalRefCode = generateLuzReferralCode(entity.id, referralNonce);
 
@@ -349,6 +400,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   href={gcalUrl}
                   target="_blank"
                   rel="noreferrer"
+                  onClick={() =>
+                    onTrackClick?.({
+                      eventType: 'calendar_add',
+                      targetId: entity.id,
+                      targetTitleHe: entity.titleHe,
+                      targetTitleEn: entity.titleEn,
+                      targetType: 'event',
+                      categoryOrType: entity.type,
+                      area: entity.area,
+                      providerOrHostName: hostDisplay,
+                      providerPhone: entity.hostPhone,
+                      metadata: { method: 'google_calendar' },
+                    })
+                  }
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-canopy-800 text-sand-50 text-sm font-medium hover:bg-canopy-700 transition-colors"
                 >
                   <Calendar className="w-4 h-4 text-ochre-400" />
@@ -358,7 +423,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    onTrackClick?.({
+                      eventType: 'calendar_add',
+                      targetId: entity.id,
+                      targetTitleHe: entity.titleHe,
+                      targetTitleEn: entity.titleEn,
+                      targetType: 'event',
+                      categoryOrType: entity.type,
+                      area: entity.area,
+                      providerOrHostName: hostDisplay,
+                      providerPhone: entity.hostPhone,
+                      metadata: { method: 'ics_download' },
+                    });
                     downloadIcsFile({
                       title: `${title} (LUZ Goa)`,
                       description: `${description}\nLUZ Ref: #${confirmedRefCode}`,
@@ -367,8 +444,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       startTime: entity.type === 'rental' ? '14:00' : selectedSlot,
                       endDate: entity.type === 'rental' ? rentalTo : undefined,
                       endTime: entity.endTime || '19:30',
-                    })
-                  }
+                    });
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-canopy-200 bg-white text-canopy-800 text-sm font-medium hover:bg-sand-100 transition-colors"
                 >
                   <Download className="w-4 h-4 text-terracotta-500" />
@@ -430,6 +507,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       href={entity.mapUrl}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={() =>
+                        onTrackClick?.({
+                          eventType: 'map_click',
+                          targetId: entity.id,
+                          targetTitleHe: entity.titleHe,
+                          targetTitleEn: entity.titleEn,
+                          targetType: entity.type === 'service' ? 'business' : 'event',
+                          categoryOrType: entity.type,
+                          area: entity.area,
+                          providerOrHostName: hostDisplay,
+                          providerPhone: entity.hostPhone,
+                        })
+                      }
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-sand-300 text-xs font-semibold text-canopy-800 hover:border-canopy-700 transition-colors"
                     >
                       <MapPin className="w-3.5 h-3.5 text-ochre-600" />

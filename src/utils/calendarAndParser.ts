@@ -150,7 +150,14 @@ export function parseWhatsAppMessageToDraft(
 
   // 3. Extract Phone Number
   const phoneMatch = text.match(/(\+?\d{2,3}[-\s]?\d{2,4}[-\s]?\d{3}[-\s]?\d{3,4}|\b05\d[-\s]?\d{3}[-\s]?\d{4}\b)/);
-  const hostPhone = phoneMatch ? phoneMatch[0] : '+972-52-478-0033';
+  const hostPhone = phoneMatch ? phoneMatch[0] : '';
+  if (!phoneMatch) {
+    notes.push(
+      isHe
+        ? 'לא זוהה מספר טלפון בגוף ההודעה (פנייה תתאפשר דרך קבוצת הוואטסאפ או קישור)'
+        : 'No direct phone in message body (contact via group link or web)'
+    );
+  }
 
   // 4. Extract Price
   let priceAmount = 0;

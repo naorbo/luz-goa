@@ -244,10 +244,11 @@ function parseEventFromText(text, senderNumber = '') {
   const title =
     firstLine.length > 60 ? firstLine.slice(0, 57) + '...' : firstLine || 'אירוע קהילתי בגואה';
 
+  // Extract explicit phone number from text; never fall back to group sender / admin
   const phoneMatch = clean.match(
     /(\+?\d{2,3}[-\s]?\d{2,4}[-\s]?\d{3}[-\s]?\d{3,4}|\b05\d[-\s]?\d{3}[-\s]?\d{4}\b)/
   );
-  const hostPhone = phoneMatch ? phoneMatch[0].slice(0, 25) : (senderNumber || '').slice(0, 25);
+  const hostPhone = phoneMatch ? phoneMatch[0].slice(0, 25) : '';
 
   return {
     title,

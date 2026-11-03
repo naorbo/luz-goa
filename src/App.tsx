@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar,
+  CalendarDays,
   Briefcase,
   Bot,
   Users,
@@ -22,7 +23,13 @@ import {
   AppEnvironment,
   LeadReferralEvent,
   NotificationChannelsConfig,
+  ClickAnalyticsEvent,
 } from './types/luz';
+import {
+  getStoredClickAnalytics,
+  recordClickAnalyticsEvent,
+  clearStoredClickAnalytics,
+} from './utils/clickAnalytics';
 import {
   detectInitialEnvironment,
   getStorageKeys,
@@ -53,6 +60,7 @@ import {
 import {
   subscribeToEnvironmentFirestore,
   saveDocumentToFirestore,
+  deleteDocumentFromFirestore,
 } from './services/firestoreService';
 import {
   PROD_ENTITIES,
@@ -74,6 +82,7 @@ import { ProviderView } from './components/ProviderView';
 import { BenBotView } from './components/BenBotView';
 import { YouthCenterView } from './components/YouthCenterView';
 import { AdminView } from './components/AdminView';
+import { EventsManagerView } from './components/EventsManagerView';
 import { BookingModal } from './components/BookingModal';
 
 type ActiveTab =
@@ -81,6 +90,7 @@ type ActiveTab =
   | 'businesses'
   | 'ben'
   | 'youth_center'
+  | 'events_admin'
   | 'provider'
   | 'admin';
 
@@ -91,6 +101,7 @@ interface EnvStore {
   bookings: BookingRecord[];
   families: YouthCenterFamily[];
   referrals: LeadReferralEvent[];
+  analytics: ClickAnalyticsEvent[];
   userProfile: UserProfile;
 }
 
@@ -112,6 +123,10 @@ function mergeWithSeedById<T extends { id: string }>(saved: T[], seed: T[]): T[]
     return {
       ...seedItem,
       ...item,
+      // Prefer seedItem phone and host numbers to eliminate stale cached group admin fallbacks
+      hostPhone: (seedItem as any).hostPhone !== undefined ? (seedItem as any).hostPhone : (item as any).hostPhone,
+      hostName: (seedItem as any).hostName !== undefined ? (seedItem as any).hostName : (item as any).hostName,
+      phone: (seedItem as any).phone !== undefined ? (seedItem as any).phone : (item as any).phone,
       hostNameEn: (seedItem as any).hostNameEn ?? (item as any).hostNameEn,
       preferredContactLang:
         (seedItem as any).preferredContactLang ?? (item as any).preferredContactLang,
@@ -127,6 +142,7 @@ function mergeWithSeedById<T extends { id: string }>(saved: T[], seed: T[]): T[]
 
 function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
   const keys = getStorageKeys(env);
+  const storedAnalytics = getStoredClickAnalytics(env);
   if (env === 'prod') {
     const savedEntities = readJsonOrFallback(keys.entities, PROD_ENTITIES);
     const savedBusinesses = readJsonOrFallback(keys.businesses, PROD_BUSINESSES);
@@ -137,6 +153,7 @@ function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
       bookings: readJsonOrFallback(keys.bookings, PROD_BOOKINGS),
       families: readJsonOrFallback(keys.families, PROD_FAMILIES),
       referrals: readJsonOrFallback(keys.referrals, []),
+      analytics: storedAnalytics,
       userProfile: readJsonOrFallback(keys.profile, PROD_USER_PROFILE),
     };
   }
@@ -153,6 +170,7 @@ function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
     bookings: readJsonOrFallback(keys.bookings, TEST_BOOKINGS),
     families: readJsonOrFallback(keys.families, TEST_FAMILIES),
     referrals: readJsonOrFallback(keys.referrals, []),
+    analytics: storedAnalytics,
     userProfile: normalizedTestProfile,
   };
 }
@@ -188,7 +206,7 @@ export function App() {
   const [adminAuthError, setAdminAuthError] = useState<string>('');
   const [adminSigningIn, setAdminSigningIn] = useState<boolean>(false);
 
-  const { env: appEnv, entities, businesses, bookings, families, referrals, userProfile } = store;
+  const { env: appEnv, entities, businesses, bookings, families, referrals, analytics, userProfile } = store;
 
   // Sync RTL/LTR direction & language preference (English LTR is default across PROD, TEST & Dev)
   useEffect(() => {
@@ -263,6 +281,11 @@ export function App() {
           prev.env === safeEnv ? { ...prev, referrals: cloudReferrals } : prev
         );
       },
+      onAnalytics: (cloudAnalytics) => {
+        setStore((prev) =>
+          prev.env === safeEnv ? { ...prev, analytics: cloudAnalytics } : prev
+        );
+      },
       onStatusChange: (status, detail) => {
         setFirestoreStatus(status);
         if (detail) setFirestoreProjectId(detail);
@@ -284,10 +307,19 @@ export function App() {
 
   const isHe = lang === 'he';
 
+  useEffect(() => {
+    if (appEnv !== 'test' && activeTab === 'ben') {
+      setActiveTab('explore');
+    }
+  }, [appEnv, activeTab]);
+
   const handleSwitchEnvironment = (nextEnv: AppEnvironment) => {
     if (nextEnv === 'test' && !isAdminAuthenticated) return;
     if (nextEnv === appEnv) return;
     setSelectedEntity(null);
+    if (nextEnv !== 'test' && activeTab === 'ben') {
+      setActiveTab('explore');
+    }
     updateUrlForEnvironment(nextEnv);
     setStore(loadStoreForEnvironment(nextEnv));
   };
@@ -406,6 +438,34 @@ export function App() {
       entities: [sanitizedEntity, ...prev.entities],
     }));
     void saveDocumentToFirestore(appEnv, 'entities', sanitizedEntity);
+  };
+
+  const handleUpdateEntity = (updatedEntity: LuzEntity) => {
+    const phoneCheck = sanitizeAndValidatePhone(updatedEntity.hostPhone);
+    const sanitized: LuzEntity = {
+      ...updatedEntity,
+      titleHe: sanitizeInputText(updatedEntity.titleHe, 180),
+      titleEn: sanitizeInputText(updatedEntity.titleEn || updatedEntity.titleHe, 180),
+      descriptionHe: sanitizeInputText(updatedEntity.descriptionHe, 1500),
+      descriptionEn: sanitizeInputText(updatedEntity.descriptionEn || updatedEntity.descriptionHe, 1500),
+      hostName: sanitizeInputText(updatedEntity.hostName, 100),
+      hostPhone: phoneCheck.valid ? phoneCheck.cleaned : updatedEntity.hostPhone,
+      priceAmount: Math.max(0, Math.min(500000, Number(updatedEntity.priceAmount) || 0)),
+    };
+
+    setStore((prev) => ({
+      ...prev,
+      entities: prev.entities.map((e) => (e.id === sanitized.id ? sanitized : e)),
+    }));
+    void saveDocumentToFirestore(appEnv, 'entities', sanitized);
+  };
+
+  const handleDeleteEntity = (entityId: string) => {
+    setStore((prev) => ({
+      ...prev,
+      entities: prev.entities.filter((e) => e.id !== entityId),
+    }));
+    void deleteDocumentFromFirestore(appEnv, 'entities', entityId);
   };
 
   const handleAddBusiness = (newBiz: CommunityBusiness) => {
@@ -533,6 +593,25 @@ export function App() {
     void dispatchLeadReferralAlerts(fullEvent, notificationConfig);
   };
 
+  const handleTrackClick = (
+    eventData: Omit<ClickAnalyticsEvent, 'id' | 'sessionId' | 'timestamp' | 'environment'>
+  ) => {
+    const fullEvent = recordClickAnalyticsEvent(appEnv, eventData);
+    setStore((prev) => ({
+      ...prev,
+      analytics: [fullEvent, ...prev.analytics.filter((e) => e.id !== fullEvent.id)],
+    }));
+    void saveDocumentToFirestore(appEnv, 'analytics', fullEvent);
+  };
+
+  const handleClearAnalytics = () => {
+    clearStoredClickAnalytics(appEnv);
+    setStore((prev) => ({
+      ...prev,
+      analytics: [],
+    }));
+  };
+
   const handleRegisterFamily = (fam: Omit<YouthCenterFamily, 'id' | 'createdAt'>) => {
     const rl = enforceRateLimit('signup_registration');
     if (!rl.allowed) {
@@ -625,6 +704,7 @@ export function App() {
         bookings: PROD_BOOKINGS,
         families: PROD_FAMILIES,
         referrals: [],
+        analytics: [],
         userProfile: PROD_USER_PROFILE,
       });
     } else {
@@ -635,6 +715,7 @@ export function App() {
         bookings: TEST_BOOKINGS,
         families: TEST_FAMILIES,
         referrals: [],
+        analytics: [],
         userProfile: TEST_USER_PROFILE,
       });
     }
@@ -661,12 +742,16 @@ export function App() {
       icon: Briefcase,
       badge: businesses.length,
     },
-    {
-      id: 'ben',
-      labelHe: 'הבוט "בן" (WhatsApp)',
-      labelEn: '"Ben" WhatsApp Bot',
-      icon: Bot,
-    },
+    ...(appEnv === 'test'
+      ? [
+          {
+            id: 'ben' as ActiveTab,
+            labelHe: 'הבוט "בן" (WhatsApp)',
+            labelEn: '"Ben" WhatsApp Bot',
+            icon: Bot,
+          },
+        ]
+      : []),
     {
       id: 'youth_center',
       labelHe: 'מרכז הנוער',
@@ -676,6 +761,13 @@ export function App() {
     },
     ...(isAdminAuthenticated
       ? [
+          {
+            id: 'events_admin' as ActiveTab,
+            labelHe: 'ניהול אירועים',
+            labelEn: 'Events Manager',
+            icon: CalendarDays,
+            badge: entities.length,
+          },
           {
             id: 'provider' as ActiveTab,
             labelHe: 'העלאת אירוע / בית',
@@ -852,6 +944,7 @@ export function App() {
             onSwitchToTest={() => handleSwitchEnvironment('test')}
             onGoToProvider={() => setActiveTab('provider')}
             onGoToBusinesses={() => setActiveTab('businesses')}
+            onTrackClick={handleTrackClick}
           />
         )}
 
@@ -867,10 +960,11 @@ export function App() {
             onBookBusinessSlot={handleBookBusinessSlot}
             onTrackReferral={handleTrackReferral}
             onSwitchToTest={() => handleSwitchEnvironment('test')}
+            onTrackClick={handleTrackClick}
           />
         )}
 
-        {activeTab === 'ben' && (
+        {activeTab === 'ben' && appEnv === 'test' && (
           <BenBotView
             entities={entities}
             businesses={businesses}
@@ -899,6 +993,17 @@ export function App() {
           />
         )}
 
+        {isAdminAuthenticated && activeTab === 'events_admin' && (
+          <EventsManagerView
+            entities={entities}
+            lang={lang}
+            appEnv={isAdminAuthenticated ? appEnv : 'prod'}
+            onAddEntity={handleAddEntity}
+            onUpdateEntity={handleUpdateEntity}
+            onDeleteEntity={handleDeleteEntity}
+          />
+        )}
+
         {isAdminAuthenticated && activeTab === 'provider' && (
           <ProviderView
             lang={lang}
@@ -915,6 +1020,8 @@ export function App() {
             bookings={bookings}
             families={families}
             referrals={referrals}
+            analytics={analytics}
+            onClearAnalytics={handleClearAnalytics}
             notificationConfig={notificationConfig}
             lang={lang}
             appEnv={appEnv}

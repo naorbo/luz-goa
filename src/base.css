@@ -27,14 +27,18 @@ body {
 h1,
 h2,
 h3,
-h4,
-.font-display,
-.font-serif {
+h4 {
   font-family: var(--font-display);
   color: var(--color-ink);
   letter-spacing: -0.015em;
   line-height: 1.2;
   margin: 0;
+}
+
+.font-display,
+.font-serif {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
 }
 
 p {
