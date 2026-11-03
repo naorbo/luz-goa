@@ -1157,6 +1157,7 @@ export function App() {
         onClose={() => setSelectedEntity(null)}
         onConfirmBooking={handleConfirmBooking}
         onTrackReferral={handleTrackReferral}
+        onTrackClick={handleTrackClick}
       />
     </div>
   );
