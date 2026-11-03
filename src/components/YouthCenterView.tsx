@@ -10,6 +10,7 @@ import {
   FileSpreadsheet,
   LayoutGrid,
   CalendarDays,
+  CalendarPlus,
   X,
   UserCheck,
   MessageCircle,
@@ -637,10 +638,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                         {formatDateFull(ev.date, isHe)}
                                       </span>
                                     )}
-                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink-2">
-                                      <MapPin className="w-3 h-3 text-accent" />
-                                      {loc}
-                                    </span>
+
                                     {/* Registration count only (NO NAMES) */}
                                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-paper-2 text-xs font-semibold text-ink">
                                       <Users className="w-3 h-3 text-accent" />
@@ -660,22 +658,23 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                 </div>
                               </div>
 
-                              {/* Right/End: Quick Actions */}
-                              <div className="flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-rule">
+                              {/* Right/End: Quick Actions (Mobile-first responsive 2-button bar) */}
+                              <div className="w-full md:w-auto flex items-center gap-2.5 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-rule">
                                 <a
                                   href={gcalLink}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="px-3 py-1.5 rounded-full border border-rule-strong bg-plate text-xs font-semibold text-ink hover:bg-paper-2 transition-colors"
+                                  className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] md:min-h-0"
                                 >
-                                  {isHe ? '+ ליומן שלי' : '+ Google Cal'}
+                                  <CalendarPlus className="w-4 h-4 text-accent shrink-0" />
+                                  <span>{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
                                 </a>
                                 <button
                                   type="button"
                                   onClick={() => handleOpenRegisterModal(ev)}
-                                  className="hallmark-btn-primary text-xs !py-1.5 !px-4"
+                                  className="flex-1 md:flex-initial hallmark-btn-primary !py-2.5 md:!py-1.5 !px-4 rounded-xl md:rounded-full text-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-sm min-h-[42px] md:min-h-0"
                                 >
-                                  <UserCheck className="w-3.5 h-3.5" />
+                                  <UserCheck className="w-4 h-4 shrink-0" />
                                   <span>{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
                                 </button>
                               </div>
@@ -750,16 +749,12 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         <Clock className="w-4 h-4 text-accent shrink-0" />
                         <span className="font-semibold text-ink">{formatEventSchedule(ev)}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-muted shrink-0" />
-                        <span className="truncate">{loc}</span>
-                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Footer */}
-                <div className="px-5 py-4 bg-paper/60 border-t border-rule flex items-center justify-between gap-3">
+                <div className="px-5 py-4 bg-paper/60 border-t border-rule flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                   <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-2">
                     <Users className="w-3.5 h-3.5 text-accent" />
                     <span>{regCount} {isHe ? 'נרשמו' : 'registered'}</span>
@@ -767,7 +762,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleOpenRegisterModal(ev)}
-                    className="hallmark-btn-primary text-xs sm:text-sm !py-2 !px-4"
+                    className="w-full sm:w-auto hallmark-btn-primary text-xs sm:text-sm !py-2.5 sm:!py-2 !px-4 rounded-xl sm:rounded-full inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-sm min-h-[42px] sm:min-h-0"
                   >
                     <UserCheck className="w-4 h-4" />
                     <span>{isHe ? 'הרשמה לאירוע' : 'Register for Event'}</span>
