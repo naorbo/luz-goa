@@ -23,7 +23,10 @@ import {
   ClickAnalyticsEvent,
 } from '../types/luz';
 import { ScrollCraftHero } from './ScrollCraftHero';
-import { buildGoogleCalendarUrl } from '../utils/calendarAndParser';
+import {
+  buildGoogleCalendarUrl,
+  buildChronologicalDateGroups,
+} from '../utils/calendarAndParser';
 
 interface ExploreViewProps {
   entities: LuzEntity[];
@@ -62,7 +65,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [displayMode, setDisplayMode] = useState<'cards' | 'calendar'>('cards');
   const [selectedType, setSelectedType] = useState<EntityType | 'all'>('all');
   const [selectedArea, setSelectedArea] = useState<GoaArea | 'all'>('all');
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number | 'all'>('all');
+  const [selectedDate, setSelectedDate] = useState<string | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const catalogSectionRef = useRef<HTMLDivElement>(null);
@@ -130,35 +133,15 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     return [1];
   };
 
-  // Group all non-rental events chronologically by day of week (0..6) and sort by startTime
-  const calendarByDay = useMemo(() => {
-    const map: Record<number, LuzEntity[]> = {
-      0: [],
-      1: [],
-      2: [],
-      3: [],
-      4: [],
-      5: [],
-      6: [],
-    };
-
-    filteredEntities.forEach((item) => {
-      if (item.type === 'rental') return;
-      const days = getEntityDaysOfWeek(item);
-      days.forEach((d) => {
-        if (map[d]) {
-          map[d].push(item);
-        }
-      });
-    });
-
-    Object.keys(map).forEach((k) => {
-      const dayIdx = Number(k);
-      map[dayIdx].sort((a, b) => (a.startTime || '09:00').localeCompare(b.startTime || '09:00'));
-    });
-
-    return map;
+  // Group all non-rental events chronologically by exact date
+  const chronologicalDayGroups = useMemo(() => {
+    return buildChronologicalDateGroups(filteredEntities);
   }, [filteredEntities]);
+
+  const displayDayGroups = useMemo(() => {
+    if (selectedDate === 'all') return chronologicalDayGroups;
+    return chronologicalDayGroups.filter((g) => g.dateStr === selectedDate);
+  }, [chronologicalDayGroups, selectedDate]);
 
   const entityBadge = (type: EntityType) => {
     switch (type) {
@@ -381,7 +364,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
          ===================================================================== */}
       {displayMode === 'calendar' ? (
         <section className="space-y-6" aria-label={isHe ? 'לוח שנה כרונולוגי' : 'Chronological Calendar'}>
-          {/* Day-of-Week Selector Strip */}
+          {/* Date Selector Strip */}
           <div className="hallmark-plate p-4 sm:p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -390,72 +373,55 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                 </h2>
                 <p className="text-xs sm:text-sm text-muted">
                   {isHe
-                    ? 'כל האירועים והמפגשים מסודרים לפי ימים ושעות מהבוקר עד הערב. לחצו על יום לסינון או על אירוע להרשמה.'
-                    : 'All events and sessions ordered chronologically by day and time. Click any event to book.'}
+                    ? 'אירועים ומפגשים מסודרים לפי תאריכים ושעות לאורך החודש. לחצו על תאריך לסינון או על אירוע להרשמה.'
+                    : 'Events and sessions ordered chronologically date by date throughout the month.'}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedDayIndex('all')}
+                onClick={() => setSelectedDate('all')}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                  selectedDayIndex === 'all'
+                  selectedDate === 'all'
                     ? 'bg-ink text-paper'
                     : 'bg-paper-2 text-ink hover:bg-paper-3'
                 }`}
               >
-                {isHe ? 'הצג את כל ימי השבוע' : 'Show Full Week'}
+                {isHe ? 'הצג את כל החודש' : 'Show Full Month'}
               </button>
             </div>
 
-            {/* 7 Day Cards Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
-              {orderedDays.map((dayIdx) => {
-                const dayEvents = calendarByDay[dayIdx] || [];
-                const isSelected = selectedDayIndex === dayIdx;
+            {/* Chronological Date Cards Strip */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+              {chronologicalDayGroups.map((dayGroup) => {
+                const isSelected = selectedDate === dayGroup.dateStr;
                 return (
                   <button
-                    key={dayIdx}
+                    key={dayGroup.dateStr}
                     type="button"
                     onClick={() =>
-                      setSelectedDayIndex(selectedDayIndex === dayIdx ? 'all' : dayIdx)
+                      setSelectedDate(selectedDate === dayGroup.dateStr ? 'all' : dayGroup.dateStr)
                     }
-                    className={`p-3 rounded-2xl border text-start transition-all flex flex-col justify-between ${
+                    className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-w-[76px] sm:min-w-0 ${
                       isSelected
                         ? 'bg-accent text-white border-accent shadow-sm'
-                        : dayEvents.length > 0
-                        ? 'bg-paper hover:bg-paper-2 border-rule text-ink'
-                        : 'bg-paper/40 border-rule/60 text-muted'
+                        : 'bg-paper hover:bg-paper-2 border-rule text-ink'
                     }`}
                   >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-bold">
-                        {isHe ? DAY_NAMES_HE[dayIdx] : DAY_NAMES_EN[dayIdx]}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                          isSelected
-                            ? 'bg-white/25 text-white'
-                            : dayEvents.length > 0
-                            ? 'bg-accent/15 text-accent'
-                            : 'bg-paper-2 text-muted'
-                        }`}
-                      >
-                        {dayEvents.length}
-                      </span>
-                    </div>
-                    <div
-                      className={`text-[11px] mt-2 truncate ${
-                        isSelected ? 'text-white/90' : 'text-muted'
+                    <span className={`text-[11px] font-medium uppercase ${isSelected ? 'text-white/80' : 'text-muted'}`}>
+                      {isHe ? dayGroup.dayShortHe : dayGroup.dayShortEn}
+                    </span>
+                    <span className="text-xl font-bold font-display my-0.5">
+                      {dayGroup.dayOfMonth}
+                    </span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        isSelected
+                          ? 'bg-white/20 text-white'
+                          : 'bg-paper-2 text-accent'
                       }`}
                     >
-                      {dayEvents.length === 0
-                        ? isHe
-                          ? 'אין אירועים רשומים'
-                          : 'No scheduled events'
-                        : `${dayEvents[0].startTime || '09:00'} · ${
-                            isHe ? dayEvents[0].titleHe : dayEvents[0].titleEn
-                          }`}
-                    </div>
+                      {dayGroup.events.length} {isHe ? 'פעילויות' : 'events'}
+                    </span>
                   </button>
                 );
               })}
@@ -464,59 +430,73 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
           {/* Chronological Day-by-Day Timeline */}
           <div className="space-y-6">
-            {orderedDays
-              .filter((d) => selectedDayIndex === 'all' || selectedDayIndex === d)
-              .map((dayIdx) => {
-                const dayEvents = calendarByDay[dayIdx] || [];
-                if (dayEvents.length === 0 && selectedDayIndex === 'all') return null;
+            {displayDayGroups.map((dayGroup) => {
+              if (dayGroup.events.length === 0 && selectedDate === 'all') return null;
 
-                return (
-                  <div key={dayIdx} className="hallmark-plate overflow-hidden">
-                    {/* Day Banner */}
-                    <div className="px-5 py-3.5 bg-paper-2 border-b border-rule flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 rounded-xl bg-ink text-paper font-display font-bold text-sm flex items-center justify-center">
-                          {isHe ? DAY_SHORT_HE[dayIdx] : DAY_SHORT_EN[dayIdx]}
+              return (
+                <div key={dayGroup.dateStr} className="hallmark-plate overflow-hidden">
+                  {/* Day Banner */}
+                  <div className="px-5 py-4 bg-paper-2 border-b border-rule flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-ink text-paper flex flex-col items-center justify-center font-display shadow-sm shrink-0">
+                        <span className="text-[10px] font-semibold uppercase text-accent tracking-wider">
+                          {isHe ? dayGroup.dayShortHe : dayGroup.dayShortEn}
                         </span>
-                        <h3 className="font-display text-lg font-bold text-ink">
-                          {isHe ? DAY_NAMES_HE[dayIdx] : DAY_NAMES_EN[dayIdx]}
-                        </h3>
+                        <span className="text-lg font-bold leading-none mt-0.5">
+                          {dayGroup.dayOfMonth}
+                        </span>
                       </div>
-                      <span className="text-xs font-semibold text-muted">
-                        {dayEvents.length}{' '}
-                        {isHe ? 'אירועים ופעילויות' : 'scheduled activities'}
-                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-display text-lg sm:text-xl font-bold text-ink">
+                            {isHe ? dayGroup.formattedDateHe : dayGroup.formattedDateEn}
+                          </h3>
+                          {dayGroup.isToday && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent text-white shadow-xs">
+                              {isHe ? 'היום' : 'Today'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted mt-0.5">
+                          {dayGroup.events.length} {isHe ? 'פעילויות מתוכננות בתאריך זה' : 'scheduled activities for this date'}
+                        </p>
+                      </div>
                     </div>
 
-                    {dayEvents.length === 0 ? (
-                      <div className="p-8 text-center text-sm text-muted">
-                        {isHe
-                          ? 'אין אירועים משובצים ליום זה כרגע.'
-                          : 'No events scheduled for this day yet.'}
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-rule">
-                        {dayEvents.map((ev) => {
-                          const badge = entityBadge(ev.type);
-                          const title = isHe ? ev.titleHe : ev.titleEn;
-                          const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
-                          const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
-                          const host = isHe ? ev.hostName : ev.hostNameEn || ev.hostName;
-                          const gcalLink = buildGoogleCalendarUrl({
-                            title,
-                            description: `${desc}\nHost: ${host} (${ev.hostPhone})`,
-                            location: `${loc}, ${ev.area}, South Goa`,
-                            startDate: ev.date || new Date().toISOString().slice(0, 10),
-                            startTime: ev.startTime || '16:00',
-                            endTime: ev.endTime || '18:00',
-                          });
+                    <span className="text-xs font-semibold text-ink-2 bg-plate px-3 py-1.5 rounded-full border border-rule">
+                      {dayGroup.dateStr}
+                    </span>
+                  </div>
 
-                          return (
-                            <div
-                              key={`${dayIdx}-${ev.id}`}
-                              onClick={() => handleEntityClick(ev)}
-                              className="p-4 sm:p-5 hover:bg-paper-2/50 transition-colors cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
-                            >
+                  {dayGroup.events.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted">
+                      {isHe
+                        ? 'אין אירועים משובצים ליום זה כרגע.'
+                        : 'No events scheduled for this day yet.'}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-rule">
+                      {dayGroup.events.map((ev) => {
+                        const badge = entityBadge(ev.type);
+                        const title = isHe ? ev.titleHe : ev.titleEn;
+                        const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
+                        const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
+                        const host = isHe ? ev.hostName : ev.hostNameEn || ev.hostName;
+                        const gcalLink = buildGoogleCalendarUrl({
+                          title,
+                          description: `${desc}\nHost: ${host} (${ev.hostPhone})`,
+                          location: `${loc}, ${ev.area}, South Goa`,
+                          startDate: ev.date || dayGroup.dateStr,
+                          startTime: ev.startTime || '16:00',
+                          endTime: ev.endTime || '18:00',
+                        });
+
+                        return (
+                          <div
+                            key={`${dayGroup.dateStr}-${ev.id}`}
+                            onClick={() => handleEntityClick(ev)}
+                            className="p-4 sm:p-5 hover:bg-paper-2/50 transition-colors cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
+                          >
                               {/* Left/Start: Time Column + Event Details */}
                               <div className="flex items-start gap-4 min-w-0">
                                 {/* Chronological Time Badge */}

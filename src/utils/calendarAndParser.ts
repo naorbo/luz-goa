@@ -394,3 +394,166 @@ export function generateWhatsAppDigest(
     `• אומדן תקציב מתנ"ס חודשי: ₪${totalKids * 200} (כ-$${totalKids * 65})`,
   ].join('\n');
 }
+
+/**
+ * Chronological Calendar Grouping by exact date
+ */
+export interface ChronologicalDayGroup {
+  dateStr: string; // ISO date: '2026-11-06'
+  year: number;
+  month: number;
+  dayOfMonth: number;
+  dayOfWeek: number; // 0=Sunday, 1=Monday...
+  dayNameHe: string; // 'יום שישי'
+  dayNameEn: string; // 'Friday'
+  dayShortHe: string; // 'ו׳'
+  dayShortEn: string; // 'Fri'
+  formattedDateHe: string; // 'יום שישי, 6 בנובמבר'
+  formattedDateEn: string; // 'Friday, Nov 6'
+  isToday: boolean;
+  isPast: boolean;
+  events: LuzEntity[];
+}
+
+const HEBREW_MONTH_NAMES = [
+  'ינואר',
+  'פברואר',
+  'מרץ',
+  'אפריל',
+  'מאי',
+  'יוני',
+  'יולי',
+  'אוגוסט',
+  'ספטמבר',
+  'אוקטובר',
+  'נובמבר',
+  'דצמבר',
+];
+
+const ENGLISH_MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+const DAY_NAMES_HE_LIST = [
+  'יום ראשון',
+  'יום שני',
+  'יום שלישי',
+  'יום רביעי',
+  'יום חמישי',
+  'יום שישי',
+  'יום שבת',
+];
+
+const DAY_NAMES_EN_LIST = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
+const DAY_SHORT_HE_LIST = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+const DAY_SHORT_EN_LIST = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export function buildChronologicalDateGroups(
+  entities: LuzEntity[],
+  options?: {
+    defaultYear?: number;
+    defaultMonth?: number; // 1-12
+  }
+): ChronologicalDayGroup[] {
+  let activeYear = options?.defaultYear || 2026;
+  let activeMonth = options?.defaultMonth || 11;
+
+  for (const ent of entities) {
+    if (ent.date) {
+      const match = ent.date.match(/^(\d{4})-(\d{2})/);
+      if (match) {
+        activeYear = parseInt(match[1], 10);
+        activeMonth = parseInt(match[2], 10);
+        break;
+      }
+    }
+  }
+
+  const dateMap = new Map<string, LuzEntity[]>();
+  const daysInMonth = new Date(activeYear, activeMonth, 0).getDate();
+
+  const addEventToDate = (dateStr: string, item: LuzEntity) => {
+    if (!dateMap.has(dateStr)) {
+      dateMap.set(dateStr, []);
+    }
+    dateMap.get(dateStr)!.push(item);
+  };
+
+  entities.forEach((item) => {
+    if (item.type === 'rental') return;
+
+    if (item.date && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) {
+      addEventToDate(item.date, item);
+    } else if (typeof item.dayOfWeek === 'number') {
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(activeYear, activeMonth - 1, day);
+        if (d.getDay() === item.dayOfWeek) {
+          const dateStr = `${activeYear}-${String(activeMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          addEventToDate(dateStr, { ...item, date: dateStr });
+        }
+      }
+    } else if (item.availableDays && Array.isArray(item.availableDays)) {
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(activeYear, activeMonth - 1, day);
+        if (item.availableDays.includes(d.getDay())) {
+          const dateStr = `${activeYear}-${String(activeMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          addEventToDate(dateStr, { ...item, date: dateStr });
+        }
+      }
+    }
+  });
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const sortedDateKeys = Array.from(dateMap.keys()).sort();
+
+  return sortedDateKeys.map((dateStr) => {
+    const parts = dateStr.split('-');
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    const dateObj = new Date(y, m - 1, d);
+    const dow = dateObj.getDay();
+
+    const evs = dateMap.get(dateStr) || [];
+    evs.sort((a, b) => (a.startTime || '09:00').localeCompare(b.startTime || '09:00'));
+
+    return {
+      dateStr,
+      year: y,
+      month: m,
+      dayOfMonth: d,
+      dayOfWeek: dow,
+      dayNameHe: DAY_NAMES_HE_LIST[dow],
+      dayNameEn: DAY_NAMES_EN_LIST[dow],
+      dayShortHe: DAY_SHORT_HE_LIST[dow],
+      dayShortEn: DAY_SHORT_EN_LIST[dow],
+      formattedDateHe: `${DAY_NAMES_HE_LIST[dow]}, ${d} ב${HEBREW_MONTH_NAMES[m - 1]}`,
+      formattedDateEn: `${DAY_NAMES_EN_LIST[dow]}, ${ENGLISH_MONTHS_SHORT[m - 1]} ${d}`,
+      isToday: dateStr === todayStr,
+      isPast: dateStr < todayStr,
+      events: evs,
+    };
+  });
+}

@@ -21,8 +21,11 @@ import {
   BookingRecord,
   Language,
 } from '../types/luz';
+import {
+  buildGoogleCalendarUrl,
+  buildChronologicalDateGroups,
+} from '../utils/calendarAndParser';
 import { DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL } from '../config/notifications';
-import { buildGoogleCalendarUrl } from '../utils/calendarAndParser';
 import { CORE_YOUTH_CENTER_EVENTS } from '../data/youthCenterEvents';
 
 export interface YouthCenterEventRegistration {
@@ -90,7 +93,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   const [viewMode, setViewMode] = useState<'cards' | 'calendar'>('calendar');
   const [selectedEventForReg, setSelectedEventForReg] = useState<LuzEntity | null>(null);
   const [filterEventId, setFilterEventId] = useState<string>('all');
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number | 'all'>('all');
+  const [selectedDate, setSelectedDate] = useState<string | 'all'>('all');
 
   // Event registration form state (Age removed, isSubscriber added)
   const [participantName, setParticipantName] = useState('');
@@ -181,50 +184,15 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     );
   }, [entities]);
 
-  // Chronological calendar by day mapping (matching ExploreView calendar)
-  const calendarByDay = useMemo(() => {
-    const map: Record<number, LuzEntity[]> = {
-      0: [],
-      1: [],
-      2: [],
-      3: [],
-      4: [],
-      5: [],
-      6: [],
-    };
-
-    youthEvents.forEach((item) => {
-      let days = [1];
-      if (item.date) {
-        const parts = item.date.split('-');
-        if (parts.length === 3) {
-          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          days = [d.getDay()];
-        }
-      } else if (typeof item.dayOfWeek === 'number') {
-        days = [item.dayOfWeek];
-      }
-      days.forEach((d) => {
-        if (map[d]) {
-          map[d].push(item);
-        }
-      });
-    });
-
-    Object.keys(map).forEach((k) => {
-      const dayIdx = Number(k);
-      map[dayIdx].sort((a, b) => {
-        const dateA = a.date || '';
-        const dateB = b.date || '';
-        if (dateA !== dateB) return dateA.localeCompare(dateB);
-        return (a.startTime || '16:00').localeCompare(b.startTime || '16:00');
-      });
-    });
-
-    return map;
+  // Chronological calendar by exact date
+  const chronologicalDayGroups = useMemo(() => {
+    return buildChronologicalDateGroups(youthEvents);
   }, [youthEvents]);
 
-  const orderedDays = [1, 2, 3, 4, 5, 6, 0];
+  const displayDayGroups = useMemo(() => {
+    if (selectedDate === 'all') return chronologicalDayGroups;
+    return chronologicalDayGroups.filter((g) => g.dateStr === selectedDate);
+  }, [chronologicalDayGroups, selectedDate]);
 
   const formatEventSchedule = (ev: LuzEntity) => {
     let dayStr = '';
@@ -510,81 +478,64 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
          ===================================================================== */}
       {viewMode === 'calendar' ? (
         <section className="space-y-6" aria-label={isHe ? 'לוח שבועי כרונולוגי' : 'Chronological Youth Calendar'}>
-          {/* Day-of-Week Selector Strip (Identical to ExploreView calendar) */}
+          {/* Date Selector Strip */}
           <div className="hallmark-plate p-4 sm:p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
-                  {isHe ? 'לוח פעילויות שבועי כרונולוגי' : 'Weekly Chronological Activity Schedule'}
+                  {isHe ? 'לוח פעילויות כרונולוגי לפי תאריכים' : 'Chronological Youth Activity Schedule'}
                 </h2>
                 <p className="text-xs sm:text-sm text-muted">
                   {isHe
-                    ? 'כל מפגשי מרכז הנוער מסודרים לפי ימים ושעות. לחצו על יום לסינון או על מפגש להרשמה.'
-                    : 'All Youth Center sessions ordered chronologically by day and time. Click any session to register.'}
+                    ? 'כל מפגשי מרכז הנוער מסודרים לפי תאריכים ושעות לאורך החודש. לחצו על תאריך לסינון ממוקד או על מפגש להרשמה.'
+                    : 'All Youth Center sessions ordered chronologically date by date throughout the month.'}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedDayIndex('all')}
+                onClick={() => setSelectedDate('all')}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                  selectedDayIndex === 'all'
+                  selectedDate === 'all'
                     ? 'bg-ink text-paper'
                     : 'bg-paper-2 text-ink hover:bg-paper-3'
                 }`}
               >
-                {isHe ? 'הצג את כל ימי השבוע' : 'Show Full Week'}
+                {isHe ? 'הצג את כל החודש' : 'Show Full Month'}
               </button>
             </div>
 
-            {/* Day Cards Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
-              {orderedDays.map((dayIdx) => {
-                const dayEvents = calendarByDay[dayIdx] || [];
-                const isSelected = selectedDayIndex === dayIdx;
+            {/* Chronological Date Cards Strip */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+              {chronologicalDayGroups.map((dayGroup) => {
+                const isSelected = selectedDate === dayGroup.dateStr;
                 return (
                   <button
-                    key={dayIdx}
+                    key={dayGroup.dateStr}
                     type="button"
                     onClick={() =>
-                      setSelectedDayIndex(selectedDayIndex === dayIdx ? 'all' : dayIdx)
+                      setSelectedDate(selectedDate === dayGroup.dateStr ? 'all' : dayGroup.dateStr)
                     }
-                    className={`p-3 rounded-2xl border text-start transition-all flex flex-col justify-between ${
+                    className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-w-[76px] sm:min-w-0 ${
                       isSelected
                         ? 'bg-accent text-white border-accent shadow-sm'
-                        : dayEvents.length > 0
-                        ? 'bg-paper hover:bg-paper-2 border-rule text-ink'
-                        : 'bg-paper/40 border-rule/60 text-muted'
+                        : 'bg-paper hover:bg-paper-2 border-rule text-ink'
                     }`}
                   >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-bold">
-                        {isHe ? DAY_NAMES_HE[dayIdx] : DAY_NAMES_EN[dayIdx]}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                          isSelected
-                            ? 'bg-white/25 text-white'
-                            : dayEvents.length > 0
-                            ? 'bg-accent/15 text-accent'
-                            : 'bg-paper-2 text-muted'
-                        }`}
-                      >
-                        {dayEvents.length}
-                      </span>
-                    </div>
-                    <div
-                      className={`text-[11px] mt-2 truncate ${
-                        isSelected ? 'text-white/90' : 'text-muted'
+                    <span className={`text-[11px] font-medium uppercase ${isSelected ? 'text-white/80' : 'text-muted'}`}>
+                      {isHe ? dayGroup.dayShortHe : dayGroup.dayShortEn}
+                    </span>
+                    <span className="text-xl font-bold font-display my-0.5">
+                      {dayGroup.dayOfMonth}
+                    </span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        isSelected
+                          ? 'bg-white/20 text-white'
+                          : 'bg-paper-2 text-accent'
                       }`}
                     >
-                      {dayEvents.length === 0
-                        ? isHe
-                          ? 'אין מפגש החודש'
-                          : 'No session'
-                        : `${dayEvents.length} ${isHe ? 'מפגשים בנובמבר' : 'sessions'} · ${
-                            isHe ? dayEvents[0].titleHe : dayEvents[0].titleEn
-                          }`}
-                    </div>
+                      {dayGroup.events.length} {isHe ? 'מפגשים' : 'sessions'}
+                    </span>
                   </button>
                 );
               })}
@@ -593,56 +544,71 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 
           {/* Chronological Day-by-Day Timeline */}
           <div className="space-y-6">
-            {orderedDays
-              .filter((d) => selectedDayIndex === 'all' || selectedDayIndex === d)
-              .map((dayIdx) => {
-                const dayEvents = calendarByDay[dayIdx] || [];
-                if (dayEvents.length === 0 && selectedDayIndex === 'all') return null;
+            {displayDayGroups.map((dayGroup) => {
+              if (dayGroup.events.length === 0 && selectedDate === 'all') return null;
 
-                return (
-                  <div key={dayIdx} className="hallmark-plate overflow-hidden">
-                    {/* Day Banner */}
-                    <div className="px-5 py-3.5 bg-paper-2 border-b border-rule flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 rounded-xl bg-ink text-paper font-display font-bold text-sm flex items-center justify-center">
-                          {isHe ? DAY_SHORT_HE[dayIdx] : DAY_SHORT_EN[dayIdx]}
+              return (
+                <div key={dayGroup.dateStr} className="hallmark-plate overflow-hidden">
+                  {/* Day Banner */}
+                  <div className="px-5 py-4 bg-paper-2 border-b border-rule flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-ink text-paper flex flex-col items-center justify-center font-display shadow-sm shrink-0">
+                        <span className="text-[10px] font-semibold uppercase text-accent tracking-wider">
+                          {isHe ? dayGroup.dayShortHe : dayGroup.dayShortEn}
                         </span>
-                        <h3 className="font-display text-lg font-bold text-ink">
-                          {isHe ? DAY_NAMES_HE[dayIdx] : DAY_NAMES_EN[dayIdx]}
-                        </h3>
+                        <span className="text-lg font-bold leading-none mt-0.5">
+                          {dayGroup.dayOfMonth}
+                        </span>
                       </div>
-                      <span className="text-xs font-semibold text-muted">
-                        {dayEvents.length} {isHe ? 'מפגשים מתוכננים בנובמבר' : 'sessions in November'}
-                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-display text-lg sm:text-xl font-bold text-ink">
+                            {isHe ? dayGroup.formattedDateHe : dayGroup.formattedDateEn}
+                          </h3>
+                          {dayGroup.isToday && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent text-white shadow-xs">
+                              {isHe ? 'היום' : 'Today'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted mt-0.5">
+                          {dayGroup.events.length} {isHe ? 'מפגשים מתוכננים בתאריך זה' : 'sessions scheduled for this date'}
+                        </p>
+                      </div>
                     </div>
 
-                    {dayEvents.length === 0 ? (
-                      <div className="p-8 text-center text-sm text-muted">
-                        {isHe
-                          ? 'אין פעילויות משובצות ליום זה.'
-                          : 'No youth sessions scheduled for this day.'}
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-rule">
-                        {dayEvents.map((ev) => {
-                          const regCount = getEventRegistrationsCount(ev.id);
-                          const title = isHe ? ev.titleHe : ev.titleEn;
-                          const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
-                          const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
-                          const gcalLink = buildGoogleCalendarUrl({
-                            title: `מרכז הנוער גואה: ${title}`,
-                            description: `${desc}\nמיקום: ${loc}`,
-                            location: `${loc}, Colomb, South Goa`,
-                            startDate: ev.date || new Date().toISOString().slice(0, 10),
-                            startTime: ev.startTime || '16:30',
-                            endTime: ev.endTime || '19:00',
-                          });
+                    <span className="text-xs font-semibold text-ink-2 bg-plate px-3 py-1.5 rounded-full border border-rule">
+                      {dayGroup.dateStr}
+                    </span>
+                  </div>
 
-                          return (
-                            <div
-                              key={`${dayIdx}-${ev.id}`}
-                              className="p-4 sm:p-5 hover:bg-paper-2/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
-                            >
+                  {dayGroup.events.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted">
+                      {isHe
+                        ? 'אין פעילויות משובצות ליום זה.'
+                        : 'No youth sessions scheduled for this day.'}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-rule">
+                      {dayGroup.events.map((ev) => {
+                        const regCount = getEventRegistrationsCount(ev.id);
+                        const title = isHe ? ev.titleHe : ev.titleEn;
+                        const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
+                        const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
+                        const gcalLink = buildGoogleCalendarUrl({
+                          title: `מרכז הנוער גואה: ${title}`,
+                          description: `${desc}\nמיקום: ${loc}`,
+                          location: `${loc}, Colomb, South Goa`,
+                          startDate: ev.date || dayGroup.dateStr,
+                          startTime: ev.startTime || '16:30',
+                          endTime: ev.endTime || '19:00',
+                        });
+
+                        return (
+                          <div
+                            key={`${dayGroup.dateStr}-${ev.id}`}
+                            className="p-4 sm:p-5 hover:bg-paper-2/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+                          >
                               {/* Left/Start: Time Box + Event Details */}
                               <div className="flex items-start gap-4 min-w-0">
                                 <div className="w-24 sm:w-28 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2.5 text-center">
