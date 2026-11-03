@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   FlaskConical,
   Globe,
-  MapPin,
   RotateCcw,
   Lock,
   LogOut,
@@ -694,69 +693,51 @@ export function App() {
       : []),
   ];
 
-  const todayFormatted = new Intl.DateTimeFormat(isHe ? 'he-IL' : 'en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date());
-
   return (
     <div className="min-h-screen flex flex-col bg-paper text-ink">
-      {/* Hallmark Editorial Masthead */}
-      <header className="bg-paper border-b border-ink hallmark-rule-top sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
-          {/* Masthead Top Folio Bar */}
-          <div className="flex items-center justify-between py-3.5 gap-4 border-b border-rule">
-            {/* Brand Wordmark & Editorial Subtitle */}
-            <div className="flex items-center gap-4 min-w-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('explore')}
-                aria-label="LUZ Goa Home"
-                className="flex items-baseline gap-3 text-start group focus:outline-none"
-              >
-                <span className="font-serif text-2xl md:text-3xl font-semibold tracking-tight text-ink group-hover:text-accent transition-colors">
-                  LUZ Goa
-                </span>
-                <span className="hidden sm:inline-block h-4 w-px bg-rule self-center" />
-                <span className="hidden sm:inline-block text-xs text-muted">
-                  {isHe
-                    ? 'אלמנך הקהילה, אירועים, בתים ובעלי מקצוע בדרום גואה'
-                    : 'South Goa Almanac · Palolem, Patnem, Colomb & Agonda'}
-                </span>
-              </button>
-            </div>
-
-            {/* Right Folio Controls: Date Stamp, Admin Controls (if authenticated), Language Switch */}
-            <div className="flex items-center gap-2.5">
-              <div className="hidden lg:flex items-center gap-2 pr-3 border-r border-rule text-xs text-muted">
-                <MapPin className="w-3.5 h-3.5 text-accent shrink-0" />
-                <span>Canacona, South Goa</span>
-                <span>·</span>
-                <time className="hallmark-code">{todayFormatted}</time>
+      {/* Clean Modern Header */}
+      <header className="bg-plate/95 backdrop-blur-md border-b border-rule sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Brand Logo & Friendly Subtitle */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('explore')}
+              aria-label="LUZ Goa Home"
+              className="flex items-center gap-3 text-start group focus:outline-none"
+            >
+              <div className="w-10 h-10 rounded-2xl bg-accent text-white font-display font-bold text-lg flex items-center justify-center shadow-sm">
+                L
               </div>
+              <div>
+                <div className="font-display text-xl font-bold text-ink group-hover:text-accent transition-colors leading-tight">
+                  LUZ Goa
+                </div>
+                <div className="text-xs text-muted">
+                  {isHe
+                    ? 'אירועים, בעלי מקצוע ובתים בדרום גואה'
+                    : 'South Goa Events, Pros & Homes'}
+                </div>
+              </div>
+            </button>
 
+            {/* Right Controls: Admin Controls (only if signed in) + Language Button */}
+            <div className="flex items-center gap-2">
               {isAdminAuthenticated && (
                 <>
-                  {/* Dual Environment Switcher: PROD vs TEST (Admin Only) */}
                   <div
-                    className="inline-flex items-center bg-paper-2 p-0.5 border border-ink"
+                    className="inline-flex items-center bg-paper-2 p-1 rounded-full border border-rule"
                     role="group"
                     aria-label="Environment Switcher"
                   >
                     <button
                       type="button"
                       onClick={() => handleSwitchEnvironment('prod')}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors ${
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
                         appEnv === 'prod'
                           ? 'bg-ink text-paper'
                           : 'text-ink-2 hover:text-ink'
                       }`}
-                      title={
-                        isHe
-                          ? 'סביבת פרודקשן: מידע אמיתי בלבד'
-                          : 'PROD: Verified Real Data Only'
-                      }
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>PROD</span>
@@ -764,16 +745,11 @@ export function App() {
                     <button
                       type="button"
                       onClick={() => handleSwitchEnvironment('test')}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-colors ${
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
                         appEnv === 'test'
-                          ? 'bg-accent text-accent-ink'
+                          ? 'bg-accent text-white'
                           : 'text-ink-2 hover:text-ink'
                       }`}
-                      title={
-                        isHe
-                          ? 'סביבת טסט: נתוני דמו להדגמות ובדיקות'
-                          : 'TEST: Demo & Sandbox Data'
-                      }
                     >
                       <FlaskConical className="w-3.5 h-3.5" />
                       <span>TEST</span>
@@ -783,16 +759,8 @@ export function App() {
                   <button
                     type="button"
                     onClick={handleResetEnvironment}
-                    title={
-                      appEnv === 'test'
-                        ? isHe
-                          ? 'איפוס נתוני ההדגמה ב-TEST'
-                          : 'Reset TEST Demo Data'
-                        : isHe
-                        ? 'איפוס אחסון מקומי לנתוני PROD המאומתים'
-                        : 'Reset local storage to verified PROD data'
-                    }
-                    className="p-1.5 bg-plate hover:bg-paper-2 text-ink border border-ink transition-colors"
+                    title={isHe ? 'איפוס נתונים' : 'Reset Data'}
+                    className="p-2 rounded-full bg-paper-2 hover:bg-paper-3 text-ink transition-colors"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
@@ -800,12 +768,8 @@ export function App() {
                   <button
                     type="button"
                     onClick={handleAdminSignOut}
-                    title={
-                      isHe
-                        ? `התנתקות ממצב אדמין (${adminEmail || AUTHORIZED_ADMIN_EMAIL})`
-                        : `Sign out Admin (${adminEmail || AUTHORIZED_ADMIN_EMAIL})`
-                    }
-                    className="p-1.5 bg-plate hover:bg-accent hover:text-accent-ink text-ink border border-ink transition-colors"
+                    title={isHe ? 'התנתקות ממצב אדמין' : 'Sign out Admin'}
+                    className="p-2 rounded-full bg-paper-2 hover:bg-accent hover:text-white text-ink transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                   </button>
@@ -815,7 +779,7 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setLang(lang === 'he' ? 'en' : 'he')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-plate hover:bg-paper-2 text-ink border border-ink font-medium text-xs transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-paper-2 hover:bg-paper-3 text-ink font-semibold text-xs transition-colors"
               >
                 <Globe className="w-3.5 h-3.5 text-accent" />
                 <span>{lang === 'he' ? 'English' : 'עברית'}</span>
@@ -823,10 +787,10 @@ export function App() {
             </div>
           </div>
 
-          {/* Masthead Index Navigation Strip (One weight across states per Hallmark craft.md § 9) */}
+          {/* Clean Pill Navigation */}
           <nav
             aria-label="Primary Navigation"
-            className="flex items-center gap-1 overflow-x-auto no-scrollbar"
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5"
           >
             {navTabs.map((tab) => {
               const Icon = tab.icon;
@@ -836,23 +800,14 @@ export function App() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${
                     active
-                      ? 'border-accent bg-paper-2 text-ink'
-                      : 'border-transparent text-ink-2 hover:text-ink hover:bg-paper-2/60'
+                      ? 'bg-ink text-paper shadow-sm'
+                      : 'bg-paper text-ink-2 hover:bg-paper-2 hover:text-ink border border-rule'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${active ? 'text-accent' : 'text-muted'}`} />
+                  <Icon className={`w-4 h-4 ${active ? 'text-amber-300' : 'text-accent'}`} />
                   <span>{isHe ? tab.labelHe : tab.labelEn}</span>
-                  {tab.badge !== undefined && (
-                    <span
-                      className={`px-1.5 py-0.2 text-xs hallmark-code ${
-                        active ? 'text-accent' : 'text-muted'
-                      }`}
-                    >
-                      ({tab.badge})
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -860,16 +815,16 @@ export function App() {
         </div>
       </header>
 
-      {/* Unmistakable Sandbox Banner when viewing TEST environment (Admin Only) */}
+      {/* Sandbox Banner when viewing TEST environment (Admin Only) */}
       {isAdminAuthenticated && appEnv === 'test' && (
-        <div className="bg-paper-2 border-b border-ink text-ink">
+        <div className="bg-paper-2 border-b border-rule text-ink">
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2 font-medium">
               <FlaskConical className="w-4 h-4 text-accent shrink-0" />
               <span>
                 {isHe
-                  ? 'סביבת TEST (הדגמה ובדיקות למנהל בלבד): הנתונים המוצגים כאן הם דוגמאות להמחשה בלבד. סביבת PROD מופרדת לחלוטין למשתמשים.'
-                  : 'TEST Environment (Admin Sandbox): Displaying illustrative demo data only. Public users see strictly PROD.'}
+                  ? 'סביבת TEST (הדגמה ובדיקות למנהל בלבד): הנתונים המוצגים כאן הם דוגמאות להמחשה בלבד.'
+                  : 'TEST Environment (Admin Sandbox): Displaying illustrative demo data only.'}
               </span>
             </div>
             <button
@@ -883,8 +838,8 @@ export function App() {
         </div>
       )}
 
-      {/* Main Editorial Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-8 md:py-12">
+      {/* Main Workspace Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 md:py-10">
         {activeTab === 'explore' && (
           <ExploreView
             entities={entities}
@@ -967,53 +922,32 @@ export function App() {
         )}
       </main>
 
-      {/* Hallmark Editorial Colophon Footer */}
-      <footer className="hallmark-rule-top bg-paper-2 text-ink-2 py-10 px-4 md:px-8 mt-auto">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 pb-8 border-b border-rule">
-          <div className="md:col-span-5 space-y-2">
-            <div className="font-serif text-2xl font-semibold text-ink">LUZ Goa</div>
-            <p className="text-sm text-ink-2 max-w-md">
-              {isHe
-                ? 'לוח האירועים, המטפלים, הבתים להשכרה ומרכז הנוער של קהילת דרום גואה: פאלולם, פטנם, קולום ואגונדה.'
-                : 'The daily schedule, trusted practitioners, long-stay homes and youth center for the South Goa coast: Palolem, Patnem, Colomb and Agonda.'}
-            </p>
-          </div>
-
-          <div className="md:col-span-4 space-y-2">
-            <div className="text-sm font-semibold text-ink">
-              {isHe ? 'מדורי האלמנך' : 'Almanac Sections'}
-            </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-              {navTabs.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setActiveTab(t.id)}
-                  className="text-ink-2 hover:text-accent underline decoration-rule hover:decoration-accent transition-colors"
-                >
-                  {isHe ? t.labelHe : t.labelEn}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="md:col-span-3 space-y-2 md:text-end">
-            <div className="text-sm font-semibold text-ink">
-              {isHe ? 'ייחוס ואימות קהילתי' : 'Verified Dispatch'}
-            </div>
+      {/* Clean Minimal Footer */}
+      <footer className="bg-plate border-t border-rule text-ink-2 py-8 px-4 md:px-8 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="font-display text-lg font-bold text-ink">LUZ Goa</div>
             <p className="text-xs text-muted">
               {isHe
-                ? 'כל פנייה או הזמנה נושאת קוד אסמכתא ישיר מול המארח בוואטסאפ.'
-                : 'Every booking carries a direct WhatsApp dispatch code with the host.'}
+                ? 'קהילת דרום גואה · פטנם, פאלולם, קולום ואגונדה'
+                : 'South Goa Community · Patnem, Palolem, Colomb & Agonda'}
             </p>
           </div>
-        </div>
 
-        <div className="max-w-7xl mx-auto pt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
-          <div>
-            <span>Canacona: Palolem, Patnem, Colomb and Agonda</span>
-          </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
+            {navTabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                className="hover:text-ink transition-colors"
+              >
+                {isHe ? t.labelHe : t.labelEn}
+              </button>
+            ))}
+
+            <span className="text-rule">|</span>
+
             {isAdminAuthenticated ? (
               <span className="inline-flex items-center gap-1.5 text-ink font-semibold">
                 <ShieldCheck className="w-3.5 h-3.5 text-accent" />

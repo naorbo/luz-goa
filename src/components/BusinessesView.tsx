@@ -370,19 +370,19 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   };
 
   return (
-    <div className="space-y-10">
-      {/* Hallmark Editorial Section Header */}
-      <section className="hallmark-rule-top pt-8 pb-6 border-b border-rule flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div className="space-y-2 max-w-2xl">
-          <h1 className="font-serif text-3xl md:text-5xl font-semibold text-ink tracking-tight">
+    <div className="space-y-8">
+      {/* Clean Modern Section Header */}
+      <section className="pt-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1.5 max-w-2xl">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-ink">
             {isHe
-              ? 'מדריך בעלי המקצוע והשירותים בדרום גואה'
-              : 'South Goa Practitioners & Services Index'}
+              ? 'בעלי מקצוע ושירותים בקהילה'
+              : 'Community Professionals & Services'}
           </h1>
-          <p className="lead text-ink-2">
+          <p className="text-sm sm:text-base text-ink-2">
             {isHe
-              ? 'מטפלי גוף ומים, תספורות ורוקחות טבעית, אימוני כושר, אוכל ביתי, חינוך, נהגים ומוניות עם תיאום תור ישיר בוואטסאפ.'
-              : 'Community bodyworkers, home kitchens, movement coaches, reliable drivers and local specialists across Palolem, Patnem and Agonda.'}
+              ? 'מטפלים, אוכל ביתי, חוגי ילדים, אימונים ונהגים מומלצים בדרום גואה — עם פנייה ישירה בוואטסאפ.'
+              : 'Trusted bodyworkers, home kitchens, teachers, coaches and local drivers across South Goa.'}
           </p>
         </div>
 
@@ -392,148 +392,115 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
           className="shrink-0 hallmark-btn-primary text-sm"
         >
           <Plus className="w-4 h-4" />
-          <span>{isHe ? 'רישום עסק או מטפל חדש' : 'List a Local Business'}</span>
+          <span>{isHe ? 'הוספת עסק לקהילה' : 'Add Business'}</span>
         </button>
       </section>
 
-      {/* Hallmark Category Matrix (Ruled Cells) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2.5">
-        <button
-          type="button"
-          onClick={() => setSelectedCategory('all')}
-          className={`p-3 border text-start transition-colors flex flex-col justify-between ${
-            selectedCategory === 'all'
-              ? 'bg-ink text-paper border-ink'
-              : 'bg-plate text-ink border-rule hover:border-ink'
-          }`}
-        >
-          <Briefcase
-            className={`w-4 h-4 mb-2 ${
-              selectedCategory === 'all' ? 'text-gold' : 'text-accent'
-            }`}
-          />
-          <div>
-            <div className="font-semibold text-xs">{isHe ? 'כל הקטגוריות' : 'All Categories'}</div>
-            <div
-              className={`text-[11px] hallmark-code ${
-                selectedCategory === 'all' ? 'text-paper/80' : 'text-muted'
-              }`}
-            >
-              {businesses.length} {isHe ? 'עסקים' : 'listed'}
-            </div>
-          </div>
-        </button>
-
-        {BUSINESS_CATEGORIES.map((cat) => {
-          const Icon = cat.icon;
-          const active = selectedCategory === cat.id;
-          const count = businesses.filter((b) => b.category === cat.id).length;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`p-3 border text-start transition-colors flex flex-col justify-between ${
-                active
-                  ? 'bg-ink text-paper border-ink'
-                  : 'bg-plate text-ink border-rule hover:border-ink'
-              }`}
-            >
-              <div className="flex items-center justify-between w-full mb-2">
-                <Icon
-                  className={`w-4 h-4 ${active ? 'text-gold' : 'text-accent'}`}
-                />
-                <span
-                  className={`text-[11px] hallmark-code ${
-                    active ? 'text-gold' : 'text-muted'
-                  }`}
-                >
-                  {count}
-                </span>
-              </div>
-              <div>
-                <div className="font-semibold text-xs leading-tight">
-                  {isHe ? cat.labelHe : cat.labelEn}
-                </div>
-                <div
-                  className={`text-[11px] mt-0.5 line-clamp-1 ${
-                    active ? 'text-paper/75' : 'text-muted'
-                  }`}
-                >
-                  {isHe ? cat.examplesHe : cat.examplesEn}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search & Secondary Filters Bar */}
-      <div className="bg-paper-2 border-y-2 border-ink p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-xl">
-          <Search className="w-4 h-4 text-muted absolute top-1/2 -translate-y-1/2 start-3.5" />
-          <input
-            type="search"
-            name="business-search"
-            aria-label={isHe ? 'חיפוש בעלי מקצוע' : 'Search businesses'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              isHe
-                ? 'חיפוש לפי מקצוע או שם (שיאצו, קוסמטיקאית, מקעקעת, מאמן איגרוף, אוכל ביתי...)'
-                : 'Search by specialty or name (Shiatsu, Cosmetician, Tattoo, Boxing, Home Food...)'
-            }
-            className="w-full ps-10 pe-4 py-2 bg-plate border border-ink text-sm text-ink placeholder:text-muted"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
+      {/* Simple, Non-Technical Filter Card */}
+      <div className="hallmark-plate p-5 sm:p-6 space-y-4">
+        {/* Category Pills */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setOnlyHomeVisit(!onlyHomeVisit)}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold border transition-colors ${
-              onlyHomeVisit
-                ? 'bg-ink text-paper border-ink'
-                : 'bg-plate text-ink border-ink hover:bg-paper'
+            onClick={() => setSelectedCategory('all')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+              selectedCategory === 'all'
+                ? 'bg-ink text-paper shadow-sm'
+                : 'bg-paper-2 text-ink hover:bg-paper-3'
             }`}
           >
-            <Home className="w-3.5 h-3.5" />
-            <span>{isHe ? 'מגיע/ה לבית הלקוח' : 'Home Visits Available'}</span>
+            <Briefcase className="w-4 h-4" />
+            <span>{isHe ? 'הכל' : 'All'}</span>
           </button>
 
-          <div className="inline-flex items-center gap-1.5 bg-plate border border-ink px-3 py-2 text-xs">
-            <MapPin className="w-3.5 h-3.5 text-accent" />
-            <select
-              aria-label={isHe ? 'סינון לפי אזור' : 'Filter by area'}
-              value={selectedArea}
-              onChange={(e) => setSelectedArea(e.target.value as any)}
-              className="bg-transparent font-medium text-ink focus:outline-none"
+          {BUSINESS_CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+            const active = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                  active
+                    ? 'bg-ink text-paper shadow-sm'
+                    : 'bg-paper-2 text-ink hover:bg-paper-3'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{isHe ? cat.labelHe : cat.labelEn}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search & Beach Filter */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-3 border-t border-rule">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-muted absolute top-1/2 -translate-y-1/2 start-3.5" />
+            <input
+              type="search"
+              name="business-search"
+              aria-label={isHe ? 'חיפוש בעלי מקצוע' : 'Search businesses'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                isHe
+                  ? 'חיפוש לפי שם או תחום (למשל: שיאצו, אוכל ביתי, מונית...)'
+                  : 'Search by name or service (e.g. massage, food, taxi...)'
+              }
+              className="w-full ps-10 pe-4 py-2 rounded-full bg-paper border border-rule-strong text-sm text-ink placeholder:text-muted"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setOnlyHomeVisit(!onlyHomeVisit)}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                onlyHomeVisit
+                  ? 'bg-accent text-white border-accent'
+                  : 'bg-paper text-ink-2 border-rule hover:bg-paper-2'
+              }`}
             >
-              <option value="all">{isHe ? 'כל האזורים בגואה' : 'All Areas'}</option>
-              <option value="Colomb">Colomb (קולום)</option>
-              <option value="Patnem">Patnem (פטנם)</option>
-              <option value="Palolem">Palolem (פאלולם)</option>
-              <option value="Agonda">Agonda (אגונדה)</option>
-            </select>
+              <Home className="w-3.5 h-3.5" />
+              <span>{isHe ? 'מגיע/ה עד הבית' : 'Home Visits'}</span>
+            </button>
+
+            <div className="inline-flex items-center gap-1.5 bg-paper border border-rule rounded-full px-3.5 py-1.5 text-xs">
+              <MapPin className="w-3.5 h-3.5 text-accent" />
+              <select
+                aria-label={isHe ? 'סינון לפי חוף' : 'Filter by beach'}
+                value={selectedArea}
+                onChange={(e) => setSelectedArea(e.target.value as any)}
+                className="bg-transparent font-semibold text-ink focus:outline-none"
+              >
+                <option value="all">{isHe ? 'כל החופים' : 'All Beaches'}</option>
+                <option value="Patnem">{isHe ? 'פטנם (Patnem)' : 'Patnem'}</option>
+                <option value="Palolem">{isHe ? 'פאלולם (Palolem)' : 'Palolem'}</option>
+                <option value="Colomb">{isHe ? 'קולום (Colomb)' : 'Colomb'}</option>
+                <option value="Agonda">{isHe ? 'אגונדה (Agonda)' : 'Agonda'}</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* CLEAN PROD EMPTY STATE vs BUSINESS DIRECTORY PLATES */}
+      {/* CLEAN PROD EMPTY STATE vs BUSINESS DIRECTORY CARDS */}
       {businesses.length === 0 && appEnv === 'prod' ? (
         <div className="hallmark-plate p-10 text-center max-w-2xl mx-auto space-y-4">
-          <div className="w-12 h-12 bg-ink text-gold flex items-center justify-center mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-paper-2 text-accent flex items-center justify-center mx-auto">
             <Briefcase className="w-6 h-6" />
           </div>
-          <h3 className="font-serif text-2xl font-semibold text-ink">
+          <h3 className="font-display text-2xl font-bold text-ink">
             {isHe
-              ? 'אינדקס בעלי המקצוע של דרום גואה'
-              : 'South Goa Practitioners Directory Ready'}
+              ? 'מדריך בעלי המקצוע של דרום גואה'
+              : 'South Goa Practitioners Directory'}
           </h3>
           <p className="text-sm text-ink-2 leading-relaxed">
             {isHe
-              ? 'הוסיפו את הפרופיל העסקי הראשון שלכם לקטלוג הקהילה וקבלו פניות ישירות לוואטסאפ.'
-              : 'Add your verified business profile to the community directory and receive direct WhatsApp inquiries.'}
+              ? 'הוסיפו את העסק שלכם למדריך הקהילה וקבלו פניות ישירות לוואטסאפ.'
+              : 'Add your business to the community directory and receive direct WhatsApp inquiries.'}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
@@ -542,25 +509,25 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
               className="hallmark-btn-primary text-xs"
             >
               <Plus className="w-4 h-4" />
-              <span>{isHe ? 'הוספת בעל עסק חדש בקהילה' : 'Add Community Business'}</span>
+              <span>{isHe ? 'הוספת עסק חדש' : 'Add Business'}</span>
             </button>
             {isAdmin && (
               <button
                 type="button"
                 onClick={onSwitchToTest}
-                className="hallmark-btn-ink text-xs"
+                className="hallmark-btn-secondary text-xs"
               >
-                <FlaskConical className="w-4 h-4 text-gold" />
-                <span>{isHe ? 'מעבר לסביבת TEST (אדמין)' : 'Preview Demo in TEST Env (Admin)'}</span>
+                <FlaskConical className="w-4 h-4 text-accent" />
+                <span>{isHe ? 'מעבר לסביבת TEST (אדמין)' : 'Preview TEST Env (Admin)'}</span>
               </button>
             )}
           </div>
         </div>
       ) : filteredBusinesses.length === 0 ? (
-        <div className="hallmark-well p-8 text-center text-sm text-muted">
+        <div className="hallmark-plate p-8 text-center text-sm text-muted">
           {isHe
-            ? 'לא נמצאו בעלי עסקים התואמים את הסינון הנוכחי.'
-            : 'No businesses match the selected filters.'}
+            ? 'לא נמצאו בעלי מקצוע התואמים את החיפוש.'
+            : 'No professionals match the selected filters.'}
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -571,33 +538,24 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
             return (
               <article
                 key={biz.id}
-                className="hallmark-plate hallmark-plate-interactive overflow-hidden flex flex-col justify-between"
+                className="hallmark-plate overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all group"
               >
                 <div>
-                  {/* Framed Photograph (No text overlay per Hallmark Terrazzo/Solstice) */}
-                  <div className="h-44 bg-paper-2 border-b border-ink overflow-hidden">
+                  {/* Clean Atmospheric Photo Header */}
+                  <div className="relative h-44 bg-paper-2 overflow-hidden">
                     <img
                       src={biz.imageUrl}
                       alt={isHe ? biz.businessNameHe : biz.businessNameEn}
-                      width={480}
-                      height={300}
-                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                  </div>
-
-                  {/* Category & Area Strip below frame */}
-                  <div className="px-5 py-2.5 bg-paper-2 border-b border-rule flex items-center justify-between gap-2 text-xs">
-                    <span className="inline-flex items-center gap-1.5 font-medium text-ink">
-                      <CatIcon className="w-3.5 h-3.5 text-accent" />
-                      <span>{isHe ? catMeta.labelHe : catMeta.labelEn}</span>
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {biz.homeVisitAvailable && (
-                        <span className="px-2 py-0.5 bg-plate border border-rule text-[11px] font-medium text-ink">
-                          {isHe ? 'ביקור בית' : 'Home Visit'}
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1 text-muted">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                    <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1.5">
+                        <CatIcon className="w-3.5 h-3.5 text-accent" />
+                        <span>{isHe ? catMeta.labelHe : catMeta.labelEn}</span>
+                      </span>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-accent" />
                         <span>{biz.area}</span>
                       </span>
@@ -605,79 +563,39 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                   </div>
 
                   {/* Body */}
-                  <div className="p-5 space-y-4">
+                  <div className="p-5 space-y-3">
                     <div>
-                      <div className="text-xs font-medium text-accent mb-0.5">
+                      <div className="text-xs font-semibold text-accent mb-0.5">
                         {isHe ? biz.specialtyHe : biz.specialtyEn}
                       </div>
-                      <h3 className="font-serif text-xl font-semibold text-ink leading-snug">
+                      <h3 className="font-display text-xl font-bold text-ink leading-snug">
                         {isHe ? biz.businessNameHe : biz.businessNameEn}
                       </h3>
                       <div className="text-xs text-muted mt-0.5">
                         {isHe ? biz.ownerNameHe : biz.ownerNameEn}
+                        {biz.homeVisitAvailable
+                          ? isHe
+                            ? ' · מגיע/ה גם עד הבית'
+                            : ' · Home visits available'
+                          : ''}
                       </div>
                     </div>
 
-                    <p className="text-xs text-ink-2 leading-relaxed line-clamp-3">
+                    <p className="text-sm text-ink-2 leading-relaxed line-clamp-2">
                       {isHe ? biz.bioHe : biz.bioEn}
                     </p>
 
-                    {(biz.websiteUrl || biz.whatsappGroupUrl || biz.instagramHandle) && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {biz.websiteUrl && (
-                          <a
-                            href={appendLuzAttributionParams(biz.websiteUrl, cardRefCode)}
-                            onClick={() => trackBusinessLead(biz, 'website_click', cardRefCode)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-paper border border-rule text-[11px] font-semibold text-ink hover:border-ink transition-colors"
-                          >
-                            <Globe className="w-3 h-3 text-accent" />
-                            <span>{isHe ? 'אתר / מידע' : 'Website'}</span>
-                            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
-                          </a>
-                        )}
-                        {biz.whatsappGroupUrl && (
-                          <a
-                            href={biz.whatsappGroupUrl}
-                            onClick={() =>
-                              trackBusinessLead(biz, 'whatsapp_group_click', cardRefCode)
-                            }
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-paper border border-rule text-[11px] font-semibold text-ink hover:border-ink transition-colors"
-                          >
-                            <Users className="w-3 h-3 text-forest" />
-                            <span>{isHe ? 'קבוצת עדכונים' : 'WA Group'}</span>
-                            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
-                          </a>
-                        )}
-                        {biz.instagramHandle && (
-                          <a
-                            href={`https://instagram.com/${biz.instagramHandle.replace(/^@/, '')}`}
-                            onClick={() => trackBusinessLead(biz, 'instagram_click', cardRefCode)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-paper border border-rule text-[11px] font-medium text-ink-2 hover:border-ink transition-colors"
-                          >
-                            <span>{biz.instagramHandle}</span>
-                            <ExternalLink className="w-2.5 h-2.5 opacity-70" />
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Ruled Specification Services Menu */}
+                    {/* Top 2 Services with Price */}
                     <div className="divide-y divide-rule border-t border-rule pt-1">
-                      {biz.servicesMenu.map((srv) => (
+                      {biz.servicesMenu.slice(0, 2).map((srv) => (
                         <div
                           key={srv.id}
-                          className="flex items-center justify-between gap-2 text-xs py-2"
+                          className="flex items-center justify-between gap-2 text-xs sm:text-sm py-2"
                         >
                           <span className="font-medium text-ink truncate">
                             {isHe ? srv.nameHe : srv.nameEn}
                           </span>
-                          <span className="font-semibold text-ink shrink-0 hallmark-code">
+                          <span className="font-bold text-ink shrink-0">
                             {formatServiceOfferPrice(srv)}
                           </span>
                         </div>
@@ -686,32 +604,27 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                   </div>
                 </div>
 
-                {/* Action Footer */}
-                <div className="px-5 py-3.5 bg-paper border-t border-rule flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => openBookingForBusiness(biz)}
-                    className="flex-1 hallmark-btn-ink text-xs py-2 px-3"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-gold" />
-                    <span>{isHe ? 'תיאום תור ביומן' : 'Book Slot'}</span>
-                  </button>
-
+                {/* Simple 2-Button Action Footer */}
+                <div className="px-5 py-4 bg-paper/60 border-t border-rule flex items-center gap-2.5">
                   <a
                     href={buildBusinessWhatsAppReferralUrl(biz, cardRefCode, defaultUserName)}
                     onClick={() => trackBusinessLead(biz, 'whatsapp_click', cardRefCode)}
                     target="_blank"
                     rel="noreferrer"
-                    title={
-                      isHe
-                        ? `פנייה ממותגת דרך LUZ (#${cardRefCode})`
-                        : `LUZ Attributed Inquiry (#${cardRefCode})`
-                    }
-                    className="py-2 px-3.5 bg-plate border border-ink text-ink text-xs font-semibold hover:bg-accent hover:text-accent-ink hover:border-accent transition-colors inline-flex items-center gap-1.5"
+                    className="flex-1 hallmark-btn-primary text-xs sm:text-sm !py-2.5 !px-4"
                   >
-                    <MessageSquare className="w-3.5 h-3.5 text-accent group-hover:text-current" />
-                    <span>WhatsApp</span>
+                    <MessageSquare className="w-4 h-4" />
+                    <span>{isHe ? 'וואטסאפ ישיר' : 'WhatsApp'}</span>
                   </a>
+
+                  <button
+                    type="button"
+                    onClick={() => openBookingForBusiness(biz)}
+                    className="hallmark-btn-secondary text-xs sm:text-sm !py-2.5 !px-3.5"
+                  >
+                    <Calendar className="w-4 h-4 text-accent" />
+                    <span>{isHe ? 'תיאום תור' : 'Book Slot'}</span>
+                  </button>
                 </div>
               </article>
             );
