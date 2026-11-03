@@ -45,6 +45,7 @@ const DAY_SHORT_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const ExploreView: React.FC<ExploreViewProps> = ({
   entities,
   lang,
+  isAdmin = false,
   onSelectEntity,
   onOpenBenBot,
   onGoToProvider,
@@ -721,7 +722,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         </>
       )}
 
-      {/* Simple Bottom Banner for Providers */}
+      {/* Bottom Banner for Providers */}
       <section className="hallmark-band-ink p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
         <div className="space-y-1.5 max-w-xl">
           <h2 className="font-display text-xl sm:text-2xl font-bold text-paper">
@@ -731,19 +732,35 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
           </h2>
           <p className="text-sm text-paper/80">
             {isHe
-              ? 'העלו את הפרסום שלכם בלוח הקהילה בחינם וקבלו פניות ישירות לוואטסאפ.'
-              : 'Add your listing to the community board for free and get direct WhatsApp inquiries.'}
+              ? 'פרסום אירועים מתבצע באישור מנהלי הקהילה כדי לשמור על איכות ודיוק הלוח.'
+              : 'Event publishing is moderated by community admins to maintain quality.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={onGoToProvider}
-            className="hallmark-btn-primary text-sm"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>{isHe ? 'הוספת אירוע או בית' : 'Add Listing'}</span>
-          </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={onGoToProvider}
+              className="hallmark-btn-primary text-sm"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>{isHe ? 'הוספת אירוע או בית (אדמין)' : 'Add Listing (Admin)'}</span>
+            </button>
+          ) : (
+            <a
+              href={`https://wa.me/972524780033?text=${encodeURIComponent(
+                isHe
+                  ? 'היי! אשמח לפרסם אירוע / סדנה בלוח הקהילה של LUZ גואה.'
+                  : 'Hi! I would like to submit an event to LUZ Goa schedule.'
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hallmark-btn-primary text-sm"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>{isHe ? 'פנייה לפרסום אירוע בוואטסאפ' : 'Contact Admin to List'}</span>
+            </a>
+          )}
           <button
             type="button"
             onClick={onGoToBusinesses}

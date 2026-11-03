@@ -13,6 +13,7 @@ import {
   X,
   UserCheck,
   MessageCircle,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   YouthCenterFamily,
@@ -21,6 +22,7 @@ import {
   Language,
 } from '../types/luz';
 import { DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL } from '../config/notifications';
+import { buildGoogleCalendarUrl } from '../utils/calendarAndParser';
 
 export interface YouthCenterEventRegistration {
   id: string;
@@ -29,7 +31,7 @@ export interface YouthCenterEventRegistration {
   eventTitleEn: string;
   eventSchedule: string;
   participantName: string;
-  participantAge: number;
+  isSubscriber: boolean;
   parentName: string;
   parentPhone: string;
   notes: string;
@@ -39,6 +41,7 @@ export interface YouthCenterEventRegistration {
 interface YouthCenterViewProps {
   families: YouthCenterFamily[];
   lang: Language;
+  isAdmin?: boolean;
   onRegisterFamily: (family: Omit<YouthCenterFamily, 'id' | 'createdAt'>) => void;
   entities?: LuzEntity[];
   bookings?: BookingRecord[];
@@ -48,7 +51,7 @@ interface YouthCenterViewProps {
   ) => void;
 }
 
-const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_v1';
+const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_v2';
 const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
 
 const CORE_YOUTH_CENTER_EVENTS: LuzEntity[] = [
@@ -171,10 +174,13 @@ const CORE_YOUTH_CENTER_EVENTS: LuzEntity[] = [
 ];
 
 const DAY_NAMES_HE = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'יום שבת'];
+const DAY_SHORT_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 const DAY_NAMES_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_SHORT_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   lang,
+  isAdmin = false,
   entities = [],
   onAddEntity,
   onConfirmBooking,
@@ -184,17 +190,18 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   const [viewMode, setViewMode] = useState<'cards' | 'calendar'>('cards');
   const [selectedEventForReg, setSelectedEventForReg] = useState<LuzEntity | null>(null);
   const [filterEventId, setFilterEventId] = useState<string>('all');
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | 'all'>('all');
 
-  // Event registration form state
+  // Event registration form state (Age removed, isSubscriber added)
   const [participantName, setParticipantName] = useState('');
-  const [participantAge, setParticipantAge] = useState<number>(12);
+  const [isSubscriber, setIsSubscriber] = useState<boolean>(true);
   const [parentName, setParentName] = useState('');
   const [parentPhone, setParentPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [regSubmitted, setRegSubmitted] = useState(false);
   const [syncingSheet, setSyncingSheet] = useState(false);
 
-  // Add new Youth Center Event modal state
+  // Add new Youth Center Event modal state (Admin Only)
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [newTitleHe, setNewTitleHe] = useState('');
   const [newDescHe, setNewDescHe] = useState('');
@@ -205,7 +212,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   const [newHostName, setNewHostName] = useState('צוות מרכז הנוער גואה');
   const [newHostPhone, setNewHostPhone] = useState('+972-52-478-0033');
 
-  // Dedicated Google Sheet Webhook URL (defaults to the active LUZ Google Apps Script Webhook)
+  // Dedicated Google Sheet Webhook URL
   const [ycSheetWebhookUrl, setYcSheetWebhookUrl] = useState<string>(() => {
     try {
       return (
@@ -270,6 +277,45 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     });
   }, [entities]);
 
+  // Chronological calendar by day mapping (matching ExploreView calendar)
+  const calendarByDay = useMemo(() => {
+    const map: Record<number, LuzEntity[]> = {
+      0: [],
+      1: [],
+      2: [],
+      3: [],
+      4: [],
+      5: [],
+      6: [],
+    };
+
+    youthEvents.forEach((item) => {
+      let days = [1];
+      if (typeof item.dayOfWeek === 'number') {
+        days = [item.dayOfWeek];
+      } else if (item.date) {
+        const parsed = new Date(item.date);
+        if (!isNaN(parsed.getTime())) {
+          days = [parsed.getDay()];
+        }
+      }
+      days.forEach((d) => {
+        if (map[d]) {
+          map[d].push(item);
+        }
+      });
+    });
+
+    Object.keys(map).forEach((k) => {
+      const dayIdx = Number(k);
+      map[dayIdx].sort((a, b) => (a.startTime || '16:00').localeCompare(b.startTime || '16:00'));
+    });
+
+    return map;
+  }, [youthEvents]);
+
+  const orderedDays = [1, 2, 3, 4, 5, 6, 0];
+
   const formatEventSchedule = (ev: LuzEntity) => {
     const dayStr =
       typeof ev.dayOfWeek === 'number'
@@ -281,8 +327,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     return dayStr ? `${dayStr} · ${timeStr}` : timeStr;
   };
 
-  const getEventRegistrations = (eventId: string) =>
-    registrations.filter((r) => r.eventId === eventId);
+  const getEventRegistrationsCount = (eventId: string) =>
+    registrations.filter((r) => r.eventId === eventId).length;
 
   const visibleRegistrations = useMemo(() => {
     if (filterEventId === 'all') return registrations;
@@ -291,6 +337,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 
   const handleOpenRegisterModal = (ev: LuzEntity) => {
     setSelectedEventForReg(ev);
+    setIsSubscriber(true);
     setRegSubmitted(false);
   };
 
@@ -306,7 +353,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       eventTitleEn: selectedEventForReg.titleEn,
       eventSchedule: scheduleLabel,
       participantName: participantName.trim(),
-      participantAge: Number(participantAge) || 12,
+      isSubscriber,
       parentName: parentName.trim(),
       parentPhone: parentPhone.trim(),
       notes: notes.trim() || (isHe ? 'ללא' : 'None'),
@@ -322,7 +369,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         entityTitleHe: selectedEventForReg.titleHe,
         entityTitleEn: selectedEventForReg.titleEn,
         entityType: 'workshop',
-        customerName: `${newReg.participantName} (הורה: ${newReg.parentName})`,
+        customerName: `${newReg.participantName} (${isSubscriber ? 'מנוי חודשי' : 'ללא מנוי'}, הורה: ${newReg.parentName})`,
         customerPhone: newReg.parentPhone,
         participantsCount: 1,
         selectedDate: selectedEventForReg.date || scheduleLabel,
@@ -333,7 +380,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       });
     }
 
-    // Dispatch to Dedicated Youth Center Google Sheet via Google Apps Script Webhook
+    // Dispatch to Dedicated Youth Center Google Sheet via Webhook
     const targetUrl = (ycSheetWebhookUrl || DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL).trim();
     if (targetUrl.startsWith('https://')) {
       setSyncingSheet(true);
@@ -353,7 +400,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
             schedule: scheduleLabel,
             location: selectedEventForReg.locationDetailsHe,
             participantName: newReg.participantName,
-            participantAge: newReg.participantAge,
+            isSubscriber: newReg.isSubscriber,
             parentName: newReg.parentName,
             parentPhone: newReg.parentPhone,
             notes: newReg.notes,
@@ -370,10 +417,10 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
             contactLang: 'he',
           },
           customer: {
-            name: `${newReg.participantName} (גיל ${newReg.participantAge}, הורה: ${newReg.parentName})`,
+            name: `${newReg.participantName} (${isSubscriber ? 'מנוי חודשי' : 'אורח'}, הורה: ${newReg.parentName})`,
             phone: newReg.parentPhone,
           },
-          serviceOrDateSummary: `${selectedEventForReg.titleHe} | ${scheduleLabel} | הערות: ${newReg.notes}`,
+          serviceOrDateSummary: `${selectedEventForReg.titleHe} | ${scheduleLabel} | מנוי: ${isSubscriber ? 'כן' : 'לא'} | הערות: ${newReg.notes}`,
         };
 
         await fetch(targetUrl, {
@@ -444,7 +491,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       'שם האירוע (Event)',
       'מועד ושעה (Schedule)',
       'שם הילד/ה (Participant Name)',
-      'גיל (Age)',
+      'מנוי חודשי (Monthly Subscriber)',
       'שם ההורה (Parent Name)',
       'טלפון הורה (Parent WhatsApp)',
       'הערות (Notes)',
@@ -455,7 +502,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       r.eventTitleHe,
       r.eventSchedule,
       r.participantName,
-      String(r.participantAge),
+      r.isSubscriber ? 'כן' : 'לא',
       r.parentName,
       r.parentPhone,
       r.notes,
@@ -503,7 +550,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
           </p>
         </div>
 
-        {/* Right Controls: View Switcher + Add Event */}
+        {/* Right Controls: View Switcher + Add Event (Admin Only) */}
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <div
             className="inline-flex items-center bg-paper-2 p-1 rounded-full border border-rule"
@@ -531,96 +578,238 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               }`}
             >
               <CalendarDays className="w-4 h-4" />
-              <span>{isHe ? 'לוח שבועי' : 'Weekly Schedule'}</span>
+              <span>{isHe ? 'לוח שבועי כרונולוגי' : 'Calendar View'}</span>
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAddEventModal(true)}
-            className="hallmark-btn-primary text-xs sm:text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{isHe ? 'הוספת אירוע לנוער' : 'Add Youth Event'}</span>
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowAddEventModal(true)}
+              className="hallmark-btn-primary text-xs sm:text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isHe ? 'הוספת אירוע לנוער (אדמין)' : 'Add Youth Event'}</span>
+            </button>
+          )}
         </div>
       </section>
 
       {/* =====================================================================
-          YOUTH CENTER EVENTS: CARDS VIEW vs WEEKLY CALENDAR VIEW
+          YOUTH CENTER EVENTS: CARDS VIEW vs CHRONOLOGICAL CALENDAR VIEW
          ===================================================================== */}
       {viewMode === 'calendar' ? (
-        <section className="hallmark-plate overflow-hidden">
-          <div className="p-5 bg-paper-2 border-b border-rule flex items-center justify-between">
-            <h2 className="font-display text-xl font-bold text-ink">
-              {isHe ? 'לוח אירועי מרכז הנוער לפי ימים' : 'Youth Center Chronological Schedule'}
-            </h2>
-            <span className="text-xs font-semibold text-muted">
-              {youthEvents.length} {isHe ? 'מפגשים פעילים' : 'active sessions'}
-            </span>
+        <section className="space-y-6" aria-label={isHe ? 'לוח שבועי כרונולוגי' : 'Chronological Youth Calendar'}>
+          {/* Day-of-Week Selector Strip (Identical to ExploreView calendar) */}
+          <div className="hallmark-plate p-4 sm:p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
+                  {isHe ? 'לוח פעילויות שבועי כרונולוגי' : 'Weekly Chronological Activity Schedule'}
+                </h2>
+                <p className="text-xs sm:text-sm text-muted">
+                  {isHe
+                    ? 'כל מפגשי מרכז הנוער מסודרים לפי ימים ושעות. לחצו על יום לסינון או על מפגש להרשמה.'
+                    : 'All Youth Center sessions ordered chronologically by day and time. Click any session to register.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDayIndex('all')}
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                  selectedDayIndex === 'all'
+                    ? 'bg-ink text-paper'
+                    : 'bg-paper-2 text-ink hover:bg-paper-3'
+                }`}
+              >
+                {isHe ? 'הצג את כל ימי השבוע' : 'Show Full Week'}
+              </button>
+            </div>
+
+            {/* Day Cards Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+              {orderedDays.map((dayIdx) => {
+                const dayEvents = calendarByDay[dayIdx] || [];
+                const isSelected = selectedDayIndex === dayIdx;
+                return (
+                  <button
+                    key={dayIdx}
+                    type="button"
+                    onClick={() =>
+                      setSelectedDayIndex(selectedDayIndex === dayIdx ? 'all' : dayIdx)
+                    }
+                    className={`p-3 rounded-2xl border text-start transition-all flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-accent text-white border-accent shadow-sm'
+                        : dayEvents.length > 0
+                        ? 'bg-paper hover:bg-paper-2 border-rule text-ink'
+                        : 'bg-paper/40 border-rule/60 text-muted'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs font-bold">
+                        {isHe ? DAY_NAMES_HE[dayIdx] : DAY_NAMES_EN[dayIdx]}
+                      </span>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                          isSelected
+                            ? 'bg-white/25 text-white'
+                            : dayEvents.length > 0
+                            ? 'bg-accent/15 text-accent'
+                            : 'bg-paper-2 text-muted'
+                        }`}
+                      >
+                        {dayEvents.length}
+                      </span>
+                    </div>
+                    <div
+                      className={`text-[11px] mt-2 truncate ${
+                        isSelected ? 'text-white/90' : 'text-muted'
+                      }`}
+                    >
+                      {dayEvents.length === 0
+                        ? isHe
+                          ? 'אין מפגש קבוע'
+                          : 'No session'
+                        : `${dayEvents[0].startTime || '16:30'} · ${
+                            isHe ? dayEvents[0].titleHe : dayEvents[0].titleEn
+                          }`}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="divide-y divide-rule">
-            {youthEvents.map((ev) => {
-              const evRegs = getEventRegistrations(ev.id);
-              const title = isHe ? ev.titleHe : ev.titleEn;
-              const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
-              const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
+          {/* Chronological Day-by-Day Timeline */}
+          <div className="space-y-6">
+            {orderedDays
+              .filter((d) => selectedDayIndex === 'all' || selectedDayIndex === d)
+              .map((dayIdx) => {
+                const dayEvents = calendarByDay[dayIdx] || [];
+                if (dayEvents.length === 0 && selectedDayIndex === 'all') return null;
 
-              return (
-                <div
-                  key={ev.id}
-                  className="p-5 hover:bg-paper-2/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="flex items-start gap-4 min-w-0">
-                    <div className="w-32 shrink-0 rounded-2xl bg-paper-2 border border-rule p-3 text-center">
-                      <div className="text-xs font-bold text-accent">
-                        {typeof ev.dayOfWeek === 'number'
-                          ? isHe
-                            ? DAY_NAMES_HE[ev.dayOfWeek]
-                            : DAY_NAMES_EN[ev.dayOfWeek]
-                          : ev.date}
+                return (
+                  <div key={dayIdx} className="hallmark-plate overflow-hidden">
+                    {/* Day Banner */}
+                    <div className="px-5 py-3.5 bg-paper-2 border-b border-rule flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-8 h-8 rounded-xl bg-ink text-paper font-display font-bold text-sm flex items-center justify-center">
+                          {isHe ? DAY_SHORT_HE[dayIdx] : DAY_SHORT_EN[dayIdx]}
+                        </span>
+                        <h3 className="font-display text-lg font-bold text-ink">
+                          {isHe ? DAY_NAMES_HE[dayIdx] : DAY_NAMES_EN[dayIdx]}
+                        </h3>
                       </div>
-                      <div className="hallmark-code text-sm font-bold text-ink mt-0.5">
-                        {ev.startTime || '16:30'}
-                      </div>
+                      <span className="text-xs font-semibold text-muted">
+                        {dayEvents.length} {isHe ? 'מפגשים מתוכננים' : 'scheduled sessions'}
+                      </span>
                     </div>
 
-                    <div className="space-y-1 min-w-0">
-                      <h3 className="font-display text-lg font-bold text-ink">{title}</h3>
-                      <p className="text-xs sm:text-sm text-ink-2 line-clamp-2">{desc}</p>
-                      <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-muted">
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-accent" />
-                          {loc}
-                        </span>
-                        <span className="inline-flex items-center gap-1 font-semibold text-ink">
-                          <Users className="w-3.5 h-3.5 text-accent" />
-                          {evRegs.length} {isHe ? 'נרשמו לאירוע זה' : 'registered'}
-                        </span>
+                    {dayEvents.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-muted">
+                        {isHe
+                          ? 'אין פעילויות משובצות ליום זה.'
+                          : 'No youth sessions scheduled for this day.'}
                       </div>
-                    </div>
-                  </div>
+                    ) : (
+                      <div className="divide-y divide-rule">
+                        {dayEvents.map((ev) => {
+                          const regCount = getEventRegistrationsCount(ev.id);
+                          const title = isHe ? ev.titleHe : ev.titleEn;
+                          const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
+                          const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
+                          const gcalLink = buildGoogleCalendarUrl({
+                            title: `מרכז הנוער גואה: ${title}`,
+                            description: `${desc}\nמיקום: ${loc}`,
+                            location: `${loc}, Colomb, South Goa`,
+                            startDate: ev.date || new Date().toISOString().slice(0, 10),
+                            startTime: ev.startTime || '16:30',
+                            endTime: ev.endTime || '19:00',
+                          });
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenRegisterModal(ev)}
-                      className="hallmark-btn-primary text-xs sm:text-sm !py-2 !px-4"
-                    >
-                      <UserCheck className="w-4 h-4" />
-                      <span>{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
-                    </button>
+                          return (
+                            <div
+                              key={`${dayIdx}-${ev.id}`}
+                              className="p-4 sm:p-5 hover:bg-paper-2/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+                            >
+                              {/* Left/Start: Time Box + Event Details */}
+                              <div className="flex items-start gap-4 min-w-0">
+                                <div className="w-24 sm:w-28 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2.5 text-center">
+                                  <div className="hallmark-code text-sm sm:text-base font-bold text-ink">
+                                    {ev.startTime || '16:30'}
+                                  </div>
+                                  {ev.endTime && (
+                                    <div className="hallmark-code text-[11px] text-muted">
+                                      {isHe ? `עד ${ev.endTime}` : `to ${ev.endTime}`}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="space-y-1.5 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-700 text-white">
+                                      {isHe ? 'מרכז הנוער' : 'Youth Center'}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink-2">
+                                      <MapPin className="w-3 h-3 text-accent" />
+                                      {loc}
+                                    </span>
+                                    {/* Registration count only (NO NAMES) */}
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-paper-2 text-xs font-semibold text-ink">
+                                      <Users className="w-3 h-3 text-accent" />
+                                      <span>
+                                        {regCount} {isHe ? 'נרשמו' : 'registered'}
+                                      </span>
+                                    </span>
+                                  </div>
+
+                                  <h4 className="font-display text-lg font-bold text-ink">
+                                    {title}
+                                  </h4>
+
+                                  <p className="text-xs sm:text-sm text-ink-2 line-clamp-2">
+                                    {desc}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Right/End: Quick Actions */}
+                              <div className="flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-rule">
+                                <a
+                                  href={gcalLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-3 py-1.5 rounded-full border border-rule-strong bg-plate text-xs font-semibold text-ink hover:bg-paper-2 transition-colors"
+                                >
+                                  {isHe ? '+ ליומן שלי' : '+ Google Cal'}
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenRegisterModal(ev)}
+                                  className="hallmark-btn-primary text-xs !py-1.5 !px-4"
+                                >
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                  <span>{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </section>
       ) : (
+        /* =====================================================================
+           CARDS VIEW: CLEAN MODERN CARDS (ONLY REGISTRATION COUNT SHOWN)
+           ===================================================================== */
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {youthEvents.map((ev) => {
-            const evRegs = getEventRegistrations(ev.id);
+            const regCount = getEventRegistrationsCount(ev.id);
             const title = isHe ? ev.titleHe : ev.titleEn;
             const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
             const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
@@ -650,10 +839,11 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                           ? 'אירוע נוער'
                           : 'Youth Event'}
                       </span>
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1">
-                        <Users className="w-3 h-3 text-accent" />
+                      {/* ONLY COUNT IS DISPLAYED */}
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-accent" />
                         <span>
-                          {evRegs.length} {isHe ? 'נרשמים' : 'registered'}
+                          {regCount} {isHe ? 'נרשמו' : 'registered'}
                         </span>
                       </span>
                     </div>
@@ -677,38 +867,15 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         <span className="truncate">{loc}</span>
                       </div>
                     </div>
-
-                    {/* Preview of Registered Kids for this Event */}
-                    {evRegs.length > 0 && (
-                      <div className="pt-2 border-t border-rule">
-                        <div className="text-[11px] font-semibold text-muted mb-1">
-                          {isHe ? 'נרשמו לאירוע:' : 'Registered participants:'}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {evRegs.slice(0, 5).map((r) => (
-                            <span
-                              key={r.id}
-                              className="px-2.5 py-0.5 rounded-full bg-paper-2 text-xs font-medium text-ink"
-                            >
-                              {r.participantName} ({r.participantAge})
-                            </span>
-                          ))}
-                          {evRegs.length > 5 && (
-                            <span className="px-2 py-0.5 rounded-full bg-paper-2 text-xs text-muted">
-                              +{evRegs.length - 5}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
                 {/* Action Footer */}
                 <div className="px-5 py-4 bg-paper/60 border-t border-rule flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-ink-2">
-                    {isHe ? 'גילאי 8–15' : 'Ages 8–15'}
-                  </span>
+                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-2">
+                    <Users className="w-3.5 h-3.5 text-accent" />
+                    <span>{regCount} {isHe ? 'נרשמו' : 'registered'}</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => handleOpenRegisterModal(ev)}
@@ -725,146 +892,173 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       )}
 
       {/* =====================================================================
-          DEDICATED GOOGLE SHEETS ROSTER PANEL FOR YOUTH CENTER EVENTS
+          ADMIN-ONLY SECTION: DETAILED REGISTRATIONS ROSTER & GOOGLE SHEET SYNC
+          (Protected: Non-admins only see counts, never personal names/phones!)
          ===================================================================== */}
-      <section className="hallmark-plate p-6 sm:p-8 space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-rule">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700">
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>
-                {isHe
-                  ? 'מסונכרן אוטומטית למסמך Google Sheets ייעודי של מרכז הנוער'
-                  : 'Synced automatically to Dedicated Youth Center Google Sheet'}
-              </span>
+      {isAdmin ? (
+        <section className="hallmark-plate p-6 sm:p-8 space-y-5 border-2 border-accent/40">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-rule">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                <ShieldCheck className="w-4 h-4" />
+                <span>
+                  {isHe
+                    ? 'ממשק ניהול נרשמים (מוצג לאדמין בלבד — המשתמשים רואים רק כמות)'
+                    : 'Registrant Management (Admin Only — Visitors see counts only)'}
+                </span>
+              </div>
+              <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
+                {isHe ? 'יומן נרשמים וסנכרון Google Sheets' : 'Youth Center Event Registrants Roster'}
+              </h2>
             </div>
-            <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
-              {isHe ? 'רשימת נרשמים לאירועי מרכז הנוער' : 'Youth Center Event Registrants Roster'}
-            </h2>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Filter by Event */}
-            <select
-              value={filterEventId}
-              onChange={(e) => setFilterEventId(e.target.value)}
-              className="px-3.5 py-2 rounded-full bg-paper border border-rule-strong text-xs sm:text-sm font-semibold text-ink"
-            >
-              <option value="all">
-                {isHe
-                  ? `כל האירועים (${registrations.length} נרשמים)`
-                  : `All Events (${registrations.length})`}
-              </option>
-              {youthEvents.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {isHe ? ev.titleHe : ev.titleEn} ({getEventRegistrations(ev.id).length})
+            <div className="flex flex-wrap items-center gap-2.5">
+              <select
+                value={filterEventId}
+                onChange={(e) => setFilterEventId(e.target.value)}
+                className="px-3.5 py-2 rounded-full bg-paper border border-rule-strong text-xs sm:text-sm font-semibold text-ink"
+              >
+                <option value="all">
+                  {isHe
+                    ? `כל האירועים (${registrations.length} נרשמים)`
+                    : `All Events (${registrations.length})`}
                 </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={() => exportRegistrationsToCsv(filterEventId)}
-              className="hallmark-btn-secondary text-xs !py-2 !px-3.5"
-            >
-              <Download className="w-4 h-4 text-accent" />
-              <span>{isHe ? 'ייצוא ל-Google Sheets (CSV)' : 'Export CSV'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowSheetSettings(!showSheetSettings)}
-              className="px-3.5 py-2 rounded-full bg-paper-2 hover:bg-paper-3 text-xs font-semibold text-ink transition-colors inline-flex items-center gap-1.5"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
-              <span>{isHe ? 'הגדרת גיליון ייעודי' : 'Sheet Link'}</span>
-            </button>
-          </div>
-        </div>
-
-        {showSheetSettings && (
-          <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2 text-xs">
-            <label className="font-bold text-ink block">
-              {isHe
-                ? 'כתובת ה-Webhook של גיליון Google Sheets הייעודי למרכז הנוער:'
-                : 'Dedicated Youth Center Google Sheet Webhook URL:'}
-            </label>
-            <input
-              type="url"
-              value={ycSheetWebhookUrl}
-              onChange={(e) => setYcSheetWebhookUrl(e.target.value)}
-              placeholder="https://script.google.com/macros/s/.../exec"
-              className="w-full rounded-xl border border-rule-strong bg-plate px-3.5 py-2 text-xs hallmark-code text-ink"
-              dir="ltr"
-            />
-            <p className="text-muted">
-              {isHe
-                ? 'כל הרשמה לאירוע נשלחת אוטומטית עם תגית luz.youth_center_event_rsvp ויוצרת/מעדכנת את גיליון "LUZ Goa — Youth Center Events Roster" בחשבון Google שלך.'
-                : 'Every event signup automatically posts luz.youth_center_event_rsvp to your dedicated Youth Center Google Sheet.'}
-            </p>
-          </div>
-        )}
-
-        {visibleRegistrations.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-paper text-center space-y-2 border border-rule">
-            <Users className="w-7 h-7 text-muted mx-auto" />
-            <div className="font-display text-base font-bold text-ink">
-              {isHe ? 'עדיין אין נרשמים לאירוע זה' : 'No registrants for this event yet'}
-            </div>
-            <p className="text-xs text-muted">
-              {isHe
-                ? 'לחצו על "הרשמה לאירוע" בכרטיס האירוע למעלה כדי להוסיף משתתף/ת לרשימה ולגיליון ה-Google Sheets.'
-                : 'Click "Register for Event" on any event card above to add a participant.'}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-start border-collapse text-xs sm:text-sm">
-              <thead>
-                <tr className="border-b border-rule text-muted bg-paper-2/60">
-                  <th className="py-3 px-4 text-start font-semibold">
-                    {isHe ? 'שם המשתתף/ת' : 'Participant'}
-                  </th>
-                  <th className="py-3 px-4 text-start font-semibold">
-                    {isHe ? 'גיל' : 'Age'}
-                  </th>
-                  <th className="py-3 px-4 text-start font-semibold">
-                    {isHe ? 'אירוע' : 'Event'}
-                  </th>
-                  <th className="py-3 px-4 text-start font-semibold">
-                    {isHe ? 'מועד' : 'Schedule'}
-                  </th>
-                  <th className="py-3 px-4 text-start font-semibold">
-                    {isHe ? 'הורה וטלפון' : 'Parent & Phone'}
-                  </th>
-                  <th className="py-3 px-4 text-start font-semibold">
-                    {isHe ? 'הערות' : 'Notes'}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-rule">
-                {visibleRegistrations.map((reg) => (
-                  <tr key={reg.id} className="hover:bg-paper-2/40">
-                    <td className="py-3 px-4 font-bold text-ink">{reg.participantName}</td>
-                    <td className="py-3 px-4 text-ink-2">{reg.participantAge}</td>
-                    <td className="py-3 px-4 font-medium text-ink">
-                      {isHe ? reg.eventTitleHe : reg.eventTitleEn}
-                    </td>
-                    <td className="py-3 px-4 text-muted">{reg.eventSchedule}</td>
-                    <td className="py-3 px-4 text-ink-2">
-                      {reg.parentName} · <span dir="ltr">{reg.parentPhone}</span>
-                    </td>
-                    <td className="py-3 px-4 text-muted">{reg.notes}</td>
-                  </tr>
+                {youthEvents.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {isHe ? ev.titleHe : ev.titleEn} ({getEventRegistrationsCount(ev.id)})
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => exportRegistrationsToCsv(filterEventId)}
+                className="hallmark-btn-secondary text-xs !py-2 !px-3.5"
+              >
+                <Download className="w-4 h-4 text-accent" />
+                <span>{isHe ? 'ייצוא ל-Google Sheets (CSV)' : 'Export CSV'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowSheetSettings(!showSheetSettings)}
+                className="px-3.5 py-2 rounded-full bg-paper-2 hover:bg-paper-3 text-xs font-semibold text-ink transition-colors inline-flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+                <span>{isHe ? 'הגדרת גיליון ייעודי' : 'Sheet Link'}</span>
+              </button>
+            </div>
           </div>
-        )}
-      </section>
+
+          {showSheetSettings && (
+            <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2 text-xs">
+              <label className="font-bold text-ink block">
+                {isHe
+                  ? 'כתובת ה-Webhook של גיליון Google Sheets הייעודי למרכז הנוער:'
+                  : 'Dedicated Youth Center Google Sheet Webhook URL:'}
+              </label>
+              <input
+                type="url"
+                value={ycSheetWebhookUrl}
+                onChange={(e) => setYcSheetWebhookUrl(e.target.value)}
+                placeholder="https://script.google.com/macros/s/.../exec"
+                className="w-full rounded-xl border border-rule-strong bg-plate px-3.5 py-2 text-xs hallmark-code text-ink"
+                dir="ltr"
+              />
+              <p className="text-muted">
+                {isHe
+                  ? 'כל הרשמה לאירוע נשלחת אוטומטית עם תגית luz.youth_center_event_rsvp ויוצרת/מעדכנת את גיליון "LUZ Goa — Youth Center Events Roster" בחשבון Google שלך.'
+                  : 'Every event signup automatically posts luz.youth_center_event_rsvp to your dedicated Youth Center Google Sheet.'}
+              </p>
+            </div>
+          )}
+
+          {visibleRegistrations.length === 0 ? (
+            <div className="p-8 rounded-2xl bg-paper text-center space-y-2 border border-rule">
+              <Users className="w-7 h-7 text-muted mx-auto" />
+              <div className="font-display text-base font-bold text-ink">
+                {isHe ? 'עדיין אין נרשמים לאירוע זה' : 'No registrants for this event yet'}
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-start border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-rule text-muted bg-paper-2/60">
+                    <th className="py-3 px-4 text-start font-semibold">
+                      {isHe ? 'שם המשתתף/ת' : 'Participant'}
+                    </th>
+                    <th className="py-3 px-4 text-start font-semibold">
+                      {isHe ? 'מנוי חודשי?' : 'Subscriber?'}
+                    </th>
+                    <th className="py-3 px-4 text-start font-semibold">
+                      {isHe ? 'אירוע' : 'Event'}
+                    </th>
+                    <th className="py-3 px-4 text-start font-semibold">
+                      {isHe ? 'מועד' : 'Schedule'}
+                    </th>
+                    <th className="py-3 px-4 text-start font-semibold">
+                      {isHe ? 'הורה וטלפון' : 'Parent & Phone'}
+                    </th>
+                    <th className="py-3 px-4 text-start font-semibold">
+                      {isHe ? 'הערות' : 'Notes'}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-rule">
+                  {visibleRegistrations.map((reg) => (
+                    <tr key={reg.id} className="hover:bg-paper-2/40">
+                      <td className="py-3 px-4 font-bold text-ink">{reg.participantName}</td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            reg.isSubscriber
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {reg.isSubscriber
+                            ? isHe
+                              ? 'כן (מנוי)'
+                              : 'Yes (Subscriber)'
+                            : isHe
+                            ? 'לא (חד-פעמי)'
+                            : 'No (Guest)'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-ink">
+                        {isHe ? reg.eventTitleHe : reg.eventTitleEn}
+                      </td>
+                      <td className="py-3 px-4 text-muted">{reg.eventSchedule}</td>
+                      <td className="py-3 px-4 text-ink-2">
+                        {reg.parentName} · <span dir="ltr">{reg.parentPhone}</span>
+                      </td>
+                      <td className="py-3 px-4 text-muted">{reg.notes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : (
+        /* VISITOR PRIVACY NOTE: Clean & Reassuring */
+        <section className="hallmark-plate p-5 sm:p-6 text-center space-y-1.5">
+          <div className="font-display text-base font-bold text-ink">
+            {isHe
+              ? 'מרחב במבוק פתוח לנוער — הצטרפות ורישום למפגשים'
+              : 'Open Bamboo Youth Space — Sessions & Registrations'}
+          </div>
+          <p className="text-xs sm:text-sm text-muted max-w-xl mx-auto">
+            {isHe
+              ? 'ההרשמה לאירועים פתוחה לכל ילדי הקהילה בגילאי 8–15. כדי לשמור על פרטיות המשפחות, האתר מציג רק את כמות הנרשמים לכל מפגש.'
+              : 'Registration is open for all community youth (ages 8–15). To protect family privacy, only participant counts are displayed publicly.'}
+          </p>
+        </section>
+      )}
 
       {/* =====================================================================
-          MODAL 1: REGISTER PARTICIPANT FOR A SPECIFIC YOUTH CENTER EVENT
+          REGISTRATION MODAL: AGE REMOVED, SUBSCRIBER QUESTION ADDED
          ===================================================================== */}
       {selectedEventForReg && (
         <div
@@ -906,12 +1100,12 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 </div>
                 <div className="space-y-1">
                   <h4 className="font-display text-2xl font-bold text-ink">
-                    {isHe ? 'ההרשמה לאירוע נקלטה!' : 'Registered Successfully!'}
+                    {isHe ? 'ההרשמה לאירוע נקלטה בהצלחה!' : 'Registered Successfully!'}
                   </h4>
                   <p className="text-sm text-ink-2">
                     {isHe
-                      ? `${participantName} רשום/ה למפגש "${selectedEventForReg.titleHe}" והשורה נוספה אוטומטית לגיליון ה-Google Sheets של מרכז הנוער.`
-                      : `${participantName} is registered and synced to the Youth Center Google Sheet.`}
+                      ? `${participantName} נוספ/ה לספירת הנרשמים במפגש, והפרטים סונכרנו לגיליון ה-Google Sheets של מרכז הנוער.`
+                      : `${participantName} has been registered and synced to the Youth Center Google Sheet.`}
                   </p>
                 </div>
 
@@ -922,10 +1116,14 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       ''
                     )}?text=${encodeURIComponent(
                       isHe
-                        ? `היי! רשמתי את ${participantName} (גיל ${participantAge}) לאירוע "${selectedEventForReg.titleHe}" במרכז הנוער (${formatEventSchedule(
+                        ? `היי! רשמתי את ${participantName} (${
+                            isSubscriber ? 'מנוי חודשי' : 'תשלום חד-פעמי'
+                          }) לאירוע "${selectedEventForReg.titleHe}" במרכז הנוער (${formatEventSchedule(
                             selectedEventForReg
                           )}). הורה: ${parentName}`
-                        : `Hi! I registered ${participantName} (age ${participantAge}) for "${selectedEventForReg.titleEn}" at Youth Center Goa.`
+                        : `Hi! I registered ${participantName} (${
+                            isSubscriber ? 'Monthly subscriber' : 'Single entry'
+                          }) for "${selectedEventForReg.titleEn}" at Youth Center Goa.`
                     )}`}
                     target="_blank"
                     rel="noreferrer"
@@ -949,33 +1147,71 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               </div>
             ) : (
               <form onSubmit={handleSubmitEventRegistration} className="space-y-4">
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-ink mb-1">
-                      {isHe ? 'שם הילד/ה או הנער/ה *' : 'Participant Name *'}
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שם הילד/ה או הנער/ה *' : 'Participant Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={participantName}
+                    onChange={(e) => setParticipantName(e.target.value)}
+                    placeholder={isHe ? 'לדוגמה: אורי כהן' : 'e.g. Ori Cohen'}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
+                  />
+                </div>
+
+                {/* Question: Is participant a monthly subscriber? */}
+                <div className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2">
+                  <label className="block text-xs font-semibold text-ink">
+                    {isHe
+                      ? 'האם הנרשם הוא מנוי של מרכז הנוער (שילם עלות חודשית)? *'
+                      : 'Is the participant a monthly Youth Center subscriber? *'}
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                    <label
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border cursor-pointer text-xs font-semibold transition-all ${
+                        isSubscriber
+                          ? 'bg-ink text-paper border-ink shadow-sm'
+                          : 'bg-paper text-ink border-rule hover:bg-paper-2'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="isSubscriber"
+                        checked={isSubscriber === true}
+                        onChange={() => setIsSubscriber(true)}
+                        className="sr-only"
+                      />
+                      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                        isSubscriber ? 'border-accent bg-accent' : 'border-muted'
+                      }`}>
+                        {isSubscriber && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span>{isHe ? 'כן, יש מנוי חודשי בתוקף' : 'Yes, monthly subscriber'}</span>
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={participantName}
-                      onChange={(e) => setParticipantName(e.target.value)}
-                      placeholder={isHe ? 'לדוגמה: אורי כהן' : 'e.g. Ori Cohen'}
-                      className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">
-                      {isHe ? 'גיל *' : 'Age *'}
+
+                    <label
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border cursor-pointer text-xs font-semibold transition-all ${
+                        !isSubscriber
+                          ? 'bg-ink text-paper border-ink shadow-sm'
+                          : 'bg-paper text-ink border-rule hover:bg-paper-2'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="isSubscriber"
+                        checked={isSubscriber === false}
+                        onChange={() => setIsSubscriber(false)}
+                        className="sr-only"
+                      />
+                      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                        !isSubscriber ? 'border-accent bg-accent' : 'border-muted'
+                      }`}>
+                        {!isSubscriber && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span>{isHe ? 'לא (תשלום חד-פעמי / אורח)' : 'No (Single entry / guest)'}</span>
                     </label>
-                    <input
-                      type="number"
-                      min={5}
-                      max={18}
-                      required
-                      value={participantAge}
-                      onChange={(e) => setParticipantAge(parseInt(e.target.value, 10) || 12)}
-                      className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
-                    />
                   </div>
                 </div>
 
@@ -1017,7 +1253,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder={isHe ? 'לדוגמה: מגיע עם חבר / אלרגיה...' : 'Optional notes...'}
+                    placeholder={isHe ? 'לדוגמה: מגיע/ה עם חבר / אלרגיה...' : 'Optional notes...'}
                     className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
                   />
                 </div>
@@ -1045,9 +1281,9 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       )}
 
       {/* =====================================================================
-          MODAL 2: ADD NEW YOUTH CENTER EVENT
+          MODAL 2: ADD NEW YOUTH CENTER EVENT (ADMIN ONLY)
          ===================================================================== */}
-      {showAddEventModal && (
+      {isAdmin && showAddEventModal && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setShowAddEventModal(false)}
@@ -1058,7 +1294,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
           >
             <div className="flex items-center justify-between border-b border-rule pb-3">
               <h3 className="font-display text-xl font-bold text-ink">
-                {isHe ? 'הוספת אירוע חדש למרכז הנוער' : 'Add New Youth Center Event'}
+                {isHe ? 'הוספת אירוע חדש למרכז הנוער (אדמין)' : 'Add New Youth Center Event'}
               </h3>
               <button
                 type="button"

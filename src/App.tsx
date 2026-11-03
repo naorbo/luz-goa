@@ -674,14 +674,14 @@ export function App() {
       icon: Users,
       badge: families.reduce((s, f) => s + f.children.length, 0),
     },
-    {
-      id: 'provider',
-      labelHe: 'העלאת אירוע / בית',
-      labelEn: 'Provider Studio',
-      icon: PlusCircle,
-    },
     ...(isAdminAuthenticated
       ? [
+          {
+            id: 'provider' as ActiveTab,
+            labelHe: 'העלאת אירוע / בית',
+            labelEn: 'Provider Studio',
+            icon: PlusCircle,
+          },
           {
             id: 'admin' as ActiveTab,
             labelHe: 'אדמין ולידים',
@@ -890,6 +890,7 @@ export function App() {
           <YouthCenterView
             families={families}
             lang={lang}
+            isAdmin={isAdminAuthenticated}
             onRegisterFamily={handleRegisterFamily}
             entities={entities}
             bookings={bookings}
@@ -898,7 +899,7 @@ export function App() {
           />
         )}
 
-        {activeTab === 'provider' && (
+        {isAdminAuthenticated && activeTab === 'provider' && (
           <ProviderView
             lang={lang}
             onAddEntity={(newEnt) => {
