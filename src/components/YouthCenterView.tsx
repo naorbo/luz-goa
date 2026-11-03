@@ -51,19 +51,20 @@ interface YouthCenterViewProps {
   ) => void;
 }
 
-const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_v2';
+const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_nov26';
 const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
 
 const CORE_YOUTH_CENTER_EVENTS: LuzEntity[] = [
+  // 1. Friday 06/11/2026 - פתיחה חגיגית ופעילות ODT
   {
-    id: 'yc-evt-mon-game-on',
+    id: 'yc-2026-11-06-odt-opening',
     type: 'workshop',
-    titleHe: 'Game On — משחקי אסטרטגיה, שחמט וטורנירים',
-    titleEn: 'Game On — Strategy Board Games, Chess & Tournaments',
+    titleHe: 'פתיחה חגיגית ופעילות ODT',
+    titleEn: 'Grand Opening & Outdoor ODT Team Challenge',
     descriptionHe:
-      'אחר צהריים של משחקי קופסה אסטרטגיים, שחמט, קטאן וטורנירים קבוצתיים במרחב הבמבוק בקולום לגילאי 8–15.',
+      'אירוע פתיחה חגיגי של מרכז הנוער גואה! פעילות ODT (Outdoor Training) לגיבוש קבוצתי, אתגרי שטח, כיבוד מפנק והיכרות עם המרחב.',
     descriptionEn:
-      'Afternoon of strategy board games, chess, Catan, and team tournaments at the Colomb bamboo pavilion for ages 8–15.',
+      'Grand opening celebration of the Goa Youth Center! Outdoor training (ODT) team-building challenges, celebration treats, and space introduction for ages 11–15.',
     area: 'Colomb',
     locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
     locationDetailsEn: 'Colomb Youth Center (near Shailish)',
@@ -75,82 +76,119 @@ const CORE_YOUTH_CENTER_EVENTS: LuzEntity[] = [
     audience: 'youth_11_15',
     ingestionSource: 'web',
     imageUrl:
-      'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=900',
-    tags: ['משחקי קופסה', 'שחמט', 'נוער', 'Game On'],
+      'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&q=80&w=1000',
+    tags: ['פתיחה חגיגית', 'ODT', 'גיבוש', 'נוער'],
     rsvpCount: 0,
+    date: '2026-11-06',
+    dayOfWeek: 5, // Friday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:00',
+    endTime: '19:00',
+  },
+  // 2. Saturday 07/11/2026 - הקרנת סרט
+  {
+    id: 'yc-2026-11-07-movie',
+    type: 'workshop',
+    titleHe: 'הקרנת סרט',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionHe:
+      'ערב סרט קהילתי על מסך ענק עם פופקורן, שתייה ואווירה כיפית לנוער במתחם הבמבוק בקולום.',
+    descriptionEn:
+      'Big-screen movie screening night with popcorn, cold drinks, and cozy youth hangout atmosphere.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+    tags: ['הקרנת סרט', 'קולנוע', 'פופקורן', 'שבת'],
+    rsvpCount: 0,
+    date: '2026-11-07',
+    dayOfWeek: 6, // Saturday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '18:00',
+    endTime: '20:30',
+  },
+  // 3. Sunday 08/11/2026 - מרחב פתוח
+  {
+    id: 'yc-2026-11-08-open-space',
+    type: 'workshop',
+    titleHe: 'מרחב פתוח',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionHe:
+      'זמן חופשי לבני נוער להיפגש, לבלות, לשחק, להאזין למוזיקה וליצור יחד במרחב הבמבוק הפתוח.',
+    descriptionEn:
+      'Open youth space to connect, relax, play games, listen to music, and spend time together in Colomb.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+    tags: ['מרחב פתוח', 'מפגש', 'חברים', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-08',
+    dayOfWeek: 0, // Sunday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
+    endTime: '19:30',
+  },
+  // 4. Monday 09/11/2026 - פעילות ג'אם
+  {
+    id: 'yc-2026-11-09-jam',
+    type: 'workshop',
+    titleHe: 'פעילות ג\'אם',
+    titleEn: 'Sunset Music Jam Session',
+    descriptionHe:
+      'ג\'אם מוזיקלי פתוח לנוער: גיטרות, כלי הקשה, שירה ואלתור משותף לקראת השקיעה.',
+    descriptionEn:
+      'Open sunset music jam: guitars, drums, percussion, vocals, and spontaneous live improvisation.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
+    tags: ['ג\'אם', 'מוזיקה', 'שירה', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-09',
     dayOfWeek: 1, // Monday
-    weekCycle: 'all',
-    isYouthCenter: true,
-    startTime: '16:30',
-    endTime: '19:00',
-  },
-  {
-    id: 'yc-evt-tue-open-minds',
-    type: 'workshop',
-    titleHe: 'Open Minds — מעגל שיח, דיבייט ורעיונות גדולים',
-    titleEn: 'Open Minds — Youth Discussion Circle & Big Ideas',
-    descriptionHe:
-      'מפגש שבועי בגובה העיניים לבני נוער: שאלות מסקרנות, דיבייט חופשי, סיפורים אישיים ופרויקטים שהנוער מוביל בעצמו.',
-    descriptionEn:
-      'Weekly youth circle exploring big questions, friendly debate, storytelling, and youth-led initiatives.',
-    area: 'Colomb',
-    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
-    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
-    hostName: 'צוות מרכז הנוער גואה',
-    hostNameEn: 'Youth Center Goa Team',
-    hostPhone: '+972-52-478-0033',
-    priceAmount: 0,
-    priceCurrency: 'FREE',
-    audience: 'youth_11_15',
-    ingestionSource: 'web',
-    imageUrl:
-      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=900',
-    tags: ['שיח פתוח', 'נוער', 'Open Minds'],
-    rsvpCount: 0,
-    dayOfWeek: 2, // Tuesday
-    weekCycle: 'all',
-    isYouthCenter: true,
-    startTime: '16:30',
-    endTime: '19:00',
-  },
-  {
-    id: 'yc-evt-wed-screen-scene',
-    type: 'workshop',
-    titleHe: 'Screen / Scene — ערב סרט, אימפרוביזציה ובמה',
-    titleEn: 'Screen / Scene — Movie Night, Improv & Stage',
-    descriptionHe:
-      'ערב של תיאטרון ואימפרוביזציה בשקיעה ובהמשך הקרנת סרט על מסך גדול עם פופקורן ושיחה משותפת.',
-    descriptionEn:
-      'Sunset improv games and theater expression followed by an outdoor big-screen movie screening with popcorn.',
-    area: 'Colomb',
-    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
-    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
-    hostName: 'צוות מרכז הנוער גואה',
-    hostNameEn: 'Youth Center Goa Team',
-    hostPhone: '+972-52-478-0033',
-    priceAmount: 0,
-    priceCurrency: 'FREE',
-    audience: 'youth_11_15',
-    ingestionSource: 'web',
-    imageUrl:
-      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=900',
-    tags: ['קולנוע', 'במה', 'אימפרוביזציה', 'נוער'],
-    rsvpCount: 0,
-    dayOfWeek: 3, // Wednesday
     weekCycle: 'all',
     isYouthCenter: true,
     startTime: '17:00',
     endTime: '19:30',
   },
+  // 5. Thursday 12/11/2026 - משחקי קופסה
   {
-    id: 'yc-evt-thu-noise-makers',
+    id: 'yc-2026-11-12-board-games',
     type: 'workshop',
-    titleHe: 'Noise / Makers — מעבדת יצירה בבמבוק וג׳אם מוזיקה',
-    titleEn: 'Noise / Makers — Bamboo Makers Lab & Music Jam',
+    titleHe: 'משחקי קופסה',
+    titleEn: 'Strategy Board Games & Tournaments',
     descriptionHe:
-      'עבודה מעשית עם במבוק, כלי עבודה ואמנות, ולקראת השקיעה — ג׳אם אקוסטי פתוח עם גיטרות, כלי הקשה ושירה.',
+      'אחר צהריים של משחקי אסטרטגיה, קטאן, שחמט, משחקי שולחן וטורנירים מהנים.',
     descriptionEn:
-      'Hands-on bamboo crafting and art lab followed by an open sunset acoustic jam for youth musicians.',
+      'Afternoon of board games, Catan, chess, strategy tabletop games, and friendly team competitions.',
     area: 'Colomb',
     locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
     locationDetailsEn: 'Colomb Youth Center (near Shailish)',
@@ -162,14 +200,356 @@ const CORE_YOUTH_CENTER_EVENTS: LuzEntity[] = [
     audience: 'youth_11_15',
     ingestionSource: 'web',
     imageUrl:
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=900',
-    tags: ['מייקרים', 'במבוק', 'מוזיקה', 'ג׳אם'],
+      'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=1000',
+    tags: ['משחקי קופסה', 'שחמט', 'קטאן', 'אסטרטגיה'],
     rsvpCount: 0,
+    date: '2026-11-12',
     dayOfWeek: 4, // Thursday
     weekCycle: 'all',
     isYouthCenter: true,
     startTime: '16:30',
+    endTime: '19:00',
+  },
+  // 6. Saturday 14/11/2026 - הקרנת סרט
+  {
+    id: 'yc-2026-11-14-movie',
+    type: 'workshop',
+    titleHe: 'הקרנת סרט',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionHe:
+      'הקרנת סרט מרתק על מסך גדול עם פופקורן ושיחה משותפת אחרי הסרט.',
+    descriptionEn:
+      'Feature youth film screening on big screen with fresh popcorn and post-film discussion.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+    tags: ['הקרנת סרט', 'קולנוע', 'פופקורן', 'שבת'],
+    rsvpCount: 0,
+    date: '2026-11-14',
+    dayOfWeek: 6, // Saturday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '18:00',
+    endTime: '20:30',
+  },
+  // 7. Sunday 15/11/2026 - מרחב פתוח
+  {
+    id: 'yc-2026-11-15-open-space',
+    type: 'workshop',
+    titleHe: 'מרחב פתוח',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionHe:
+      'מרחב פתוח וחופשי לנוער: מפגש חברים, עבודה על פרויקטים אישיים, משחקים ושיח.',
+    descriptionEn:
+      'Open community space for teens: social time, personal projects, board games, and chill vibe.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+    tags: ['מרחב פתוח', 'מפגש', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-15',
+    dayOfWeek: 0, // Sunday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
     endTime: '19:30',
+  },
+  // 8. Monday 16/11/2026 - הרצאת אורח
+  {
+    id: 'yc-2026-11-16-guest-talk',
+    type: 'workshop',
+    titleHe: 'הרצאת אורח',
+    titleEn: 'Guest Speaker & Inspiring Stories',
+    descriptionHe:
+      'הרצאת אורח מעוררת השראה ומפגש בגובה העיניים עם אורח מיוחד מהקהילה על מסעות חיים, יצירה ומדע.',
+    descriptionEn:
+      'Inspiring guest speaker session and friendly youth discussion on life journeys and creative exploration.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=1000',
+    tags: ['הרצאת אורח', 'השראה', 'שיח', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-16',
+    dayOfWeek: 1, // Monday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '17:00',
+    endTime: '18:45',
+  },
+  // 9. Thursday 19/11/2026 - סדנת אומנות
+  {
+    id: 'yc-2026-11-19-art',
+    type: 'workshop',
+    titleHe: 'סדנת אומנות',
+    titleEn: 'Youth Art & Creative Studio',
+    descriptionHe:
+      'סדנת אומנות ויצירה מעשית: ציור, חומרים טבעיים ויצירה מקורית בהנחיית יוצרים מהקהילה.',
+    descriptionEn:
+      'Hands-on creative art studio: painting, sculpture with natural materials, and self-expression.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=1000',
+    tags: ['אומנות', 'יצירה', 'סדנה', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-19',
+    dayOfWeek: 4, // Thursday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
+    endTime: '19:00',
+  },
+  // 10. Saturday 21/11/2026 - הקרנת סרט
+  {
+    id: 'yc-2026-11-21-movie',
+    type: 'workshop',
+    titleHe: 'הקרנת סרט',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionHe:
+      'ערב סרט קולנוע ופופקורן לנוער במתחם הבמבוק בקולום.',
+    descriptionEn:
+      'Cinema movie night and popcorn for youth in the bamboo pavilion.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+    tags: ['הקרנת סרט', 'קולנוע', 'פופקורן', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-21',
+    dayOfWeek: 6, // Saturday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '18:00',
+    endTime: '20:30',
+  },
+  // 11. Sunday 22/11/2026 - מרחב פתוח
+  {
+    id: 'yc-2026-11-22-open-space',
+    type: 'workshop',
+    titleHe: 'מרחב פתוח',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionHe:
+      'מרחב פתוח למפגש, שיחה חופשית, משחקי שולחן ומוזיקה.',
+    descriptionEn:
+      'Open space for hanging out, open conversations, board games, and relaxing with friends.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+    tags: ['מרחב פתוח', 'מפגש', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-22',
+    dayOfWeek: 0, // Sunday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
+    endTime: '19:30',
+  },
+  // 12. Monday 23/11/2026 - פעילות ג'אם
+  {
+    id: 'yc-2026-11-23-jam',
+    type: 'workshop',
+    titleHe: 'פעילות ג\'אם',
+    titleEn: 'Acoustic Jam Session',
+    descriptionHe:
+      'פעילות ג\'אם מוזיקלי פתוח: הביאו כלי נגינה או בואו להקשיב ולהשתתף בשירה ואלתור.',
+    descriptionEn:
+      'Open youth music jam: bring instruments or join in with vocals, rhythm, and acoustic melodies.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
+    tags: ['ג\'אם', 'מוזיקה', 'שירה', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-23',
+    dayOfWeek: 1, // Monday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '17:00',
+    endTime: '19:30',
+  },
+  // 13. Thursday 26/11/2026 - משחקי קופסה
+  {
+    id: 'yc-2026-11-26-board-games',
+    type: 'workshop',
+    titleHe: 'משחקי קופסה',
+    titleEn: 'Strategy Board Games & Challenges',
+    descriptionHe:
+      'מפגש משחקי קופסה ואסטרטגיה: שחמט, קטאן, משחקי קלפים וטורניר קבוצתי מהנה.',
+    descriptionEn:
+      'Strategy board games, chess, Catan, card games, and fun team challenges.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=1000',
+    tags: ['משחקי קופסה', 'שחמט', 'אסטרטגיה', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-26',
+    dayOfWeek: 4, // Thursday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
+    endTime: '19:00',
+  },
+  // 14. Saturday 28/11/2026 - הקרנת סרט
+  {
+    id: 'yc-2026-11-28-movie',
+    type: 'workshop',
+    titleHe: 'הקרנת סרט',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionHe:
+      'הקרנת סרט סוף שבוע על מסך ענק עם כיבוד ופופקורן חם.',
+    descriptionEn:
+      'Weekend big screen movie night with warm popcorn and cinema treats.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+    tags: ['הקרנת סרט', 'קולנוע', 'פופקורן', 'סוף שבוע'],
+    rsvpCount: 0,
+    date: '2026-11-28',
+    dayOfWeek: 6, // Saturday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '18:00',
+    endTime: '20:30',
+  },
+  // 15. Sunday 29/11/2026 - מרחב פתוח
+  {
+    id: 'yc-2026-11-29-open-space',
+    type: 'workshop',
+    titleHe: 'מרחב פתוח',
+    titleEn: 'Open Youth Space & Chill',
+    descriptionHe:
+      'מרחב פתוח לנוער: זמן חופשי, פינת יצירה, מוזיקה ומפגש חברים.',
+    descriptionEn:
+      'Open youth space: free time, creative corner, music, and socializing.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+    tags: ['מרחב פתוח', 'מפגש', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-29',
+    dayOfWeek: 0, // Sunday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
+    endTime: '19:30',
+  },
+  // 16. Monday 30/11/2026 - הרצאת אורח
+  {
+    id: 'yc-2026-11-30-guest-talk',
+    type: 'workshop',
+    titleHe: 'הרצאת אורח',
+    titleEn: 'Guest Speaker & Youth Dialogue',
+    descriptionHe:
+      'הרצאת אורח מרתקת בנושאי מדע, יצירתיות וסיפורי חיים מעוררי השראה.',
+    descriptionEn:
+      'Fascinating guest speaker session touching upon science, creativity, and inspiring life stories.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=1000',
+    tags: ['הרצאת אורח', 'השראה', 'שיח', 'נוער'],
+    rsvpCount: 0,
+    date: '2026-11-30',
+    dayOfWeek: 1, // Monday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '17:00',
+    endTime: '18:45',
   },
 ];
 
@@ -177,6 +557,24 @@ const DAY_NAMES_HE = ['יום ראשון', 'יום שני', 'יום שלישי',
 const DAY_SHORT_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 const DAY_NAMES_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_SHORT_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export const formatDateShort = (dateStr?: string, isHe = true) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const day = Number(parts[2]);
+  return isHe ? `${day} בנובמבר` : `Nov ${day}`;
+};
+
+export const formatDateFull = (dateStr?: string, isHe = true) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  const dayName = isHe ? DAY_NAMES_HE[d.getDay()] : DAY_NAMES_EN[d.getDay()];
+  const day = Number(parts[2]);
+  return isHe ? `${dayName}, ${day} בנובמבר` : `${dayName}, Nov ${day}`;
+};
 
 export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   lang,
@@ -187,7 +585,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 }) => {
   const isHe = lang === 'he';
 
-  const [viewMode, setViewMode] = useState<'cards' | 'calendar'>('cards');
+  const [viewMode, setViewMode] = useState<'cards' | 'calendar'>('calendar');
   const [selectedEventForReg, setSelectedEventForReg] = useState<LuzEntity | null>(null);
   const [filterEventId, setFilterEventId] = useState<string>('all');
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | 'all'>('all');
@@ -260,21 +658,25 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   // Combine core Youth Center events with any Youth/Kids events from entities
   const youthEvents = useMemo(() => {
     const customYouthEntities = entities.filter(
-      (e) =>
-        (e.isYouthCenter || e.audience === 'youth_11_15' || e.audience === 'kids_8_15') &&
-        e.id !== 'prod-wks-yc-colomb'
+      (e) => e.isYouthCenter && e.id !== 'prod-wks-yc-colomb'
     );
 
     const map = new Map<string, LuzEntity>();
     CORE_YOUTH_CENTER_EVENTS.forEach((ev) => map.set(ev.id, ev));
     customYouthEntities.forEach((ev) => map.set(ev.id, ev));
 
-    return Array.from(map.values()).sort((a, b) => {
-      const dayA = typeof a.dayOfWeek === 'number' ? a.dayOfWeek : 1;
-      const dayB = typeof b.dayOfWeek === 'number' ? b.dayOfWeek : 1;
-      if (dayA !== dayB) return dayA - dayB;
-      return (a.startTime || '16:00').localeCompare(b.startTime || '16:00');
-    });
+    const getSortKey = (item: LuzEntity) => {
+      if (item.date) return `${item.date}_${item.startTime || '16:00'}`;
+      const fakeDay =
+        typeof item.dayOfWeek === 'number'
+          ? String(item.dayOfWeek + 1).padStart(2, '0')
+          : '99';
+      return `2026-11-${fakeDay}_${item.startTime || '16:00'}`;
+    };
+
+    return Array.from(map.values()).sort((a, b) =>
+      getSortKey(a).localeCompare(getSortKey(b))
+    );
   }, [entities]);
 
   // Chronological calendar by day mapping (matching ExploreView calendar)
@@ -291,13 +693,14 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 
     youthEvents.forEach((item) => {
       let days = [1];
-      if (typeof item.dayOfWeek === 'number') {
-        days = [item.dayOfWeek];
-      } else if (item.date) {
-        const parsed = new Date(item.date);
-        if (!isNaN(parsed.getTime())) {
-          days = [parsed.getDay()];
+      if (item.date) {
+        const parts = item.date.split('-');
+        if (parts.length === 3) {
+          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          days = [d.getDay()];
         }
+      } else if (typeof item.dayOfWeek === 'number') {
+        days = [item.dayOfWeek];
       }
       days.forEach((d) => {
         if (map[d]) {
@@ -308,7 +711,12 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 
     Object.keys(map).forEach((k) => {
       const dayIdx = Number(k);
-      map[dayIdx].sort((a, b) => (a.startTime || '16:00').localeCompare(b.startTime || '16:00'));
+      map[dayIdx].sort((a, b) => {
+        const dateA = a.date || '';
+        const dateB = b.date || '';
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        return (a.startTime || '16:00').localeCompare(b.startTime || '16:00');
+      });
     });
 
     return map;
@@ -317,12 +725,12 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   const orderedDays = [1, 2, 3, 4, 5, 6, 0];
 
   const formatEventSchedule = (ev: LuzEntity) => {
-    const dayStr =
-      typeof ev.dayOfWeek === 'number'
-        ? isHe
-          ? DAY_NAMES_HE[ev.dayOfWeek]
-          : DAY_NAMES_EN[ev.dayOfWeek]
-        : ev.date || '';
+    let dayStr = '';
+    if (ev.date) {
+      dayStr = formatDateFull(ev.date, isHe);
+    } else if (typeof ev.dayOfWeek === 'number') {
+      dayStr = isHe ? DAY_NAMES_HE[ev.dayOfWeek] : DAY_NAMES_EN[ev.dayOfWeek];
+    }
     const timeStr = `${ev.startTime || '16:30'}${ev.endTime ? ` – ${ev.endTime}` : ''}`;
     return dayStr ? `${dayStr} · ${timeStr}` : timeStr;
   };
@@ -669,9 +1077,9 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                     >
                       {dayEvents.length === 0
                         ? isHe
-                          ? 'אין מפגש קבוע'
+                          ? 'אין מפגש החודש'
                           : 'No session'
-                        : `${dayEvents[0].startTime || '16:30'} · ${
+                        : `${dayEvents.length} ${isHe ? 'מפגשים בנובמבר' : 'sessions'} · ${
                             isHe ? dayEvents[0].titleHe : dayEvents[0].titleEn
                           }`}
                     </div>
@@ -702,7 +1110,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         </h3>
                       </div>
                       <span className="text-xs font-semibold text-muted">
-                        {dayEvents.length} {isHe ? 'מפגשים מתוכננים' : 'scheduled sessions'}
+                        {dayEvents.length} {isHe ? 'מפגשים מתוכננים בנובמבר' : 'sessions in November'}
                       </span>
                     </div>
 
@@ -736,6 +1144,11 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                               {/* Left/Start: Time Box + Event Details */}
                               <div className="flex items-start gap-4 min-w-0">
                                 <div className="w-24 sm:w-28 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2.5 text-center">
+                                  {ev.date && (
+                                    <div className="text-[11px] font-bold text-accent mb-0.5">
+                                      {formatDateShort(ev.date, isHe)}
+                                    </div>
+                                  )}
                                   <div className="hallmark-code text-sm sm:text-base font-bold text-ink">
                                     {ev.startTime || '16:30'}
                                   </div>
@@ -751,6 +1164,11 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-700 text-white">
                                       {isHe ? 'מרכז הנוער' : 'Youth Center'}
                                     </span>
+                                    {ev.date && (
+                                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent/15 text-accent">
+                                        {formatDateFull(ev.date, isHe)}
+                                      </span>
+                                    )}
                                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink-2">
                                       <MapPin className="w-3 h-3 text-accent" />
                                       {loc}
@@ -831,7 +1249,9 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                     <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
                       <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent text-white shadow-sm">
-                        {typeof ev.dayOfWeek === 'number'
+                        {ev.date
+                          ? formatDateFull(ev.date, isHe)
+                          : typeof ev.dayOfWeek === 'number'
                           ? isHe
                             ? DAY_NAMES_HE[ev.dayOfWeek]
                             : DAY_NAMES_EN[ev.dayOfWeek]
