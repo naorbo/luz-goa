@@ -100,6 +100,17 @@ function doPost(e) {
     }
     cache.put(dedupKey, '1', 15);
 
+    if (data.event === 'luz.youth_center_event_rsvp' && data.youthCenterEvent) {
+      const ycResult = processYouthCenterEventRegistration_(data);
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          ok: true,
+          event: 'luz.youth_center_event_rsvp',
+          youthCenterSheetUrl: ycResult.sheetUrl,
+        })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const { spreadsheet, sheet } = getOrCreateLeadsSheet_();
     processReferralEvent_(data, spreadsheet, sheet);
 
@@ -118,6 +129,72 @@ function doPost(e) {
       })
     ).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function processYouthCenterEventRegistration_(data) {
+  const goaTime = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'dd/MM/yyyy HH:mm:ss');
+  const yc = data.youthCenterEvent || {};
+  const props = PropertiesService.getScriptProperties();
+  let ycSs = null;
+  const savedYcId = props.getProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID');
+  if (savedYcId) {
+    try {
+      ycSs = SpreadsheetApp.openById(savedYcId);
+    } catch (e) {
+      ycSs = null;
+    }
+  }
+  if (!ycSs) {
+    ycSs = SpreadsheetApp.create('LUZ Goa — Youth Center Events Roster');
+    props.setProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID', ycSs.getId());
+  }
+
+  const headers = [
+    'Goa Timestamp',
+    'Event Title',
+    'Schedule',
+    'Participant Name',
+    'Participant Age',
+    'Parent Name',
+    'Parent Phone',
+    'Notes',
+  ];
+
+  let masterSheet = ycSs.getSheetByName('All_Registrations');
+  if (!masterSheet) {
+    masterSheet = ycSs.insertSheet('All_Registrations');
+    masterSheet.appendRow(headers);
+    masterSheet.setFrozenRows(1);
+  }
+
+  const row = [
+    goaTime,
+    yc.titleHe || yc.titleEn || '',
+    yc.schedule || '',
+    yc.participantName || '',
+    yc.participantAge || '',
+    yc.parentName || '',
+    yc.parentPhone || '',
+    yc.notes || '',
+  ];
+  masterSheet.appendRow(row);
+
+  // Also log to a per-event tab inside the dedicated Youth Center Spreadsheet
+  const safeTabName = String(yc.titleHe || yc.eventId || 'Event')
+    .replace(/[:\\/?*\[\]]/g, ' ')
+    .trim()
+    .slice(0, 28);
+  if (safeTabName) {
+    let eventTab = ycSs.getSheetByName(safeTabName);
+    if (!eventTab) {
+      eventTab = ycSs.insertSheet(safeTabName);
+      eventTab.appendRow(headers);
+      eventTab.setFrozenRows(1);
+    }
+    eventTab.appendRow(row);
+  }
+
+  return { sheetUrl: ycSs.getUrl() };
 }
 
 function processReferralEvent_(data, spreadsheet, sheet) {

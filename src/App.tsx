@@ -891,6 +891,10 @@ export function App() {
             families={families}
             lang={lang}
             onRegisterFamily={handleRegisterFamily}
+            entities={entities}
+            bookings={bookings}
+            onAddEntity={handleAddEntity}
+            onConfirmBooking={handleConfirmBooking}
           />
         )}
 

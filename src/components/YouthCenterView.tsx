@@ -1,163 +1,465 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   Plus,
-  Trash2,
   CheckCircle2,
-  HeartHandshake,
   Download,
   MapPin,
-  Sparkles,
   Calendar,
+  Clock,
   FileSpreadsheet,
+  LayoutGrid,
+  CalendarDays,
+  X,
+  UserCheck,
+  MessageCircle,
 } from 'lucide-react';
 import {
   YouthCenterFamily,
-  ChildDetail,
-  GoaArea,
-  VolunteerRole,
+  LuzEntity,
+  BookingRecord,
   Language,
 } from '../types/luz';
+import { DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL } from '../config/notifications';
+
+export interface YouthCenterEventRegistration {
+  id: string;
+  eventId: string;
+  eventTitleHe: string;
+  eventTitleEn: string;
+  eventSchedule: string;
+  participantName: string;
+  participantAge: number;
+  parentName: string;
+  parentPhone: string;
+  notes: string;
+  createdAt: string;
+}
 
 interface YouthCenterViewProps {
   families: YouthCenterFamily[];
   lang: Language;
   onRegisterFamily: (family: Omit<YouthCenterFamily, 'id' | 'createdAt'>) => void;
+  entities?: LuzEntity[];
+  bookings?: BookingRecord[];
+  onAddEntity?: (entity: LuzEntity) => void;
+  onConfirmBooking?: (
+    entityId: string,
+    bookingData: Omit<BookingRecord, 'id' | 'createdAt' | 'status'>
+  ) => void;
 }
 
+const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_v1';
+const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
+
+const CORE_YOUTH_CENTER_EVENTS: LuzEntity[] = [
+  {
+    id: 'yc-evt-mon-game-on',
+    type: 'workshop',
+    titleHe: 'Game On — משחקי אסטרטגיה, שחמט וטורנירים',
+    titleEn: 'Game On — Strategy Board Games, Chess & Tournaments',
+    descriptionHe:
+      'אחר צהריים של משחקי קופסה אסטרטגיים, שחמט, קטאן וטורנירים קבוצתיים במרחב הבמבוק בקולום לגילאי 8–15.',
+    descriptionEn:
+      'Afternoon of strategy board games, chess, Catan, and team tournaments at the Colomb bamboo pavilion for ages 8–15.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=900',
+    tags: ['משחקי קופסה', 'שחמט', 'נוער', 'Game On'],
+    rsvpCount: 0,
+    dayOfWeek: 1, // Monday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
+    endTime: '19:00',
+  },
+  {
+    id: 'yc-evt-tue-open-minds',
+    type: 'workshop',
+    titleHe: 'Open Minds — מעגל שיח, דיבייט ורעיונות גדולים',
+    titleEn: 'Open Minds — Youth Discussion Circle & Big Ideas',
+    descriptionHe:
+      'מפגש שבועי בגובה העיניים לבני נוער: שאלות מסקרנות, דיבייט חופשי, סיפורים אישיים ופרויקטים שהנוער מוביל בעצמו.',
+    descriptionEn:
+      'Weekly youth circle exploring big questions, friendly debate, storytelling, and youth-led initiatives.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=900',
+    tags: ['שיח פתוח', 'נוער', 'Open Minds'],
+    rsvpCount: 0,
+    dayOfWeek: 2, // Tuesday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
+    endTime: '19:00',
+  },
+  {
+    id: 'yc-evt-wed-screen-scene',
+    type: 'workshop',
+    titleHe: 'Screen / Scene — ערב סרט, אימפרוביזציה ובמה',
+    titleEn: 'Screen / Scene — Movie Night, Improv & Stage',
+    descriptionHe:
+      'ערב של תיאטרון ואימפרוביזציה בשקיעה ובהמשך הקרנת סרט על מסך גדול עם פופקורן ושיחה משותפת.',
+    descriptionEn:
+      'Sunset improv games and theater expression followed by an outdoor big-screen movie screening with popcorn.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=900',
+    tags: ['קולנוע', 'במה', 'אימפרוביזציה', 'נוער'],
+    rsvpCount: 0,
+    dayOfWeek: 3, // Wednesday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '17:00',
+    endTime: '19:30',
+  },
+  {
+    id: 'yc-evt-thu-noise-makers',
+    type: 'workshop',
+    titleHe: 'Noise / Makers — מעבדת יצירה בבמבוק וג׳אם מוזיקה',
+    titleEn: 'Noise / Makers — Bamboo Makers Lab & Music Jam',
+    descriptionHe:
+      'עבודה מעשית עם במבוק, כלי עבודה ואמנות, ולקראת השקיעה — ג׳אם אקוסטי פתוח עם גיטרות, כלי הקשה ושירה.',
+    descriptionEn:
+      'Hands-on bamboo crafting and art lab followed by an open sunset acoustic jam for youth musicians.',
+    area: 'Colomb',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+    hostName: 'צוות מרכז הנוער גואה',
+    hostNameEn: 'Youth Center Goa Team',
+    hostPhone: '+972-52-478-0033',
+    priceAmount: 0,
+    priceCurrency: 'FREE',
+    audience: 'youth_11_15',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=900',
+    tags: ['מייקרים', 'במבוק', 'מוזיקה', 'ג׳אם'],
+    rsvpCount: 0,
+    dayOfWeek: 4, // Thursday
+    weekCycle: 'all',
+    isYouthCenter: true,
+    startTime: '16:30',
+    endTime: '19:30',
+  },
+];
+
+const DAY_NAMES_HE = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'יום שבת'];
+const DAY_NAMES_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
-  families,
   lang,
-  onRegisterFamily,
+  entities = [],
+  onAddEntity,
+  onConfirmBooking,
 }) => {
   const isHe = lang === 'he';
 
+  const [viewMode, setViewMode] = useState<'cards' | 'calendar'>('cards');
+  const [selectedEventForReg, setSelectedEventForReg] = useState<LuzEntity | null>(null);
+  const [filterEventId, setFilterEventId] = useState<string>('all');
+
+  // Event registration form state
+  const [participantName, setParticipantName] = useState('');
+  const [participantAge, setParticipantAge] = useState<number>(12);
   const [parentName, setParentName] = useState('');
   const [parentPhone, setParentPhone] = useState('');
-  const [parentEmail, setParentEmail] = useState('');
-  const [area, setArea] = useState<GoaArea>('Colomb');
-  const [emergencyContact, setEmergencyContact] = useState('');
-  const [medicalNotes, setMedicalNotes] = useState('');
-  const [volunteerRole, setVolunteerRole] = useState<VolunteerRole>('activities');
-  const [consentVolunteer, setConsentVolunteer] = useState(true);
-  const [googleScriptUrl, setGoogleScriptUrl] = useState('');
-  const [showSheetSetup, setShowSheetSetup] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [regSubmitted, setRegSubmitted] = useState(false);
+  const [syncingSheet, setSyncingSheet] = useState(false);
 
-  const [children, setChildren] = useState<ChildDetail[]>([
-    { id: 'c-init-1', name: '', age: 12, grade: isHe ? 'ו׳ / 6th' : '6th Grade', interests: '' },
-  ]);
+  // Add new Youth Center Event modal state
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [newTitleHe, setNewTitleHe] = useState('');
+  const [newDescHe, setNewDescHe] = useState('');
+  const [newDayOfWeek, setNewDayOfWeek] = useState<number>(1);
+  const [newDate, setNewDate] = useState('');
+  const [newStartTime, setNewStartTime] = useState('16:30');
+  const [newEndTime, setNewEndTime] = useState('19:00');
+  const [newHostName, setNewHostName] = useState('צוות מרכז הנוער גואה');
+  const [newHostPhone, setNewHostPhone] = useState('+972-52-478-0033');
 
-  const [submitted, setSubmitted] = useState(false);
+  // Dedicated Google Sheet Webhook URL (defaults to the active LUZ Google Apps Script Webhook)
+  const [ycSheetWebhookUrl, setYcSheetWebhookUrl] = useState<string>(() => {
+    try {
+      return (
+        localStorage.getItem(YC_SHEET_WEBHOOK_STORAGE_KEY) ||
+        DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL
+      );
+    } catch {
+      return DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL;
+    }
+  });
+  const [showSheetSettings, setShowSheetSettings] = useState(false);
 
-  const handleAddChild = () => {
-    if (children.length >= 4) return;
-    setChildren((prev) => [
-      ...prev,
-      {
-        id: `c-${Date.now()}`,
-        name: '',
-        age: 11,
-        grade: isHe ? 'ה׳ / 5th' : '5th Grade',
-        interests: '',
-      },
-    ]);
-  };
+  // Persistent list of Youth Center Event Registrations
+  const [registrations, setRegistrations] = useState<YouthCenterEventRegistration[]>(() => {
+    try {
+      const saved = localStorage.getItem(YC_REGISTRATIONS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  });
 
-  const handleRemoveChild = (id: string) => {
-    if (children.length <= 1) return;
-    setChildren((prev) => prev.filter((c) => c.id !== id));
-  };
+  useEffect(() => {
+    try {
+      localStorage.setItem(YC_REGISTRATIONS_STORAGE_KEY, JSON.stringify(registrations));
+    } catch {
+      // ignore
+    }
+  }, [registrations]);
 
-  const handleUpdateChild = (id: string, field: keyof ChildDetail, value: string | number) => {
-    setChildren((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
+  useEffect(() => {
+    try {
+      if (ycSheetWebhookUrl.trim()) {
+        localStorage.setItem(YC_SHEET_WEBHOOK_STORAGE_KEY, ycSheetWebhookUrl.trim());
+      }
+    } catch {
+      // ignore
+    }
+  }, [ycSheetWebhookUrl]);
+
+  // Combine core Youth Center events with any Youth/Kids events from entities
+  const youthEvents = useMemo(() => {
+    const customYouthEntities = entities.filter(
+      (e) =>
+        (e.isYouthCenter || e.audience === 'youth_11_15' || e.audience === 'kids_8_15') &&
+        e.id !== 'prod-wks-yc-colomb'
     );
+
+    const map = new Map<string, LuzEntity>();
+    CORE_YOUTH_CENTER_EVENTS.forEach((ev) => map.set(ev.id, ev));
+    customYouthEntities.forEach((ev) => map.set(ev.id, ev));
+
+    return Array.from(map.values()).sort((a, b) => {
+      const dayA = typeof a.dayOfWeek === 'number' ? a.dayOfWeek : 1;
+      const dayB = typeof b.dayOfWeek === 'number' ? b.dayOfWeek : 1;
+      if (dayA !== dayB) return dayA - dayB;
+      return (a.startTime || '16:00').localeCompare(b.startTime || '16:00');
+    });
+  }, [entities]);
+
+  const formatEventSchedule = (ev: LuzEntity) => {
+    const dayStr =
+      typeof ev.dayOfWeek === 'number'
+        ? isHe
+          ? DAY_NAMES_HE[ev.dayOfWeek]
+          : DAY_NAMES_EN[ev.dayOfWeek]
+        : ev.date || '';
+    const timeStr = `${ev.startTime || '16:30'}${ev.endTime ? ` – ${ev.endTime}` : ''}`;
+    return dayStr ? `${dayStr} · ${timeStr}` : timeStr;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const getEventRegistrations = (eventId: string) =>
+    registrations.filter((r) => r.eventId === eventId);
+
+  const visibleRegistrations = useMemo(() => {
+    if (filterEventId === 'all') return registrations;
+    return registrations.filter((r) => r.eventId === filterEventId);
+  }, [registrations, filterEventId]);
+
+  const handleOpenRegisterModal = (ev: LuzEntity) => {
+    setSelectedEventForReg(ev);
+    setRegSubmitted(false);
+  };
+
+  const handleSubmitEventRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newFamily: Omit<YouthCenterFamily, 'id' | 'createdAt'> = {
-      parentName,
-      parentPhone,
-      parentEmail,
-      area,
-      emergencyContact,
-      medicalNotes: medicalNotes || (isHe ? 'ללא' : 'None'),
-      volunteerRole,
-      consentVolunteer,
-      children,
+    if (!selectedEventForReg) return;
+
+    const scheduleLabel = formatEventSchedule(selectedEventForReg);
+    const newReg: YouthCenterEventRegistration = {
+      id: `yc-reg-${Date.now()}`,
+      eventId: selectedEventForReg.id,
+      eventTitleHe: selectedEventForReg.titleHe,
+      eventTitleEn: selectedEventForReg.titleEn,
+      eventSchedule: scheduleLabel,
+      participantName: participantName.trim(),
+      participantAge: Number(participantAge) || 12,
+      parentName: parentName.trim(),
+      parentPhone: parentPhone.trim(),
+      notes: notes.trim() || (isHe ? 'ללא' : 'None'),
+      createdAt: new Date().toISOString(),
     };
 
-    onRegisterFamily(newFamily);
+    setRegistrations((prev) => [newReg, ...prev]);
 
-    // Optional live sync to Google Apps Script Web App if configured
-    if (googleScriptUrl.trim().startsWith('https://script.google.com')) {
+    if (onConfirmBooking) {
+      onConfirmBooking(selectedEventForReg.id, {
+        referralCode: `YC-${Date.now().toString().slice(-4)}`,
+        entityId: selectedEventForReg.id,
+        entityTitleHe: selectedEventForReg.titleHe,
+        entityTitleEn: selectedEventForReg.titleEn,
+        entityType: 'workshop',
+        customerName: `${newReg.participantName} (הורה: ${newReg.parentName})`,
+        customerPhone: newReg.parentPhone,
+        participantsCount: 1,
+        selectedDate: selectedEventForReg.date || scheduleLabel,
+        selectedSlot: selectedEventForReg.startTime || '16:30',
+        totalPrice: 0,
+        currency: 'FREE',
+        reminderChannel: 'whatsapp',
+      });
+    }
+
+    // Dispatch to Dedicated Youth Center Google Sheet via Google Apps Script Webhook
+    const targetUrl = (ycSheetWebhookUrl || DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL).trim();
+    if (targetUrl.startsWith('https://')) {
+      setSyncingSheet(true);
       try {
-        const formData = new FormData();
-        formData.append('Parent Name', parentName);
-        formData.append('Parent Phone', parentPhone);
-        formData.append('Parent Email', parentEmail);
-        formData.append('Area', area);
-        children.forEach((child, idx) => {
-          formData.append(`Child ${idx + 1} Name`, child.name);
-          formData.append(`Child ${idx + 1} Age`, String(child.age));
-          formData.append(`Child ${idx + 1} Grade`, child.grade);
-        });
-        formData.append('Emergency Contact', emergencyContact);
-        formData.append('Medical Info', medicalNotes);
-        formData.append('Volunteer Role', volunteerRole);
-        await fetch(googleScriptUrl.trim(), {
+        const payload = {
+          event: 'luz.youth_center_event_rsvp',
+          dedicatedSheetName: 'LUZ Goa — Youth Center Events Roster',
+          sheetTabName: 'Youth_Center_Events',
+          referralCode: `YC-${Date.now().toString().slice(-4)}`,
+          environment: 'prod',
+          actionType: 'event_rsvp',
+          actionLabelHe: 'הרשמה לאירוע במרכז הנוער גואה',
+          youthCenterEvent: {
+            eventId: selectedEventForReg.id,
+            titleHe: selectedEventForReg.titleHe,
+            titleEn: selectedEventForReg.titleEn,
+            schedule: scheduleLabel,
+            location: selectedEventForReg.locationDetailsHe,
+            participantName: newReg.participantName,
+            participantAge: newReg.participantAge,
+            parentName: newReg.parentName,
+            parentPhone: newReg.parentPhone,
+            notes: newReg.notes,
+            registeredAt: newReg.createdAt,
+          },
+          provider: {
+            id: selectedEventForReg.id,
+            nameHe: `מרכז הנוער — ${selectedEventForReg.titleHe}`,
+            nameEn: `Youth Center — ${selectedEventForReg.titleEn}`,
+            ownerOrHost: selectedEventForReg.hostName,
+            phone: selectedEventForReg.hostPhone,
+            categoryOrType: 'Youth Center Event',
+            area: selectedEventForReg.area,
+            contactLang: 'he',
+          },
+          customer: {
+            name: `${newReg.participantName} (גיל ${newReg.participantAge}, הורה: ${newReg.parentName})`,
+            phone: newReg.parentPhone,
+          },
+          serviceOrDateSummary: `${selectedEventForReg.titleHe} | ${scheduleLabel} | הערות: ${newReg.notes}`,
+        };
+
+        await fetch(targetUrl, {
           method: 'POST',
-          body: formData,
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
           mode: 'no-cors',
         });
       } catch {
-        // Fallback already stored locally in LUZ DB
+        // Saved locally even if offline
+      } finally {
+        setSyncingSheet(false);
       }
     }
 
-    setSubmitted(true);
+    setRegSubmitted(true);
   };
 
-  const exportFamiliesToCsv = () => {
+  const handleCreateYouthEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitleHe.trim()) return;
+
+    const created: LuzEntity = {
+      id: `yc-custom-${Date.now()}`,
+      type: 'workshop',
+      titleHe: newTitleHe.trim(),
+      titleEn: newTitleHe.trim(),
+      descriptionHe: newDescHe.trim() || newTitleHe.trim(),
+      descriptionEn: newDescHe.trim() || newTitleHe.trim(),
+      area: 'Colomb',
+      locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+      locationDetailsEn: 'Colomb Youth Center (near Shailish)',
+      hostName: newHostName.trim() || 'צוות מרכז הנוער',
+      hostNameEn: newHostName.trim() || 'Youth Center Team',
+      hostPhone: newHostPhone.trim() || '+972-52-478-0033',
+      priceAmount: 0,
+      priceCurrency: 'FREE',
+      audience: 'youth_11_15',
+      ingestionSource: 'web',
+      imageUrl:
+        'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=900',
+      tags: ['מרכז הנוער', 'קולום'],
+      rsvpCount: 0,
+      dayOfWeek: newDayOfWeek,
+      date: newDate || undefined,
+      weekCycle: 'all',
+      isYouthCenter: true,
+      startTime: newStartTime,
+      endTime: newEndTime,
+    };
+
+    if (onAddEntity) {
+      onAddEntity(created);
+    }
+    setShowAddEventModal(false);
+    setNewTitleHe('');
+    setNewDescHe('');
+  };
+
+  const exportRegistrationsToCsv = (onlyEventId?: string) => {
+    const targetList =
+      onlyEventId && onlyEventId !== 'all'
+        ? registrations.filter((r) => r.eventId === onlyEventId)
+        : visibleRegistrations;
+
     const headers = [
-      'Timestamp',
-      'Parent Name',
-      'Parent Phone',
-      'Parent Email',
-      'Area',
-      'Volunteer Role',
-      'Emergency Contact',
-      'Medical Notes',
-      'Child 1 Name',
-      'Child 1 Age',
-      'Child 1 Grade',
-      'Child 2 Name',
-      'Child 2 Age',
-      'Child 2 Grade',
-      'Child 3 Name',
-      'Child 3 Age',
-      'Child 3 Grade',
+      'תאריך רישום (Timestamp)',
+      'שם האירוע (Event)',
+      'מועד ושעה (Schedule)',
+      'שם הילד/ה (Participant Name)',
+      'גיל (Age)',
+      'שם ההורה (Parent Name)',
+      'טלפון הורה (Parent WhatsApp)',
+      'הערות (Notes)',
     ];
 
-    const rows = families.map((f) => [
-      f.createdAt,
-      f.parentName,
-      f.parentPhone,
-      f.parentEmail,
-      f.area,
-      f.volunteerRole,
-      f.emergencyContact,
-      f.medicalNotes,
-      f.children[0]?.name || '',
-      f.children[0]?.age || '',
-      f.children[0]?.grade || '',
-      f.children[1]?.name || '',
-      f.children[1]?.age || '',
-      f.children[1]?.grade || '',
-      f.children[2]?.name || '',
-      f.children[2]?.age || '',
-      f.children[2]?.grade || '',
+    const rows = targetList.map((r) => [
+      new Date(r.createdAt).toLocaleString('he-IL'),
+      r.eventTitleHe,
+      r.eventSchedule,
+      r.participantName,
+      String(r.participantAge),
+      r.parentName,
+      r.parentPhone,
+      r.notes,
     ]);
 
     const csvContent =
@@ -170,505 +472,708 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'youth_center_goa_families.csv';
+    a.download = 'youth_center_goa_event_registrations.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const totalKids = families.reduce((sum, f) => sum + f.children.length, 0);
-
   return (
-    <div className="space-y-10">
-      {/* Hallmark Editorial Split Header & Vision */}
-      <section className="hallmark-rule-top pt-8 pb-8 border-b border-rule grid lg:grid-cols-12 gap-8 items-start">
-        <div className="lg:col-span-7 space-y-4">
-          <h1 className="font-serif text-3xl md:text-5xl font-semibold text-ink leading-tight tracking-tight">
-            {isHe
-              ? 'מרכז הנוער גואה: המקום שלהם, הקהילה שלנו.'
-              : 'Youth Center Goa: Their Place, Our Community.'}
-          </h1>
-          <p className="lead text-ink-2">
-            {isHe
-              ? 'הילדים שלנו גדלים בקהילה ייחודית שנמצאת בתנועה מתמדת. בקולום (ליד החנות של שייליש) אנחנו מקימים מרחב במבוק פתוח וקבוע לבני 8 עד 15: מקום שהם שותפים לעיצובו, לבניית חברויות וליצירה.'
-              : 'Our children grow up in a community on the move. In Colomb (near Shailish’s shop), we are building an open bamboo pavilion for ages 8 to 15: a space they help shape and call their own.'}
-          </p>
-
-          <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-ink">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-plate border border-ink font-medium">
-              <MapPin className="w-3.5 h-3.5 text-accent" />
-              <span>{isHe ? 'מיקום: קולום, ליד שייליש' : 'Location: Colomb, near Shailish'}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-plate border border-ink font-medium">
-              <Calendar className="w-3.5 h-3.5 text-forest" />
-              <span>{isHe ? 'פתיחה: 1 בנובמבר (ב׳ עד ה׳)' : 'Target Opening: Nov 1 (Mon to Thu)'}</span>
-            </span>
-            <span className="px-3 py-1.5 bg-ink text-paper font-semibold hallmark-code">
-              ₪200 / $65 {isHe ? 'לילד לחודש + משמרת הורה' : 'per child/mo + 1 parent shift'}
+    <div className="space-y-8">
+      {/* Clean Modern Header for Youth Center Events */}
+      <section className="hallmark-well-gold p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-3 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-paper-2 text-xs font-semibold text-ink-2">
+            <MapPin className="w-3.5 h-3.5 text-accent" />
+            <span>
+              {isHe
+                ? 'מרכז הנוער גואה · קולום (ליד שייליש) · גילאי 8–15'
+                : 'Youth Center Goa · Colomb (near Shailish) · Ages 8–15'}
             </span>
           </div>
+
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-ink leading-tight">
+            {isHe
+              ? 'אירועים ופעילויות במרכז הנוער גואה'
+              : 'Youth Center Goa Events & Activities'}
+          </h1>
+
+          <p className="text-sm sm:text-base text-ink-2 leading-relaxed">
+            {isHe
+              ? 'צפו בלוח הפעילויות והאירועים של מרכז הנוער והירשמו לכל מפגש בנפרד. כל הרשמה נשמרת אוטומטית בגיליון Google Sheets הייעודי של מרכז הנוער.'
+              : 'Browse all Youth Center Goa sessions and register for individual events. Every registration is logged automatically to the dedicated Youth Center Google Sheet.'}
+          </p>
         </div>
 
-        {/* Poem Quote by Noam Horev on a Gold-Ruled Well */}
-        <div className="lg:col-span-5 hallmark-well-gold p-6 space-y-3">
-          <div className="flex items-center justify-between text-xs text-muted font-medium border-b border-rule pb-2">
-            <span>{isHe ? 'הורות / נועם חורב' : 'Parenthood / Noam Horev'}</span>
-            <span>The Parenting Paradox</span>
+        {/* Right Controls: View Switcher + Add Event */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div
+            className="inline-flex items-center bg-paper-2 p-1 rounded-full border border-rule"
+            role="group"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                viewMode === 'cards'
+                  ? 'bg-ink text-paper shadow-sm'
+                  : 'text-ink-2 hover:text-ink'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span>{isHe ? 'כרטיסי אירועים' : 'Event Cards'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                viewMode === 'calendar'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-ink-2 hover:text-ink'
+              }`}
+            >
+              <CalendarDays className="w-4 h-4" />
+              <span>{isHe ? 'לוח שבועי' : 'Weekly Schedule'}</span>
+            </button>
           </div>
-          <blockquote className="font-serif text-lg md:text-xl italic text-ink leading-relaxed">
-            {isHe
-              ? '״אולי שני קולות יתנגנו בי כל חיי: מצד אחד לתת לך ללכת, ומצד שני להשאיר אותך קרוב אליי.״'
-              : '“Maybe two voices will echo through me all my life: one telling me to let you go, the other keeping you close to me.”'}
-          </blockquote>
-          <p className="text-xs text-ink-2">
-            {isHe
-              ? 'איך נותנים להם חופש ועצמאות, בלי לוותר על הכפר שעוטף אותם?'
-              : 'How do we give them freedom, without letting go of the village?'}
-          </p>
+
+          <button
+            type="button"
+            onClick={() => setShowAddEventModal(true)}
+            className="hallmark-btn-primary text-xs sm:text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isHe ? 'הוספת אירוע לנוער' : 'Add Youth Event'}</span>
+          </button>
         </div>
       </section>
 
-      {/* Main Content: Registration Form + Registered Community Directory */}
-      <div className="grid lg:grid-cols-12 gap-8">
-        {/* Registration Form (Up to 4 Kids) */}
-        <div className="lg:col-span-7">
-          <div className="hallmark-plate p-6 md:p-8 space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink pb-4">
+      {/* =====================================================================
+          YOUTH CENTER EVENTS: CARDS VIEW vs WEEKLY CALENDAR VIEW
+         ===================================================================== */}
+      {viewMode === 'calendar' ? (
+        <section className="hallmark-plate overflow-hidden">
+          <div className="p-5 bg-paper-2 border-b border-rule flex items-center justify-between">
+            <h2 className="font-display text-xl font-bold text-ink">
+              {isHe ? 'לוח אירועי מרכז הנוער לפי ימים' : 'Youth Center Chronological Schedule'}
+            </h2>
+            <span className="text-xs font-semibold text-muted">
+              {youthEvents.length} {isHe ? 'מפגשים פעילים' : 'active sessions'}
+            </span>
+          </div>
+
+          <div className="divide-y divide-rule">
+            {youthEvents.map((ev) => {
+              const evRegs = getEventRegistrations(ev.id);
+              const title = isHe ? ev.titleHe : ev.titleEn;
+              const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
+              const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
+
+              return (
+                <div
+                  key={ev.id}
+                  className="p-5 hover:bg-paper-2/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="w-32 shrink-0 rounded-2xl bg-paper-2 border border-rule p-3 text-center">
+                      <div className="text-xs font-bold text-accent">
+                        {typeof ev.dayOfWeek === 'number'
+                          ? isHe
+                            ? DAY_NAMES_HE[ev.dayOfWeek]
+                            : DAY_NAMES_EN[ev.dayOfWeek]
+                          : ev.date}
+                      </div>
+                      <div className="hallmark-code text-sm font-bold text-ink mt-0.5">
+                        {ev.startTime || '16:30'}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="font-display text-lg font-bold text-ink">{title}</h3>
+                      <p className="text-xs sm:text-sm text-ink-2 line-clamp-2">{desc}</p>
+                      <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-muted">
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-accent" />
+                          {loc}
+                        </span>
+                        <span className="inline-flex items-center gap-1 font-semibold text-ink">
+                          <Users className="w-3.5 h-3.5 text-accent" />
+                          {evRegs.length} {isHe ? 'נרשמו לאירוע זה' : 'registered'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenRegisterModal(ev)}
+                      className="hallmark-btn-primary text-xs sm:text-sm !py-2 !px-4"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {youthEvents.map((ev) => {
+            const evRegs = getEventRegistrations(ev.id);
+            const title = isHe ? ev.titleHe : ev.titleEn;
+            const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
+            const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
+
+            return (
+              <article
+                key={ev.id}
+                className="hallmark-plate overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all group"
+              >
+                <div>
+                  {/* Image Header */}
+                  <div className="relative h-44 w-full overflow-hidden bg-paper-2">
+                    <img
+                      src={ev.imageUrl}
+                      alt={title}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                    <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent text-white shadow-sm">
+                        {typeof ev.dayOfWeek === 'number'
+                          ? isHe
+                            ? DAY_NAMES_HE[ev.dayOfWeek]
+                            : DAY_NAMES_EN[ev.dayOfWeek]
+                          : isHe
+                          ? 'אירוע נוער'
+                          : 'Youth Event'}
+                      </span>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1">
+                        <Users className="w-3 h-3 text-accent" />
+                        <span>
+                          {evRegs.length} {isHe ? 'נרשמים' : 'registered'}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-5 space-y-3">
+                    <h3 className="font-display text-xl font-bold text-ink leading-snug">
+                      {title}
+                    </h3>
+
+                    <p className="text-sm text-ink-2 line-clamp-2 leading-relaxed">{desc}</p>
+
+                    <div className="pt-2 space-y-1.5 text-xs sm:text-sm text-ink-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-accent shrink-0" />
+                        <span className="font-semibold text-ink">{formatEventSchedule(ev)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted shrink-0" />
+                        <span className="truncate">{loc}</span>
+                      </div>
+                    </div>
+
+                    {/* Preview of Registered Kids for this Event */}
+                    {evRegs.length > 0 && (
+                      <div className="pt-2 border-t border-rule">
+                        <div className="text-[11px] font-semibold text-muted mb-1">
+                          {isHe ? 'נרשמו לאירוע:' : 'Registered participants:'}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {evRegs.slice(0, 5).map((r) => (
+                            <span
+                              key={r.id}
+                              className="px-2.5 py-0.5 rounded-full bg-paper-2 text-xs font-medium text-ink"
+                            >
+                              {r.participantName} ({r.participantAge})
+                            </span>
+                          ))}
+                          {evRegs.length > 5 && (
+                            <span className="px-2 py-0.5 rounded-full bg-paper-2 text-xs text-muted">
+                              +{evRegs.length - 5}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Footer */}
+                <div className="px-5 py-4 bg-paper/60 border-t border-rule flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-ink-2">
+                    {isHe ? 'גילאי 8–15' : 'Ages 8–15'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenRegisterModal(ev)}
+                    className="hallmark-btn-primary text-xs sm:text-sm !py-2 !px-4"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>{isHe ? 'הרשמה לאירוע' : 'Register for Event'}</span>
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      {/* =====================================================================
+          DEDICATED GOOGLE SHEETS ROSTER PANEL FOR YOUTH CENTER EVENTS
+         ===================================================================== */}
+      <section className="hallmark-plate p-6 sm:p-8 space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-rule">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700">
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>
+                {isHe
+                  ? 'מסונכרן אוטומטית למסמך Google Sheets ייעודי של מרכז הנוער'
+                  : 'Synced automatically to Dedicated Youth Center Google Sheet'}
+              </span>
+            </div>
+            <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
+              {isHe ? 'רשימת נרשמים לאירועי מרכז הנוער' : 'Youth Center Event Registrants Roster'}
+            </h2>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Filter by Event */}
+            <select
+              value={filterEventId}
+              onChange={(e) => setFilterEventId(e.target.value)}
+              className="px-3.5 py-2 rounded-full bg-paper border border-rule-strong text-xs sm:text-sm font-semibold text-ink"
+            >
+              <option value="all">
+                {isHe
+                  ? `כל האירועים (${registrations.length} נרשמים)`
+                  : `All Events (${registrations.length})`}
+              </option>
+              {youthEvents.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {isHe ? ev.titleHe : ev.titleEn} ({getEventRegistrations(ev.id).length})
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => exportRegistrationsToCsv(filterEventId)}
+              className="hallmark-btn-secondary text-xs !py-2 !px-3.5"
+            >
+              <Download className="w-4 h-4 text-accent" />
+              <span>{isHe ? 'ייצוא ל-Google Sheets (CSV)' : 'Export CSV'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowSheetSettings(!showSheetSettings)}
+              className="px-3.5 py-2 rounded-full bg-paper-2 hover:bg-paper-3 text-xs font-semibold text-ink transition-colors inline-flex items-center gap-1.5"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+              <span>{isHe ? 'הגדרת גיליון ייעודי' : 'Sheet Link'}</span>
+            </button>
+          </div>
+        </div>
+
+        {showSheetSettings && (
+          <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2 text-xs">
+            <label className="font-bold text-ink block">
+              {isHe
+                ? 'כתובת ה-Webhook של גיליון Google Sheets הייעודי למרכז הנוער:'
+                : 'Dedicated Youth Center Google Sheet Webhook URL:'}
+            </label>
+            <input
+              type="url"
+              value={ycSheetWebhookUrl}
+              onChange={(e) => setYcSheetWebhookUrl(e.target.value)}
+              placeholder="https://script.google.com/macros/s/.../exec"
+              className="w-full rounded-xl border border-rule-strong bg-plate px-3.5 py-2 text-xs hallmark-code text-ink"
+              dir="ltr"
+            />
+            <p className="text-muted">
+              {isHe
+                ? 'כל הרשמה לאירוע נשלחת אוטומטית עם תגית luz.youth_center_event_rsvp ויוצרת/מעדכנת את גיליון "LUZ Goa — Youth Center Events Roster" בחשבון Google שלך.'
+                : 'Every event signup automatically posts luz.youth_center_event_rsvp to your dedicated Youth Center Google Sheet.'}
+            </p>
+          </div>
+        )}
+
+        {visibleRegistrations.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-paper text-center space-y-2 border border-rule">
+            <Users className="w-7 h-7 text-muted mx-auto" />
+            <div className="font-display text-base font-bold text-ink">
+              {isHe ? 'עדיין אין נרשמים לאירוע זה' : 'No registrants for this event yet'}
+            </div>
+            <p className="text-xs text-muted">
+              {isHe
+                ? 'לחצו על "הרשמה לאירוע" בכרטיס האירוע למעלה כדי להוסיף משתתף/ת לרשימה ולגיליון ה-Google Sheets.'
+                : 'Click "Register for Event" on any event card above to add a participant.'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-start border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr className="border-b border-rule text-muted bg-paper-2/60">
+                  <th className="py-3 px-4 text-start font-semibold">
+                    {isHe ? 'שם המשתתף/ת' : 'Participant'}
+                  </th>
+                  <th className="py-3 px-4 text-start font-semibold">
+                    {isHe ? 'גיל' : 'Age'}
+                  </th>
+                  <th className="py-3 px-4 text-start font-semibold">
+                    {isHe ? 'אירוע' : 'Event'}
+                  </th>
+                  <th className="py-3 px-4 text-start font-semibold">
+                    {isHe ? 'מועד' : 'Schedule'}
+                  </th>
+                  <th className="py-3 px-4 text-start font-semibold">
+                    {isHe ? 'הורה וטלפון' : 'Parent & Phone'}
+                  </th>
+                  <th className="py-3 px-4 text-start font-semibold">
+                    {isHe ? 'הערות' : 'Notes'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rule">
+                {visibleRegistrations.map((reg) => (
+                  <tr key={reg.id} className="hover:bg-paper-2/40">
+                    <td className="py-3 px-4 font-bold text-ink">{reg.participantName}</td>
+                    <td className="py-3 px-4 text-ink-2">{reg.participantAge}</td>
+                    <td className="py-3 px-4 font-medium text-ink">
+                      {isHe ? reg.eventTitleHe : reg.eventTitleEn}
+                    </td>
+                    <td className="py-3 px-4 text-muted">{reg.eventSchedule}</td>
+                    <td className="py-3 px-4 text-ink-2">
+                      {reg.parentName} · <span dir="ltr">{reg.parentPhone}</span>
+                    </td>
+                    <td className="py-3 px-4 text-muted">{reg.notes}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* =====================================================================
+          MODAL 1: REGISTER PARTICIPANT FOR A SPECIFIC YOUTH CENTER EVENT
+         ===================================================================== */}
+      {selectedEventForReg && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setSelectedEventForReg(null)}
+        >
+          <div
+            className="hallmark-plate max-w-lg w-full p-6 sm:p-7 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-rule pb-4">
               <div>
-                <h2 className="font-serif text-2xl font-semibold text-ink">
+                <span className="text-xs font-semibold text-accent">
+                  {isHe ? 'הרשמה לאירוע במרכז הנוער' : 'Youth Center Event Registration'}
+                </span>
+                <h3 className="font-display text-xl font-bold text-ink mt-0.5">
+                  {isHe ? selectedEventForReg.titleHe : selectedEventForReg.titleEn}
+                </h3>
+                <p className="text-xs text-muted mt-1">
+                  {formatEventSchedule(selectedEventForReg)} ·{' '}
                   {isHe
-                    ? 'טופס רישום משפחה וילדים למרכז הנוער'
-                    : 'Family & Multi-Child Registration Form'}
-                </h2>
-                <p className="text-xs text-muted mt-0.5">
-                  {isHe
-                    ? 'ניתן לרשום ילד אחד או יותר (כולל הנחת אחים) ולבחור תחום מעורבות הורים'
-                    : 'Register one or multiple children and select your monthly parent contribution'}
+                    ? selectedEventForReg.locationDetailsHe
+                    : selectedEventForReg.locationDetailsEn}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowSheetSetup(!showSheetSetup)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-paper-2 border border-ink text-ink hover:bg-paper"
+                onClick={() => setSelectedEventForReg(null)}
+                className="p-1.5 rounded-full bg-paper-2 text-ink hover:bg-paper-3"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-forest" />
-                <span>{isHe ? 'חיבור ל-Google Sheets' : 'Google Sheets Sync'}</span>
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {showSheetSetup && (
-              <div className="p-4 bg-paper-2 border border-rule space-y-2 text-xs">
-                <label className="font-semibold text-ink block">
-                  {isHe
-                    ? 'כתובת Webhook של Google Apps Script (אופציונלי, לשליחה אוטומטית לגיליון):'
-                    : 'Optional Google Apps Script Web App URL (/exec):'}
-                </label>
-                <input
-                  type="url"
-                  name="google-script-url"
-                  value={googleScriptUrl}
-                  onChange={(e) => setGoogleScriptUrl(e.target.value)}
-                  placeholder="https://script.google.com/macros/s/.../exec"
-                  className="w-full border border-ink bg-plate px-3 py-2 text-xs hallmark-code"
-                  dir="ltr"
-                />
-                <p className="text-muted">
-                  {isHe
-                    ? 'גם ללא כתובת סקריפט, כל ההרשמות נשמרות במערכת וניתנות לייצוא מלא לקובץ אקסל/Google Sheets בלחיצה.'
-                    : 'All registrations are saved automatically and can be exported to Google Sheets CSV anytime.'}
-                </p>
-              </div>
-            )}
-
-            {submitted ? (
-              <div className="py-8 text-center space-y-4">
-                <div className="w-14 h-14 bg-ink text-gold flex items-center justify-center mx-auto">
+            {regSubmitted ? (
+              <div className="py-6 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h3 className="font-serif text-2xl font-semibold text-ink">
-                  {isHe
-                    ? 'המשפחה והילדים נרשמו בהצלחה למרכז הנוער'
-                    : 'Family Registration Completed'}
-                </h3>
-                <p className="text-sm text-ink-2 max-w-md mx-auto">
-                  {isHe
-                    ? `תודה ${parentName}. פרטי ${children.length} הילדים נשמרו במאגר הקהילה.`
-                    : `Thank you ${parentName}. Your ${children.length} child(ren) have been added to the Youth Center roster.`}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSubmitted(false);
-                    setParentName('');
-                    setChildren([{ id: `c-${Date.now()}`, name: '', age: 12, grade: 'ו׳ / 6th', interests: '' }]);
-                  }}
-                  className="hallmark-btn-ink text-xs"
-                >
-                  {isHe ? 'רישום משפחה נוספת' : 'Register Another Family'}
-                </button>
+                <div className="space-y-1">
+                  <h4 className="font-display text-2xl font-bold text-ink">
+                    {isHe ? 'ההרשמה לאירוע נקלטה!' : 'Registered Successfully!'}
+                  </h4>
+                  <p className="text-sm text-ink-2">
+                    {isHe
+                      ? `${participantName} רשום/ה למפגש "${selectedEventForReg.titleHe}" והשורה נוספה אוטומטית לגיליון ה-Google Sheets של מרכז הנוער.`
+                      : `${participantName} is registered and synced to the Youth Center Google Sheet.`}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-3 pt-2">
+                  <a
+                    href={`https://wa.me/${selectedEventForReg.hostPhone.replace(
+                      /[^0-9]/g,
+                      ''
+                    )}?text=${encodeURIComponent(
+                      isHe
+                        ? `היי! רשמתי את ${participantName} (גיל ${participantAge}) לאירוע "${selectedEventForReg.titleHe}" במרכז הנוער (${formatEventSchedule(
+                            selectedEventForReg
+                          )}). הורה: ${parentName}`
+                        : `Hi! I registered ${participantName} (age ${participantAge}) for "${selectedEventForReg.titleEn}" at Youth Center Goa.`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hallmark-btn-primary text-xs sm:text-sm"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>{isHe ? 'שליחת הודעה בוואטסאפ לצוות' : 'Message Team on WhatsApp'}</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedEventForReg(null);
+                      setParticipantName('');
+                      setNotes('');
+                    }}
+                    className="hallmark-btn-secondary text-xs sm:text-sm"
+                  >
+                    {isHe ? 'סיום' : 'Done'}
+                  </button>
+                </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* SECTION A: PARENT DETAILS */}
-                <div className="space-y-3">
-                  <h3 className="font-serif text-lg font-semibold text-ink">
-                    {isHe ? '1. פרטי הורה ויצירת קשר' : '1. Parent Details'}
-                  </h3>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-ink-2 mb-1">
-                        {isHe ? 'שם ההורה(ים)' : 'Parent Name(s)'}
-                      </label>
-                      <input
-                        type="text"
-                        name="parent-name"
-                        required
-                        value={parentName}
-                        onChange={(e) => setParentName(e.target.value)}
-                        placeholder={isHe ? 'לדוגמה: רוני ומיכל כהן' : 'e.g., Roni & Michal'}
-                        className="w-full border border-ink bg-paper px-3.5 py-2 text-sm text-ink"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-ink-2 mb-1">
-                        {isHe ? 'טלפון וואטסאפ' : 'WhatsApp Phone'}
-                      </label>
-                      <input
-                        type="tel"
-                        name="parent-phone"
-                        required
-                        value={parentPhone}
-                        onChange={(e) => setParentPhone(e.target.value)}
-                        placeholder="+972-52-..."
-                        className="w-full border border-ink bg-paper px-3.5 py-2 text-sm text-ink hallmark-code"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-ink-2 mb-1">
-                        {isHe ? 'אימייל' : 'Email Address'}
-                      </label>
-                      <input
-                        type="email"
-                        name="parent-email"
-                        required
-                        value={parentEmail}
-                        onChange={(e) => setParentEmail(e.target.value)}
-                        placeholder="family@example.com"
-                        className="w-full border border-ink bg-paper px-3.5 py-2 text-sm text-ink"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-ink-2 mb-1">
-                        {isHe ? 'אזור מגורים בגואה' : 'Neighborhood in Goa'}
-                      </label>
-                      <select
-                        name="parent-area"
-                        value={area}
-                        onChange={(e) => setArea(e.target.value as GoaArea)}
-                        className="w-full border border-ink bg-paper px-3.5 py-2 text-sm text-ink"
-                      >
-                        <option value="Colomb">Colomb (קולום)</option>
-                        <option value="Patnem">Patnem (פטנם)</option>
-                        <option value="Palolem">Palolem (פאלולם)</option>
-                        <option value="Agonda">Agonda (אגונדה)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SECTION B: DYNAMIC CHILDREN LIST */}
-                <div className="space-y-3 pt-2 border-t border-rule">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-serif text-lg font-semibold text-ink">
-                      {isHe
-                        ? `2. פרטי הילדים (${children.length} ילדים)`
-                        : `2. Children Details (${children.length})`}
-                    </h3>
-                    {children.length < 4 && (
-                      <button
-                        type="button"
-                        onClick={handleAddChild}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-paper-2 border border-ink text-ink text-xs font-semibold hover:bg-ink hover:text-paper transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>{isHe ? 'הוספת ילד/ה נוסף' : 'Add Another Child'}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    {children.map((child, idx) => (
-                      <div
-                        key={child.id}
-                        className="p-4 bg-paper-2 border border-rule space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-ink">
-                            {isHe ? `ילד/ה #${idx + 1}` : `Child #${idx + 1}`}
-                          </span>
-                          {children.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveChild(child.id)}
-                              className="text-xs text-accent hover:underline inline-flex items-center gap-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>{isHe ? 'הסרה' : 'Remove'}</span>
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="grid sm:grid-cols-4 gap-3">
-                          <div className="sm:col-span-2">
-                            <label className="block text-[11px] font-medium text-muted mb-1">
-                              {isHe ? 'שם הילד/ה' : 'Child Name'}
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={child.name}
-                              onChange={(e) =>
-                                handleUpdateChild(child.id, 'name', e.target.value)
-                              }
-                              placeholder={isHe ? 'שם פרטי' : 'First Name'}
-                              className="w-full border border-ink bg-plate px-3 py-1.5 text-sm text-ink"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-medium text-muted mb-1">
-                              {isHe ? 'גיל (8 עד 16)' : 'Age (8 to 16)'}
-                            </label>
-                            <input
-                              type="number"
-                              min={6}
-                              max={18}
-                              required
-                              value={child.age}
-                              onChange={(e) =>
-                                handleUpdateChild(
-                                  child.id,
-                                  'age',
-                                  parseInt(e.target.value, 10) || 11
-                                )
-                              }
-                              className="w-full border border-ink bg-plate px-3 py-1.5 text-sm text-ink hallmark-code"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-medium text-muted mb-1">
-                              {isHe ? 'כיתה / שכבה' : 'Grade'}
-                            </label>
-                            <input
-                              type="text"
-                              value={child.grade}
-                              onChange={(e) =>
-                                handleUpdateChild(child.id, 'grade', e.target.value)
-                              }
-                              className="w-full border border-ink bg-plate px-3 py-1.5 text-sm text-ink"
-                            />
-                          </div>
-                          <div className="sm:col-span-4">
-                            <label className="block text-[11px] font-medium text-muted mb-1">
-                              {isHe
-                                ? 'תחומי עניין ומה היה רוצה לעשות במתנ"ס (מוזיקה, מייקרים, משחקי קופסה, קולנוע...)'
-                                : 'Interests & Ideas for the Youth Center'}
-                            </label>
-                            <input
-                              type="text"
-                              value={child.interests}
-                              onChange={(e) =>
-                                handleUpdateChild(child.id, 'interests', e.target.value)
-                              }
-                              placeholder={
-                                isHe
-                                  ? 'לדוגמה: גיטרה, נגרות בבמבוק, ערבי סרט...'
-                                  : 'e.g., Guitar, Bamboo crafting, Board games...'
-                              }
-                              className="w-full border border-ink bg-plate px-3 py-1.5 text-sm text-ink"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* SECTION C: HEALTH, EMERGENCY & VOLUNTEER SHIFT */}
-                <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-rule">
-                  <div>
-                    <label className="block text-xs font-medium text-ink-2 mb-1">
-                      {isHe ? 'איש קשר נוסף לחירום' : 'Emergency Contact'}
+              <form onSubmit={handleSubmitEventRegistration} className="space-y-4">
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-ink mb-1">
+                      {isHe ? 'שם הילד/ה או הנער/ה *' : 'Participant Name *'}
                     </label>
                     <input
                       type="text"
-                      name="emergency-contact"
                       required
-                      value={emergencyContact}
-                      onChange={(e) => setEmergencyContact(e.target.value)}
-                      placeholder={isHe ? 'שם + טלפון' : 'Name + Phone'}
-                      className="w-full border border-ink bg-paper px-3.5 py-2 text-sm text-ink"
+                      value={participantName}
+                      onChange={(e) => setParticipantName(e.target.value)}
+                      placeholder={isHe ? 'לדוגמה: אורי כהן' : 'e.g. Ori Cohen'}
+                      className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-ink-2 mb-1">
-                      {isHe ? 'רגישויות / אלרגיות / מידע רפואי' : 'Allergies / Medical Notes'}
+                    <label className="block text-xs font-semibold text-ink mb-1">
+                      {isHe ? 'גיל *' : 'Age *'}
                     </label>
                     <input
-                      type="text"
-                      name="medical-notes"
-                      value={medicalNotes}
-                      onChange={(e) => setMedicalNotes(e.target.value)}
-                      placeholder={isHe ? 'לדוגמה: רגישות לבוטנים / ללא' : 'e.g., None'}
-                      className="w-full border border-ink bg-paper px-3.5 py-2 text-sm text-ink"
+                      type="number"
+                      min={5}
+                      max={18}
+                      required
+                      value={participantAge}
+                      onChange={(e) => setParticipantAge(parseInt(e.target.value, 10) || 12)}
+                      className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
                     />
                   </div>
                 </div>
 
-                <div className="p-4 bg-paper-2 border border-ink space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-ink">
-                    <HeartHandshake className="w-4 h-4 text-accent" />
-                    <span>
-                      {isHe
-                        ? 'מעורבות הורים (המודל המשותף: משמרת אחת לחודש)'
-                        : 'Shared Parent Involvement (1 shift per month)'}
-                    </span>
-                  </div>
-                  <select
-                    name="volunteer-role"
-                    value={volunteerRole}
-                    onChange={(e) => setVolunteerRole(e.target.value as VolunteerRole)}
-                    className="w-full border border-ink bg-plate px-3 py-2 text-xs font-medium text-ink"
-                  >
-                    <option value="activities">
-                      {isHe
-                        ? 'פעילויות ותוכן: הובלת משחק, סדנה, שיחה ב-Open Minds או אירוע'
-                        : 'Activities: Lead a game, workshop, or Open Minds session'}
-                    </option>
-                    <option value="community">
-                      {isHe
-                        ? 'קהילה ותקשורת: קבלת פנים למשפחות חדשות ("משפחה מאמצת")'
-                        : 'Community & Welcome: Onboard new families'}
-                    </option>
-                    <option value="scheduling">
-                      {isHe
-                        ? 'תיאום ושיבוץ: ארגון לוח משמרות מתנדבים'
-                        : 'Scheduling: Coordinate parent volunteer shifts'}
-                    </option>
-                    <option value="logistics">
-                      {isHe
-                        ? 'לוגיסטיקה וציוד: ארגון חומרי יצירה, במבוק וכיבוד לערב סרט'
-                        : 'Logistics: Organize supplies, equipment, and space'}
-                    </option>
-                    <option value="finance">
-                      {isHe
-                        ? 'כספים ושקיפות: ניהול תקציב הקהילה (₪200 לילד)'
-                        : 'Finance: Manage transparent community budget'}
-                    </option>
-                  </select>
-
-                  <label className="flex items-start gap-2.5 text-xs text-ink-2 cursor-pointer pt-1">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">
+                      {isHe ? 'שם ההורה *' : 'Parent Name *'}
+                    </label>
                     <input
-                      type="checkbox"
+                      type="text"
                       required
-                      checked={consentVolunteer}
-                      onChange={(e) => setConsentVolunteer(e.target.checked)}
-                      className="mt-0.5 text-accent"
+                      value={parentName}
+                      onChange={(e) => setParentName(e.target.value)}
+                      placeholder={isHe ? 'שם ההורה' : 'Parent Name'}
+                      className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
                     />
-                    <span>
-                      {isHe
-                        ? 'אני מאשר/ת את השתתפות ילדיי במרכז הנוער בקולום ומסכים/ה לקחת חלק במודל הקהילתי המשותף (תרומה חודשית ומשמרת הורה כפי שיתואם).'
-                        : 'I consent to my children participating in Youth Center Goa and agree to take part in our shared community model.'}
-                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">
+                      {isHe ? 'טלפון וואטסאפ של ההורה *' : 'Parent WhatsApp Phone *'}
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={parentPhone}
+                      onChange={(e) => setParentPhone(e.target.value)}
+                      placeholder="+972-52-..."
+                      dir="ltr"
+                      className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'הערות / רגישויות (אופציונלי)' : 'Notes / Allergies (Optional)'}
                   </label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={isHe ? 'לדוגמה: מגיע עם חבר / אלרגיה...' : 'Optional notes...'}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink"
+                  />
                 </div>
 
                 <button
                   type="submit"
+                  disabled={syncingSheet}
                   className="w-full hallmark-btn-primary py-3 text-sm"
                 >
+                  <UserCheck className="w-4 h-4" />
                   <span>
-                    {isHe
-                      ? `שליחת רישום (${children.length} ילדים) למרכז הנוער`
-                      : `Complete Registration (${children.length} Children)`}
+                    {syncingSheet
+                      ? isHe
+                        ? 'שומר בגיליון Google Sheets...'
+                        : 'Saving to Google Sheet...'
+                      : isHe
+                      ? 'אישור הרשמה לאירוע'
+                      : 'Confirm Event Registration'}
                   </span>
                 </button>
               </form>
             )}
           </div>
         </div>
+      )}
 
-        {/* Right Column: Registered Families Roster & Export to Google Sheets */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="hallmark-plate p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-ink pb-4">
-              <div>
-                <h2 className="font-serif text-xl font-semibold text-ink">
-                  {isHe ? 'משפחות וילדים רשומים' : 'Registered Families & Youth'}
-                </h2>
-                <p className="text-xs text-muted hallmark-code mt-0.5">
-                  {families.length} {isHe ? 'משפחות' : 'families'} · {totalKids}{' '}
-                  {isHe ? 'ילדים רשומים' : 'children enrolled'}
-                </p>
-              </div>
+      {/* =====================================================================
+          MODAL 2: ADD NEW YOUTH CENTER EVENT
+         ===================================================================== */}
+      {showAddEventModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowAddEventModal(false)}
+        >
+          <div
+            className="hallmark-plate max-w-lg w-full p-6 sm:p-7 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-rule pb-3">
+              <h3 className="font-display text-xl font-bold text-ink">
+                {isHe ? 'הוספת אירוע חדש למרכז הנוער' : 'Add New Youth Center Event'}
+              </h3>
               <button
                 type="button"
-                onClick={exportFamiliesToCsv}
-                className="hallmark-btn-ink text-xs py-2 px-3"
+                onClick={() => setShowAddEventModal(false)}
+                className="p-1.5 rounded-full bg-paper-2 text-ink"
               >
-                <Download className="w-3.5 h-3.5 text-gold" />
-                <span>{isHe ? 'ייצוא CSV' : 'Export CSV'}</span>
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 max-h-[520px] overflow-y-auto pe-1">
-              {families.length === 0 ? (
-                <div className="p-6 bg-paper-2 border border-rule text-center space-y-2">
-                  <Users className="w-6 h-6 text-muted mx-auto" />
-                  <p className="text-sm font-semibold text-ink">
-                    {isHe
-                      ? 'טרם נרשמו משפחות בסביבה זו'
-                      : 'No families registered in this environment yet'}
-                  </p>
-                  <p className="text-xs text-muted leading-relaxed">
-                    {isHe
-                      ? 'טופס הרישום מוכן לקליטת משפחות אמת של הקהילה וייצוא ישיר ל-Google Sheets.'
-                      : 'Use the registration form to enroll real community families and export directly to Google Sheets.'}
-                  </p>
-                </div>
-              ) : (
-                families.map((fam) => (
-                  <div
-                    key={fam.id}
-                    className="p-4 bg-paper border border-rule space-y-2.5"
+            <form onSubmit={handleCreateYouthEvent} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  {isHe ? 'שם האירוע / הפעילות *' : 'Event Title *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newTitleHe}
+                  onChange={(e) => setNewTitleHe(e.target.value)}
+                  placeholder={isHe ? 'לדוגמה: סדנת קומיקס / ערב פיצה וג׳אם' : 'Event title'}
+                  className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2 text-sm text-ink"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  {isHe ? 'תיאור קצר *' : 'Short Description *'}
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={newDescHe}
+                  onChange={(e) => setNewDescHe(e.target.value)}
+                  placeholder={isHe ? 'מה עושים במפגש ולאיזה גילאים מתאים?' : 'Description'}
+                  className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2 text-sm text-ink"
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'יום בשבוע' : 'Day of Week'}
+                  </label>
+                  <select
+                    value={newDayOfWeek}
+                    onChange={(e) => setNewDayOfWeek(Number(e.target.value))}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-serif font-semibold text-base text-ink">{fam.parentName}</span>
-                      <span className="text-xs px-2 py-0.5 bg-plate border border-rule text-ink font-medium">
-                        {fam.area}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted hallmark-code">
-                      {fam.parentPhone} · {fam.parentEmail}
-                    </div>
-                    <div className="divide-y divide-rule pt-1 border-t border-rule">
-                      {fam.children.map((c) => (
-                        <div
-                          key={c.id}
-                          className="flex items-center justify-between text-xs py-1.5"
-                        >
-                          <span className="font-medium text-ink">
-                            {c.name} ({isHe ? 'גיל' : 'Age'} {c.age}, {c.grade})
-                          </span>
-                          <span className="text-muted truncate max-w-[45%]">{c.interests}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                    {DAY_NAMES_HE.map((d, idx) => (
+                      <option key={idx} value={idx}>
+                        {isHe ? d : DAY_NAMES_EN[idx]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שעת התחלה' : 'Start Time'}
+                  </label>
+                  <input
+                    type="time"
+                    value={newStartTime}
+                    onChange={(e) => setNewStartTime(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שעת סיום' : 'End Time'}
+                  </label>
+                  <input
+                    type="time"
+                    value={newEndTime}
+                    onChange={(e) => setNewEndTime(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'תאריך ספציפי (אופציונלי)' : 'Specific Date (Optional)'}
+                  </label>
+                  <input
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'טלפון איש קשר' : 'Contact Phone'}
+                  </label>
+                  <input
+                    type="tel"
+                    value={newHostPhone}
+                    onChange={(e) => setNewHostPhone(e.target.value)}
+                    dir="ltr"
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="w-full hallmark-btn-primary py-3 text-sm">
+                <Calendar className="w-4 h-4" />
+                <span>{isHe ? 'פרסום אירוע במרכז הנוער' : 'Publish Youth Event'}</span>
+              </button>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
