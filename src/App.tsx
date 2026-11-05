@@ -815,7 +815,7 @@ export function App() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-paper text-ink">
+    <div className="min-h-screen flex flex-col bg-paper text-ink overflow-x-hidden w-full max-w-full">
       {/* Clean Modern Header */}
       <header className="bg-plate/95 backdrop-blur-md border-b border-rule sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col gap-3">

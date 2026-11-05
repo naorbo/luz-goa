@@ -626,8 +626,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                             className="p-4 sm:p-5 hover:bg-paper-2/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
                           >
                               {/* Left/Start: Time Box + Event Details */}
-                              <div className="flex items-start gap-4 min-w-0">
-                                <div className="w-24 sm:w-28 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2.5 text-center">
+                              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                                <div className="w-20 sm:w-28 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2 sm:p-2.5 text-center">
                                   {ev.date && (
                                     <div className="text-[11px] font-bold text-accent mb-0.5">
                                       {formatDateShort(ev.date, isHe)}
@@ -678,7 +678,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleShareEvent(ev)}
-                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] md:min-h-0"
+                                  className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] min-w-[42px] md:min-h-0 md:min-w-0"
                                   title={isHe ? 'שיתוף אירוע' : 'Share event'}
                                 >
                                   <Share2 className="w-4 h-4 text-accent shrink-0" />
@@ -688,18 +688,18 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                   href={gcalLink}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] md:min-h-0"
+                                  className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] md:min-h-0"
                                 >
                                   <CalendarPlus className="w-4 h-4 text-accent shrink-0" />
-                                  <span>{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
+                                  <span className="truncate">{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
                                 </a>
                                 <button
                                   type="button"
                                   onClick={() => handleOpenRegisterModal(ev)}
-                                  className="flex-1 md:flex-initial hallmark-btn-primary !py-2.5 md:!py-1.5 !px-4 rounded-xl md:rounded-full text-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-sm min-h-[42px] md:min-h-0"
+                                  className="flex-1 min-w-0 md:flex-initial hallmark-btn-primary !py-2.5 md:!py-1.5 !px-3 sm:!px-4 rounded-xl md:rounded-full text-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-sm min-h-[42px] md:min-h-0"
                                 >
                                   <UserCheck className="w-4 h-4 shrink-0" />
-                                  <span>{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
+                                  <span className="truncate">{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
                                 </button>
                               </div>
                             </div>
