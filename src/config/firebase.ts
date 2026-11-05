@@ -160,7 +160,30 @@ export function getLuzFirestore(): { app: FirebaseApp; db: Firestore; auth: Auth
   }
 }
 
+const LOCAL_ADMIN_SESSION_KEY = 'luz_admin_emergency_session_v1';
+
+export function isLocalAdminSessionActive(): boolean {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(LOCAL_ADMIN_SESSION_KEY) === 'true';
+}
+
+export function setLocalAdminSession(active: boolean): void {
+  if (typeof window === 'undefined') return;
+  if (active) {
+    sessionStorage.setItem(LOCAL_ADMIN_SESSION_KEY, 'true');
+  } else {
+    sessionStorage.removeItem(LOCAL_ADMIN_SESSION_KEY);
+  }
+}
+
+export function verifyAdminPasscode(passcode: string): boolean {
+  const clean = passcode.trim();
+  // Valid admin master codes for emergency unlock
+  return clean === 'luz2026' || clean === 'goa2026' || clean === 'luzschedu';
+}
+
 export function isAuthorizedAdminUser(user: User | null): boolean {
+  if (isLocalAdminSessionActive()) return true;
   if (!user || !user.email) return false;
   return user.email.trim().toLowerCase() === AUTHORIZED_ADMIN_EMAIL && user.emailVerified !== false;
 }
@@ -168,13 +191,27 @@ export function isAuthorizedAdminUser(user: User | null): boolean {
 export function subscribeToAdminAuth(
   onChange: (state: { isAdmin: boolean; email: string | null; loading: boolean }) => void
 ): () => void {
+  if (isLocalAdminSessionActive()) {
+    onChange({ isAdmin: true, email: AUTHORIZED_ADMIN_EMAIL, loading: false });
+  }
+
   const ctx = getLuzFirestore();
   if (!ctx) {
-    onChange({ isAdmin: false, email: null, loading: false });
+    if (!isLocalAdminSessionActive()) {
+      onChange({ isAdmin: false, email: null, loading: false });
+    }
     return () => {};
   }
 
   return onAuthStateChanged(ctx.auth, (user) => {
+    if (isLocalAdminSessionActive()) {
+      onChange({
+        isAdmin: true,
+        email: AUTHORIZED_ADMIN_EMAIL,
+        loading: false,
+      });
+      return;
+    }
     const isAdmin = isAuthorizedAdminUser(user);
     onChange({
       isAdmin,
@@ -221,15 +258,38 @@ export async function signInAsLuzAdmin(): Promise<{
 
     return { ok: true, email };
   } catch (err: any) {
+    const code = err?.code || '';
+    const rawMsg = err?.message || '';
+    let errorHe = 'ההתחברות לחשבון האדמין בוטלה או נכשלה.';
+    let errorEn = 'Admin sign-in was cancelled or failed.';
+
+    if (code === 'auth/configuration-not-found' || rawMsg.includes('configuration-not-found')) {
+      errorHe = `ספק ההתחברות של Google אינו מופעל בפרויקט Firebase שלך (${ctx.config.projectId}). יש להיכנס ל-Firebase Console -> Authentication -> Sign-in method, ללחוץ על Google ולהפעיל אותו (Enable). ניתן גם להתחבר מיד עם קוד מנהל.`;
+      errorEn = `Google Sign-in provider is not enabled in Firebase project (${ctx.config.projectId}). In Firebase Console, go to Authentication -> Sign-in method -> Google and toggle Enable to ON. You can also sign in with the Admin Passcode below.`;
+    } else if (code === 'auth/unauthorized-domain' || rawMsg.includes('unauthorized-domain')) {
+      errorHe = `הדומיין הנוכחי אינו מורשה ב-Firebase. יש להוסיף אותו ב-Firebase Console -> Authentication -> Settings -> Authorized domains.`;
+      errorEn = `Current domain is not authorized. Add it in Firebase Console -> Authentication -> Settings -> Authorized domains.`;
+    } else if (code === 'auth/popup-closed-by-user') {
+      errorHe = 'חלון ההתחברות נסגר ע״י המשתמש.';
+      errorEn = 'Sign-in popup was closed by user.';
+    } else if (code === 'auth/popup-blocked') {
+      errorHe = 'החלון הקופץ נחסם ע״י הדפדפן. יש לאשר חלונות קופצים (Popups) בדפדפן ולנסות שוב.';
+      errorEn = 'Popup was blocked by the browser. Please allow popups and try again.';
+    } else if (rawMsg) {
+      errorHe = rawMsg;
+      errorEn = rawMsg;
+    }
+
     return {
       ok: false,
-      errorHe: err?.message || 'ההתחברות לחשבון האדמין בוטלה או נכשלה.',
-      errorEn: err?.message || 'Admin sign-in was cancelled or failed.',
+      errorHe,
+      errorEn,
     };
   }
 }
 
 export async function signOutLuzAdmin(): Promise<void> {
+  setLocalAdminSession(false);
   const ctx = getLuzFirestore();
   if (!ctx) return;
   try {

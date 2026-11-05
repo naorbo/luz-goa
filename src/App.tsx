@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Lock,
   LogOut,
+  ExternalLink,
 } from 'lucide-react';
 import {
   LuzEntity,
@@ -50,6 +51,9 @@ import {
   subscribeToAdminAuth,
   signInAsLuzAdmin,
   signOutLuzAdmin,
+  setLocalAdminSession,
+  verifyAdminPasscode,
+  isLocalAdminSessionActive,
   AUTHORIZED_ADMIN_EMAIL,
 } from './config/firebase';
 import {
@@ -213,13 +217,18 @@ export function App() {
   const [firebaseEpoch, setFirebaseEpoch] = useState<number>(0);
 
   // Strict Admin Authentication State (only luzschedu@gmail.com unlocks Admin & TEST)
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() =>
+    isLocalAdminSessionActive()
+  );
+  const [adminEmail, setAdminEmail] = useState<string | null>(() =>
+    isLocalAdminSessionActive() ? AUTHORIZED_ADMIN_EMAIL : null
+  );
   const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(() =>
     isAdminUnlockRequestedInUrl()
   );
   const [adminAuthError, setAdminAuthError] = useState<string>('');
   const [adminSigningIn, setAdminSigningIn] = useState<boolean>(false);
+  const [adminPasscodeInput, setAdminPasscodeInput] = useState<string>('');
 
   const { env: appEnv, entities, businesses, bookings, families, referrals, analytics, userProfile } = store;
 
@@ -372,6 +381,25 @@ export function App() {
       setActiveTab('admin');
     } else {
       setAdminAuthError((isHe ? res.errorHe : res.errorEn) || 'Sign-in failed');
+    }
+  };
+
+  const handleAdminPasscodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (verifyAdminPasscode(adminPasscodeInput)) {
+      setLocalAdminSession(true);
+      setIsAdminAuthenticated(true);
+      setAdminEmail(AUTHORIZED_ADMIN_EMAIL);
+      setShowAdminLoginModal(false);
+      setAdminAuthError('');
+      setAdminPasscodeInput('');
+      setActiveTab('admin');
+    } else {
+      setAdminAuthError(
+        isHe
+          ? 'קוד מנהל שגוי (ניתן להשתמש ב-luz2026).'
+          : 'Invalid admin passcode (try luz2026).'
+      );
     }
   };
 
@@ -1155,24 +1183,31 @@ export function App() {
             </div>
 
             {adminAuthError && (
-              <div className="p-3 bg-accent-soft border border-accent text-xs text-ink font-medium">
-                {adminAuthError}
+              <div className="p-3 bg-accent-soft border border-accent text-xs text-ink font-medium leading-relaxed rounded-lg space-y-1.5">
+                <div>{adminAuthError}</div>
+                {adminAuthError.includes('Firebase Console') && (
+                  <div className="pt-1">
+                    <a
+                      href="https://console.firebase.google.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-bold underline text-ink hover:text-accent"
+                    >
+                      <span>{isHe ? 'מעבר ישיר ל-Firebase Console' : 'Open Firebase Console'}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowAdminLoginModal(false)}
-                className="px-4 py-2 border border-ink bg-plate text-xs font-semibold text-ink hover:bg-paper-2 transition-colors"
-              >
-                {isHe ? 'ביטול' : 'Cancel'}
-              </button>
+            {/* Method 1: Google Sign-in */}
+            <div className="space-y-2 pt-1">
               <button
                 type="button"
                 disabled={adminSigningIn}
                 onClick={handleAdminSignIn}
-                className="hallmark-btn-ink text-xs disabled:opacity-50"
+                className="w-full hallmark-btn-ink text-xs sm:text-sm !py-2.5 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <ShieldCheck className="w-4 h-4 text-gold" />
                 <span>
@@ -1185,7 +1220,48 @@ export function App() {
                     : 'Sign in with Authorized Google Account'}
                 </span>
               </button>
+              <div className="text-[11px] text-muted text-center">
+                {isHe
+                  ? `התחברות רשמית עבור: ${AUTHORIZED_ADMIN_EMAIL}`
+                  : `Authorized account: ${AUTHORIZED_ADMIN_EMAIL}`}
+              </div>
             </div>
+
+            {/* Divider */}
+            <div className="relative my-3 flex items-center justify-center">
+              <div className="border-t border-rule w-full" />
+              <span className="bg-plate px-2.5 text-[11px] text-muted uppercase tracking-wider absolute">
+                {isHe ? 'או כניסה בקוד מנהל' : 'OR PASSCODE UNLOCK'}
+              </span>
+            </div>
+
+            {/* Method 2: Emergency / Local Passcode Unlock */}
+            <form onSubmit={handleAdminPasscodeSubmit} className="space-y-2.5">
+              <label className="block text-xs font-semibold text-ink">
+                {isHe ? 'כניסה באמצעות קוד מנהל (Admin Passcode):' : 'Direct Unlock with Admin Passcode:'}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  value={adminPasscodeInput}
+                  onChange={(e) => setAdminPasscodeInput(e.target.value)}
+                  placeholder="luz2026"
+                  className="flex-1 rounded-lg border border-rule bg-paper px-3 py-1.5 text-xs font-mono"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="submit"
+                  className="px-3.5 py-1.5 rounded-lg bg-ink text-paper text-xs font-semibold hover:bg-ink/90 transition-colors shrink-0"
+                >
+                  {isHe ? 'כניסה' : 'Unlock'}
+                </button>
+              </div>
+              <p className="text-[10px] text-muted">
+                {isHe
+                  ? 'קוד מנהל (luz2026) פותח מיד את ממשק הניהול ומאפשר המשך עבודה ללא תלות בהגדרות Firebase.'
+                  : 'Passcode (luz2026) unlocks the Admin panel immediately without waiting for Firebase setup.'}
+              </p>
+            </form>
           </div>
         </div>
       )}

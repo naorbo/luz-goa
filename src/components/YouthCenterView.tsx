@@ -64,6 +64,8 @@ interface YouthCenterViewProps {
 const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_nov26';
 const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
 const YC_DEDICATED_SHEET_URL_STORAGE_KEY = 'luz_yc_dedicated_spreadsheet_url_v1';
+export const DEFAULT_YC_SPREADSHEET_URL =
+  'https://docs.google.com/spreadsheets/d/1I3EEIlSbA83KK_t-ElZVb5ILACKs598FhjkR7pOASH4/edit';
 
 const DAY_NAMES_HE = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'יום שבת'];
 const DAY_SHORT_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
@@ -152,9 +154,10 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   // Dedicated Youth Center Google Sheet Document URL (Separate from Site Log)
   const [ycSpreadsheetUrl, setYcSpreadsheetUrl] = useState<string>(() => {
     try {
-      return localStorage.getItem(YC_DEDICATED_SHEET_URL_STORAGE_KEY) || '';
+      const saved = localStorage.getItem(YC_DEDICATED_SHEET_URL_STORAGE_KEY);
+      return saved && saved.trim() ? saved.trim() : DEFAULT_YC_SPREADSHEET_URL;
     } catch {
-      return '';
+      return DEFAULT_YC_SPREADSHEET_URL;
     }
   });
 

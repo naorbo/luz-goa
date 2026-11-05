@@ -33,8 +33,7 @@ const CONFIG = {
   LEADS_TAB_NAME: 'LUZ_Referrals',
 
   // 2. Brand-New Dedicated Google Sheet strictly for Youth Center Registrations
-  // Leave empty to auto-create in Google Drive, or paste a new Sheet ID here:
-  YOUTH_CENTER_SPREADSHEET_ID: '',
+  YOUTH_CENTER_SPREADSHEET_ID: '1I3EEIlSbA83KK_t-ElZVb5ILACKs598FhjkR7pOASH4',
   YOUTH_CENTER_SHEET_TITLE: 'LUZ Goa — Youth Center Registrations',
   YOUTH_CENTER_TAB_NAME: 'Youth_Center_Events',
 
