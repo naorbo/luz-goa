@@ -364,6 +364,7 @@ export async function dispatchLeadReferralAlerts(
   const results: ChannelDispatchResult[] = [];
   const formattedAlertHe = formatAlertSummaryHe(event);
   const actionLabelHe = getActionTypeLabel(event.actionType, 'he');
+  const actionLabelEn = getActionTypeLabel(event.actionType, 'en');
   const localTime = new Date(event.createdAt).toLocaleString(isHe ? 'he-IL' : 'en-US');
 
   const tasks: Promise<void>[] = [];
@@ -379,6 +380,7 @@ export async function dispatchLeadReferralAlerts(
       createdAt: event.createdAt,
       timestampLocal: localTime,
       actionType: event.actionType,
+      actionLabelEn,
       actionLabelHe,
       provider: {
         id: event.providerId,

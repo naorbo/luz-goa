@@ -16,6 +16,7 @@ import {
   UserCheck,
   MessageCircle,
   ShieldCheck,
+  ExternalLink,
 } from 'lucide-react';
 import {
   YouthCenterFamily,
@@ -238,6 +239,17 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     return dayStr ? `${dayStr} · ${timeStr}` : timeStr;
   };
 
+  const formatEventScheduleEn = (ev: LuzEntity) => {
+    let dayStr = '';
+    if (ev.date) {
+      dayStr = formatDateFull(ev.date, false);
+    } else if (typeof ev.dayOfWeek === 'number') {
+      dayStr = DAY_NAMES_EN[ev.dayOfWeek] || '';
+    }
+    const timeStr = `${ev.startTime || '16:30'}${ev.endTime ? ` – ${ev.endTime}` : ''}`;
+    return dayStr ? `${dayStr} · ${timeStr}` : timeStr;
+  };
+
   const getEventRegistrationsCount = (eventId: string) =>
     registrations.filter((r) => r.eventId === eventId).length;
 
@@ -257,17 +269,21 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     if (!selectedEventForReg) return;
 
     const scheduleLabel = formatEventSchedule(selectedEventForReg);
+    const scheduleLabelEn = formatEventScheduleEn(selectedEventForReg);
+    const notesValue = notes.trim() || 'None';
+    const subscriberTextEn = isSubscriber ? 'Yes (Subscriber)' : 'No (Single Entry)';
+
     const newReg: YouthCenterEventRegistration = {
       id: `yc-reg-${Date.now()}`,
       eventId: selectedEventForReg.id,
       eventTitleHe: selectedEventForReg.titleHe,
       eventTitleEn: selectedEventForReg.titleEn,
-      eventSchedule: scheduleLabel,
+      eventSchedule: scheduleLabelEn,
       participantName: participantName.trim(),
       isSubscriber,
       parentName: parentName.trim(),
       parentPhone: parentPhone.trim(),
-      notes: notes.trim() || (isHe ? 'ללא' : 'None'),
+      notes: notesValue,
       createdAt: new Date().toISOString(),
     };
 
@@ -280,10 +296,10 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         entityTitleHe: selectedEventForReg.titleHe,
         entityTitleEn: selectedEventForReg.titleEn,
         entityType: 'workshop',
-        customerName: `${newReg.participantName} (${isSubscriber ? 'מנוי חודשי' : 'ללא מנוי'}, הורה: ${newReg.parentName})`,
+        customerName: `${newReg.participantName} (${subscriberTextEn}, Parent: ${newReg.parentName})`,
         customerPhone: newReg.parentPhone,
         participantsCount: 1,
-        selectedDate: selectedEventForReg.date || scheduleLabel,
+        selectedDate: selectedEventForReg.date || scheduleLabelEn,
         selectedSlot: selectedEventForReg.startTime || '16:30',
         totalPrice: 0,
         currency: 'FREE',
@@ -291,47 +307,48 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       });
     }
 
-    // Dispatch to Dedicated Youth Center Google Sheet via Webhook
+    // Dispatch to Dedicated Youth Center Google Sheet via Webhook (All English schema & text)
     const targetUrl = (ycSheetWebhookUrl || DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL).trim();
     if (targetUrl.startsWith('https://')) {
       setSyncingSheet(true);
       try {
         const payload = {
           event: 'luz.youth_center_event_rsvp',
-          dedicatedSheetName: 'LUZ Goa — Youth Center Events Roster',
+          dedicatedSheetName: 'LUZ Goa — Youth Center Registrations',
           sheetTabName: 'Youth_Center_Events',
           referralCode: `YC-${Date.now().toString().slice(-4)}`,
           environment: 'prod',
-          actionType: 'event_rsvp',
+          actionType: 'youth_center_event_rsvp',
+          actionLabelEn: 'Youth Center Event Registration',
           actionLabelHe: 'הרשמה לאירוע במרכז הנוער גואה',
           youthCenterEvent: {
             eventId: selectedEventForReg.id,
-            titleHe: selectedEventForReg.titleHe,
             titleEn: selectedEventForReg.titleEn,
-            schedule: scheduleLabel,
-            location: selectedEventForReg.locationDetailsHe,
+            titleHe: selectedEventForReg.titleHe,
+            schedule: scheduleLabelEn,
+            location: selectedEventForReg.locationDetailsEn || 'Colomb Youth Center',
             participantName: newReg.participantName,
-            isSubscriber: newReg.isSubscriber,
+            isSubscriber: subscriberTextEn,
             parentName: newReg.parentName,
             parentPhone: newReg.parentPhone,
-            notes: newReg.notes,
+            notes: notesValue,
             registeredAt: newReg.createdAt,
           },
           provider: {
             id: selectedEventForReg.id,
-            nameHe: `מרכז הנוער — ${selectedEventForReg.titleHe}`,
             nameEn: `Youth Center — ${selectedEventForReg.titleEn}`,
-            ownerOrHost: selectedEventForReg.hostName,
-            phone: selectedEventForReg.hostPhone,
+            nameHe: `מרכז הנוער — ${selectedEventForReg.titleHe}`,
+            ownerOrHost: selectedEventForReg.hostNameEn || selectedEventForReg.hostName || 'Youth Center Team',
+            phone: selectedEventForReg.hostPhone || '+972-52-478-0033',
             categoryOrType: 'Youth Center Event',
-            area: selectedEventForReg.area,
-            contactLang: 'he',
+            area: selectedEventForReg.area || 'Colomb',
+            contactLang: 'en',
           },
           customer: {
-            name: `${newReg.participantName} (${isSubscriber ? 'מנוי חודשי' : 'אורח'}, הורה: ${newReg.parentName})`,
+            name: `${newReg.participantName} (${subscriberTextEn}, Parent: ${newReg.parentName})`,
             phone: newReg.parentPhone,
           },
-          serviceOrDateSummary: `${selectedEventForReg.titleHe} | ${scheduleLabel} | מנוי: ${isSubscriber ? 'כן' : 'לא'} | הערות: ${newReg.notes}`,
+          serviceOrDateSummary: `${selectedEventForReg.titleEn} | ${scheduleLabelEn} | Subscriber: ${isSubscriber ? 'Yes' : 'No'} | Notes: ${notesValue}`,
         };
 
         await fetch(targetUrl, {
@@ -398,26 +415,39 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         : visibleRegistrations;
 
     const headers = [
-      'תאריך רישום (Timestamp)',
-      'שם האירוע (Event)',
-      'מועד ושעה (Schedule)',
-      'שם הילד/ה (Participant Name)',
-      'מנוי חודשי (Monthly Subscriber)',
-      'שם ההורה (Parent Name)',
-      'טלפון הורה (Parent WhatsApp)',
-      'הערות (Notes)',
+      'Registration Timestamp (Goa IST)',
+      'Event Name',
+      'Date & Schedule',
+      'Participant Name',
+      'Monthly Subscriber?',
+      'Parent Name',
+      'Parent WhatsApp Phone',
+      'Notes / Special Requests',
     ];
 
-    const rows = targetList.map((r) => [
-      new Date(r.createdAt).toLocaleString('he-IL'),
-      r.eventTitleHe,
-      r.eventSchedule,
-      r.participantName,
-      r.isSubscriber ? 'כן' : 'לא',
-      r.parentName,
-      r.parentPhone,
-      r.notes,
-    ]);
+    const rows = targetList.map((r) => {
+      const istTime =
+        new Date(r.createdAt).toLocaleString('en-GB', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }) + ' IST';
+
+      return [
+        istTime,
+        r.eventTitleEn || r.eventTitleHe,
+        r.eventSchedule,
+        r.participantName,
+        r.isSubscriber ? 'Yes (Subscriber)' : 'No (Single Entry)',
+        r.parentName,
+        r.parentPhone,
+        r.notes || 'None',
+      ];
+    });
 
     const csvContent =
       '\uFEFF' +
@@ -864,13 +894,25 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 ))}
               </select>
 
+              <a
+                href="https://docs.google.com/spreadsheets/d/1Wy_m63Rrsux7XIpn_gpVPQufGWvbYKOu0YAPZzuLW6k/edit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-[0.98]"
+                title={isHe ? 'פתיחת גיליון Google Sheets של נרשמי המתנ״ס (באנגלית)' : 'Open Youth Center Registrations Google Sheet'}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <span>{isHe ? 'פתיחת Google Sheets (באנגלית)' : 'Open Google Sheet (English)'}</span>
+                <ExternalLink className="w-3 h-3 text-emerald-700 opacity-70 shrink-0" />
+              </a>
+
               <button
                 type="button"
                 onClick={() => exportRegistrationsToCsv(filterEventId)}
                 className="hallmark-btn-secondary text-xs !py-2 !px-3.5"
               >
                 <Download className="w-4 h-4 text-accent" />
-                <span>{isHe ? 'ייצוא ל-Google Sheets (CSV)' : 'Export CSV'}</span>
+                <span>{isHe ? 'ייצוא גיליון (CSV)' : 'Export CSV'}</span>
               </button>
 
               <button
@@ -878,19 +920,30 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 onClick={() => setShowSheetSettings(!showSheetSettings)}
                 className="px-3.5 py-2 rounded-full bg-paper-2 hover:bg-paper-3 text-xs font-semibold text-ink transition-colors inline-flex items-center gap-1.5"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
-                <span>{isHe ? 'הגדרת גיליון ייעודי' : 'Sheet Link'}</span>
+                <FileSpreadsheet className="w-3.5 h-3.5 text-ink-2" />
+                <span>{isHe ? 'הגדרת Webhook' : 'Webhook URL'}</span>
               </button>
             </div>
           </div>
 
           {showSheetSettings && (
             <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2 text-xs">
-              <label className="font-bold text-ink block">
-                {isHe
-                  ? 'כתובת ה-Webhook של גיליון Google Sheets הייעודי למרכז הנוער:'
-                  : 'Dedicated Youth Center Google Sheet Webhook URL:'}
-              </label>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="font-bold text-ink block">
+                  {isHe
+                    ? 'כתובת ה-Webhook של גיליון Google Sheets הייעודי למרכז הנוער:'
+                    : 'Dedicated Youth Center Google Sheet Webhook URL:'}
+                </label>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1Wy_m63Rrsux7XIpn_gpVPQufGWvbYKOu0YAPZzuLW6k/edit"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-emerald-800 font-bold hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  {isHe ? 'קישור ישיר לגיליון הפעיל' : 'Direct Link to Active Sheet'}
+                </a>
+              </div>
               <input
                 type="url"
                 value={ycSheetWebhookUrl}
@@ -899,10 +952,10 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 className="w-full rounded-xl border border-rule-strong bg-plate px-3.5 py-2 text-xs hallmark-code text-ink"
                 dir="ltr"
               />
-              <p className="text-muted">
+              <p className="text-muted leading-relaxed">
                 {isHe
-                  ? 'כל הרשמה לאירוע נשלחת אוטומטית עם תגית luz.youth_center_event_rsvp ויוצרת/מעדכנת את גיליון "LUZ Goa — Youth Center Events Roster" בחשבון Google שלך.'
-                  : 'Every event signup automatically posts luz.youth_center_event_rsvp to your dedicated Youth Center Google Sheet.'}
+                  ? 'כל הרשמה למתנ״ס נשלחת בפורמט אנגלי מלא (כותרות, שמות, סטטוס מנוי וזמנים לפי שעון גואה) ונרשמת בגיליון "LUZ Goa — Youth Center Registrations".'
+                  : 'Every youth center signup is dispatched in 100% English format to the dedicated "LUZ Goa — Youth Center Registrations" sheet.'}
               </p>
             </div>
           )}
