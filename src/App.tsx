@@ -482,19 +482,24 @@ export function App() {
     const phoneCheck = sanitizeAndValidatePhone(updatedEntity.hostPhone);
     const sanitized: LuzEntity = {
       ...updatedEntity,
-      titleHe: sanitizeInputText(updatedEntity.titleHe, 180),
-      titleEn: sanitizeInputText(updatedEntity.titleEn || updatedEntity.titleHe, 180),
-      descriptionHe: sanitizeInputText(updatedEntity.descriptionHe, 1500),
-      descriptionEn: sanitizeInputText(updatedEntity.descriptionEn || updatedEntity.descriptionHe, 1500),
+      titleHe: sanitizeInputText(updatedEntity.titleHe, 200),
+      titleEn: sanitizeInputText(updatedEntity.titleEn || updatedEntity.titleHe, 200),
+      descriptionHe: sanitizeInputText(updatedEntity.descriptionHe, 5000),
+      descriptionEn: sanitizeInputText(updatedEntity.descriptionEn || updatedEntity.descriptionHe, 5000),
       hostName: sanitizeInputText(updatedEntity.hostName, 100),
       hostPhone: phoneCheck.valid ? phoneCheck.cleaned : updatedEntity.hostPhone,
       priceAmount: Math.max(0, Math.min(500000, Number(updatedEntity.priceAmount) || 0)),
     };
 
-    setStore((prev) => ({
-      ...prev,
-      entities: prev.entities.map((e) => (e.id === sanitized.id ? sanitized : e)),
-    }));
+    setStore((prev) => {
+      const exists = prev.entities.some((e) => e.id === sanitized.id);
+      return {
+        ...prev,
+        entities: exists
+          ? prev.entities.map((e) => (e.id === sanitized.id ? sanitized : e))
+          : [sanitized, ...prev.entities],
+      };
+    });
     void saveDocumentToFirestore(appEnv, 'entities', sanitized);
   };
 
@@ -1031,6 +1036,8 @@ export function App() {
             entities={entities}
             bookings={bookings}
             onAddEntity={handleAddEntity}
+            onUpdateEntity={handleUpdateEntity}
+            onDeleteEntity={handleDeleteEntity}
             onConfirmBooking={handleConfirmBooking}
             initialEventId={initialYouthEventId}
             onClearInitialEvent={() => setInitialYouthEventId(null)}

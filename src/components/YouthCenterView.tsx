@@ -17,6 +17,13 @@ import {
   MessageCircle,
   ShieldCheck,
   ExternalLink,
+  Image as ImageIcon,
+  Upload,
+  Edit3,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Sparkles,
 } from 'lucide-react';
 import {
   YouthCenterFamily,
@@ -54,6 +61,8 @@ interface YouthCenterViewProps {
   entities?: LuzEntity[];
   bookings?: BookingRecord[];
   onAddEntity?: (entity: LuzEntity) => void;
+  onUpdateEntity?: (entity: LuzEntity) => void;
+  onDeleteEntity?: (entityId: string) => void;
   onConfirmBooking?: (
     bookingData: Omit<BookingRecord, 'id' | 'createdAt' | 'status'>
   ) => void;
@@ -64,6 +73,7 @@ interface YouthCenterViewProps {
 const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_nov26';
 const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
 const YC_DEDICATED_SHEET_URL_STORAGE_KEY = 'luz_yc_dedicated_spreadsheet_url_v1';
+const YC_EVENT_OVERRIDES_STORAGE_KEY = 'luz_yc_event_custom_overrides_v2';
 export const DEFAULT_YC_SPREADSHEET_URL =
   'https://docs.google.com/spreadsheets/d/1I3EEIlSbA83KK_t-ElZVb5ILACKs598FhjkR7pOASH4/edit';
 export const DEFAULT_YC_WEBHOOK_URL =
@@ -97,6 +107,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   isAdmin = false,
   entities = [],
   onAddEntity,
+  onUpdateEntity,
+  onDeleteEntity,
   onConfirmBooking,
   initialEventId,
   onClearInitialEvent,
@@ -107,6 +119,146 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   const [selectedEventForReg, setSelectedEventForReg] = useState<LuzEntity | null>(null);
   const [filterEventId, setFilterEventId] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string | 'all'>('all');
+
+  // Multi-line description expansion toggle
+  const [expandedDescIds, setExpandedDescIds] = useState<Record<string, boolean>>({});
+  const toggleDescExpanded = (id: string) => {
+    setExpandedDescIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Lightbox / Fullscreen Image Preview
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  // Edit Event modal state (Admin)
+  const [editingEvent, setEditingEvent] = useState<LuzEntity | null>(null);
+  const [editTitleHe, setEditTitleHe] = useState('');
+  const [editTitleEn, setEditTitleEn] = useState('');
+  const [editDescHe, setEditDescHe] = useState('');
+  const [editDescEn, setEditDescEn] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editDayOfWeek, setEditDayOfWeek] = useState<number>(5);
+  const [editStartTime, setEditStartTime] = useState('10:00');
+  const [editEndTime, setEditEndTime] = useState('13:00');
+  const [editPriceAmount, setEditPriceAmount] = useState<number>(0);
+  const [editPriceCurrency, setEditPriceCurrency] = useState<'INR' | 'ILS' | 'FREE'>('FREE');
+  const [editHostName, setEditHostName] = useState('');
+  const [editHostPhone, setEditHostPhone] = useState('');
+
+  // Persistent Event Overrides (stores updates & uploaded images for both core and custom events)
+  const [eventOverrides, setEventOverrides] = useState<Record<string, LuzEntity>>(() => {
+    try {
+      const saved = localStorage.getItem(YC_EVENT_OVERRIDES_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(YC_EVENT_OVERRIDES_STORAGE_KEY, JSON.stringify(eventOverrides));
+    } catch {
+      // ignore
+    }
+  }, [eventOverrides]);
+
+  // Client-side image upload & resize helper (keeps photos lightweight, max 1200px width/height)
+  const handleProcessImageFile = (
+    file: File,
+    onSuccess: (dataUrl: string) => void
+  ) => {
+    if (file.size > 10 * 1024 * 1024) {
+      alert(isHe ? 'קובץ גדול מדי (מקסימום 10MB)' : 'File too large (max 10MB)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const raw = e.target?.result as string;
+      if (!raw) return;
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1200;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          onSuccess(canvas.toDataURL('image/jpeg', 0.85));
+        } else {
+          onSuccess(raw);
+        }
+      };
+      img.onerror = () => onSuccess(raw);
+      img.src = raw;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleStartEditEvent = (ev: LuzEntity) => {
+    setEditingEvent(ev);
+    setEditTitleHe(ev.titleHe || '');
+    setEditTitleEn(ev.titleEn || ev.titleHe || '');
+    setEditDescHe(ev.descriptionHe || '');
+    setEditDescEn(ev.descriptionEn || ev.descriptionHe || '');
+    setEditImageUrl(ev.imageUrl || '');
+    setEditDate(ev.date || '');
+    setEditDayOfWeek(typeof ev.dayOfWeek === 'number' ? ev.dayOfWeek : 5);
+    setEditStartTime(ev.startTime || '10:00');
+    setEditEndTime(ev.endTime || '13:00');
+    setEditPriceAmount(ev.priceAmount || 0);
+    setEditPriceCurrency((ev.priceCurrency as any) || (ev.priceAmount ? 'INR' : 'FREE'));
+    setEditHostName(ev.hostName || '');
+    setEditHostPhone(ev.hostPhone || '+972-52-478-0033');
+  };
+
+  const handleSaveEditedEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent) return;
+
+    const updated: LuzEntity = {
+      ...editingEvent,
+      titleHe: editTitleHe.trim() || editingEvent.titleHe,
+      titleEn: editTitleEn.trim() || editTitleHe.trim() || editingEvent.titleEn,
+      descriptionHe: editDescHe.trim() || editingEvent.descriptionHe,
+      descriptionEn: editDescEn.trim() || editDescHe.trim() || editingEvent.descriptionEn,
+      imageUrl: editImageUrl.trim() || editingEvent.imageUrl,
+      date: editDate || undefined,
+      dayOfWeek: editDayOfWeek,
+      startTime: editStartTime,
+      endTime: editEndTime,
+      priceAmount: Number(editPriceAmount) || 0,
+      priceCurrency: Number(editPriceAmount) > 0 ? (editPriceCurrency as any) : 'FREE',
+      hostName: editHostName.trim() || editingEvent.hostName,
+      hostPhone: editHostPhone.trim() || editingEvent.hostPhone,
+    };
+
+    setEventOverrides((prev) => ({
+      ...prev,
+      [updated.id]: updated,
+    }));
+
+    if (onUpdateEntity) {
+      onUpdateEntity(updated);
+    }
+
+    setEditingEvent(null);
+    setShareToast(isHe ? 'האירוע עודכן בהצלחה!' : 'Event updated successfully!');
+    setTimeout(() => setShareToast(null), 3000);
+  };
 
   // Event registration form state (Age removed, isSubscriber added)
   const [participantName, setParticipantName] = useState('');
@@ -133,11 +285,16 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   // Add new Youth Center Event modal state (Admin Only)
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [newTitleHe, setNewTitleHe] = useState('');
+  const [newTitleEn, setNewTitleEn] = useState('');
   const [newDescHe, setNewDescHe] = useState('');
+  const [newDescEn, setNewDescEn] = useState('');
+  const [newImageUrl, setNewImageUrl] = useState('');
   const [newDayOfWeek, setNewDayOfWeek] = useState<number>(1);
   const [newDate, setNewDate] = useState('');
   const [newStartTime, setNewStartTime] = useState('16:30');
   const [newEndTime, setNewEndTime] = useState('19:00');
+  const [newPriceAmount, setNewPriceAmount] = useState<number>(0);
+  const [newPriceCurrency, setNewPriceCurrency] = useState<'INR' | 'ILS' | 'FREE'>('FREE');
   const [newHostName, setNewHostName] = useState('צוות מרכז הנוער גואה');
   const [newHostPhone, setNewHostPhone] = useState('+972-52-478-0033');
 
@@ -208,7 +365,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     }
   }, [ycSheetWebhookUrl]);
 
-  // Combine core Youth Center events with any Youth/Kids events from entities
+  // Combine core Youth Center events with any Youth/Kids events from entities + custom overrides
   const youthEvents = useMemo(() => {
     const customYouthEntities = entities.filter(
       (e) => e.isYouthCenter && e.id !== 'prod-wks-yc-colomb'
@@ -217,6 +374,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     const map = new Map<string, LuzEntity>();
     CORE_YOUTH_CENTER_EVENTS.forEach((ev) => map.set(ev.id, ev));
     customYouthEntities.forEach((ev) => map.set(ev.id, ev));
+    Object.values(eventOverrides).forEach((ov) => map.set(ov.id, ov));
 
     const getSortKey = (item: LuzEntity) => {
       if (item.date) return `${item.date}_${item.startTime || '16:00'}`;
@@ -230,7 +388,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     return Array.from(map.values()).sort((a, b) =>
       getSortKey(a).localeCompare(getSortKey(b))
     );
-  }, [entities]);
+  }, [entities, eventOverrides]);
 
   // Deep-linking: auto-open registration modal when an event is targeted via URL
   useEffect(() => {
@@ -402,22 +560,23 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       id: `yc-custom-${Date.now()}`,
       type: 'workshop',
       titleHe: newTitleHe.trim(),
-      titleEn: newTitleHe.trim(),
+      titleEn: newTitleEn.trim() || newTitleHe.trim(),
       descriptionHe: newDescHe.trim() || newTitleHe.trim(),
-      descriptionEn: newDescHe.trim() || newTitleHe.trim(),
+      descriptionEn: newDescEn.trim() || newDescHe.trim() || newTitleHe.trim(),
       area: 'Colomb',
       locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
       locationDetailsEn: 'Colomb Youth Center (near Shailish)',
       hostName: newHostName.trim() || 'צוות מרכז הנוער',
       hostNameEn: newHostName.trim() || 'Youth Center Team',
       hostPhone: newHostPhone.trim() || '+972-52-478-0033',
-      priceAmount: 0,
-      priceCurrency: 'FREE',
+      priceAmount: Number(newPriceAmount) || 0,
+      priceCurrency: Number(newPriceAmount) > 0 ? (newPriceCurrency as any) : 'FREE',
       audience: 'youth_11_15',
       ingestionSource: 'web',
       imageUrl:
+        newImageUrl.trim() ||
         'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=900',
-      tags: ['מרכז הנוער', 'קולום'],
+      tags: ['מרכז הנוער', 'קולום', 'Goa Teens House'],
       rsvpCount: 0,
       dayOfWeek: newDayOfWeek,
       date: newDate || undefined,
@@ -427,12 +586,23 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       endTime: newEndTime,
     };
 
+    setEventOverrides((prev) => ({
+      ...prev,
+      [created.id]: created,
+    }));
+
     if (onAddEntity) {
       onAddEntity(created);
     }
     setShowAddEventModal(false);
     setNewTitleHe('');
+    setNewTitleEn('');
     setNewDescHe('');
+    setNewDescEn('');
+    setNewImageUrl('');
+    setNewPriceAmount(0);
+    setShareToast(isHe ? 'האירוע פורסם בהצלחה!' : 'Event published successfully!');
+    setTimeout(() => setShareToast(null), 3000);
   };
 
   const exportRegistrationsToCsv = (onlyEventId?: string) => {
@@ -739,91 +909,156 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                             key={`${dayGroup.dateStr}-${ev.id}`}
                             className="p-4 sm:p-5 hover:bg-paper-2/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
                           >
-                              {/* Left/Start: Time Box + Event Details */}
-                              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-                                <div className="w-20 sm:w-28 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2 sm:p-2.5 text-center">
-                                  {ev.date && (
-                                    <div className="text-[11px] font-bold text-accent mb-0.5">
-                                      {formatDateShort(ev.date, isHe)}
-                                    </div>
-                                  )}
-                                  <div className="hallmark-code text-sm sm:text-base font-bold text-ink">
-                                    {ev.startTime || '16:30'}
+                            {/* Left/Start: Time Box + Image + Event Details */}
+                            <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
+                              {/* Time Box */}
+                              <div className="w-20 sm:w-24 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2 sm:p-2.5 text-center">
+                                {ev.date && (
+                                  <div className="text-[11px] font-bold text-accent mb-0.5">
+                                    {formatDateShort(ev.date, isHe)}
                                   </div>
-                                  {ev.endTime && (
-                                    <div className="hallmark-code text-[11px] text-muted">
-                                      {isHe ? `עד ${ev.endTime}` : `to ${ev.endTime}`}
-                                    </div>
-                                  )}
+                                )}
+                                <div className="hallmark-code text-sm sm:text-base font-bold text-ink">
+                                  {ev.startTime || '16:30'}
                                 </div>
-
-                                <div className="space-y-1.5 min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-700 text-white">
-                                      {isHe ? 'מרכז הנוער' : 'Youth Center'}
-                                    </span>
-                                    {ev.date && (
-                                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent/15 text-accent">
-                                        {formatDateFull(ev.date, isHe)}
-                                      </span>
-                                    )}
-
-                                    {/* Registration count only (NO NAMES) */}
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-paper-2 text-xs font-semibold text-ink">
-                                      <Users className="w-3 h-3 text-accent" />
-                                      <span>
-                                        {regCount} {isHe ? 'נרשמו' : 'registered'}
-                                      </span>
-                                    </span>
+                                {ev.endTime && (
+                                  <div className="hallmark-code text-[11px] text-muted">
+                                    {isHe ? `עד ${ev.endTime}` : `to ${ev.endTime}`}
                                   </div>
-
-                                  <h4 className="font-display text-lg font-bold text-ink">
-                                    {title}
-                                  </h4>
-
-                                  <p className="text-xs sm:text-sm text-ink-2 line-clamp-2">
-                                    {desc}
-                                  </p>
-                                </div>
+                                )}
                               </div>
 
-                              {/* Right/End: Quick Actions (Crafted Responsive 3-Button Bar) */}
-                              <div className="w-full md:w-auto flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-rule">
-                                <button
-                                  type="button"
-                                  onClick={() => handleShareEvent(ev)}
-                                  className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-accent hover:border-accent/40 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px] min-w-[44px]"
-                                  title={isHe ? 'שיתוף אירוע' : 'Share event'}
-                                >
-                                  <Share2 className="w-4 h-4 shrink-0" />
-                                  <span className="hidden sm:inline">{isHe ? 'שיתוף' : 'Share'}</span>
-                                </button>
-                                <a
-                                  href={gcalLink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink hover:border-ink/30 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
-                                >
-                                  <CalendarPlus className="w-4 h-4 text-accent shrink-0" />
-                                  <span className="truncate">{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
-                                </a>
+                              {/* Poster / Thumbnail if available */}
+                              {ev.imageUrl && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenRegisterModal(ev)}
-                                  className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
+                                  className="relative w-16 h-20 sm:w-20 sm:h-24 rounded-2xl overflow-hidden border border-rule shrink-0 shadow-xs hover:shadow-md hover:scale-105 transition-all group bg-paper-2"
+                                  title={isHe ? 'לחץ לצפייה בפרטי האירוע וההרשמה' : 'Click to view event details'}
                                 >
-                                  <UserCheck className="w-4 h-4 shrink-0" />
-                                  <span className="truncate">{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
+                                  <img
+                                    src={ev.imageUrl}
+                                    alt={title}
+                                    loading="lazy"
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                  />
+                                  <span className="absolute inset-0 bg-black/15 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                                    <Eye className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+                                  </span>
                                 </button>
+                              )}
+
+                              <div className="space-y-1.5 min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-700 text-white">
+                                    {isHe ? 'מרכז הנוער' : 'Youth Center'}
+                                  </span>
+                                  {ev.date && (
+                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent/15 text-accent">
+                                      {formatDateFull(ev.date, isHe)}
+                                    </span>
+                                  )}
+
+                                  {/* Price Badge */}
+                                  {ev.priceAmount && ev.priceAmount > 0 ? (
+                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-500/30">
+                                      ₹{ev.priceAmount.toLocaleString()} {isHe ? 'לחודש' : '/ month'}
+                                    </span>
+                                  ) : (
+                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+                                      {isHe ? 'חינם' : 'Free'}
+                                    </span>
+                                  )}
+
+                                  {/* Registration count only (NO NAMES) */}
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-paper-2 text-xs font-semibold text-ink">
+                                    <Users className="w-3 h-3 text-accent" />
+                                    <span>
+                                      {regCount} {isHe ? 'נרשמו' : 'registered'}
+                                    </span>
+                                  </span>
+                                </div>
+
+                                <h4
+                                  onClick={() => handleOpenRegisterModal(ev)}
+                                  className="font-display text-lg font-bold text-ink hover:text-accent cursor-pointer transition-colors"
+                                >
+                                  {title}
+                                </h4>
+
+                                <div className="space-y-1">
+                                  <p
+                                    className={`text-xs sm:text-sm text-ink-2 leading-relaxed whitespace-pre-line ${
+                                      expandedDescIds[ev.id] ? '' : 'line-clamp-2'
+                                    }`}
+                                  >
+                                    {desc}
+                                  </p>
+                                  {desc && desc.length > 90 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleDescExpanded(ev.id)}
+                                      className="text-[11px] font-bold text-accent hover:underline inline-flex items-center gap-1"
+                                    >
+                                      <span>
+                                        {expandedDescIds[ev.id]
+                                          ? (isHe ? 'הסתר פירוט' : 'Show less')
+                                          : (isHe ? 'קרא עוד...' : 'Read more...')}
+                                      </span>
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+
+                            {/* Right/End: Quick Actions (Crafted Responsive 3-Button Bar) */}
+                            <div className="w-full md:w-auto flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-rule">
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditEvent(ev)}
+                                  className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink hover:text-accent text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
+                                  title={isHe ? 'עריכת אירוע (אדמין)' : 'Edit event'}
+                                >
+                                  <Edit3 className="w-4 h-4 text-accent shrink-0" />
+                                  <span className="hidden sm:inline">{isHe ? 'עריכה' : 'Edit'}</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleShareEvent(ev)}
+                                className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-accent hover:border-accent/40 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px] min-w-[44px]"
+                                title={isHe ? 'שיתוף אירוע' : 'Share event'}
+                              >
+                                <Share2 className="w-4 h-4 shrink-0" />
+                                <span className="hidden sm:inline">{isHe ? 'שיתוף' : 'Share'}</span>
+                              </button>
+                              <a
+                                href={gcalLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink hover:border-ink/30 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
+                              >
+                                <CalendarPlus className="w-4 h-4 text-accent shrink-0" />
+                                <span className="truncate">{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenRegisterModal(ev)}
+                                className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
+                              >
+                                <UserCheck className="w-4 h-4 shrink-0" />
+                                <span className="truncate">{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       ) : (
@@ -844,14 +1079,17 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               >
                 <div>
                   {/* Image Header */}
-                  <div className="relative h-44 w-full overflow-hidden bg-paper-2">
+                  <div
+                    className="relative h-52 sm:h-56 w-full overflow-hidden bg-paper-2 cursor-pointer"
+                    onClick={() => handleOpenRegisterModal(ev)}
+                  >
                     <img
                       src={ev.imageUrl}
                       alt={title}
                       loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
                     <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
                       <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent text-white shadow-sm">
                         {ev.date
@@ -872,20 +1110,56 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         </span>
                       </span>
                     </div>
+
+                    {/* Price Badge on Image bottom right */}
+                    {ev.priceAmount && ev.priceAmount > 0 && (
+                      <div className="absolute bottom-3 right-3 px-3 py-1 rounded-full text-xs font-bold bg-black/75 text-amber-300 backdrop-blur-xs border border-amber-400/30 shadow-sm">
+                        ₹{ev.priceAmount.toLocaleString()} {isHe ? 'לחודש' : '/ month'}
+                      </div>
+                    )}
                   </div>
 
                   {/* Body */}
                   <div className="p-5 space-y-3">
-                    <h3 className="font-display text-xl font-bold text-ink leading-snug">
+                    <h3
+                      onClick={() => handleOpenRegisterModal(ev)}
+                      className="font-display text-xl font-bold text-ink leading-snug hover:text-accent cursor-pointer transition-colors"
+                    >
                       {title}
                     </h3>
 
-                    <p className="text-sm text-ink-2 line-clamp-2 leading-relaxed">{desc}</p>
+                    {/* Expandable description with whitespace-pre-line */}
+                    <div className="space-y-1">
+                      <p
+                        className={`text-sm text-ink-2 leading-relaxed whitespace-pre-line ${
+                          expandedDescIds[ev.id] ? '' : 'line-clamp-3'
+                        }`}
+                      >
+                        {desc}
+                      </p>
+                      {desc && desc.length > 100 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleDescExpanded(ev.id)}
+                          className="text-xs font-bold text-accent hover:underline inline-flex items-center gap-1 pt-1"
+                        >
+                          <span>
+                            {expandedDescIds[ev.id]
+                              ? (isHe ? 'הסתר פירוט' : 'Show less')
+                              : (isHe ? 'קרא עוד...' : 'Read more...')}
+                          </span>
+                        </button>
+                      )}
+                    </div>
 
                     <div className="pt-2 space-y-1.5 text-xs sm:text-sm text-ink-2">
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-accent shrink-0" />
                         <span className="font-semibold text-ink">{formatEventSchedule(ev)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted">
+                        <MapPin className="w-4 h-4 text-accent shrink-0" />
+                        <span>{loc}</span>
                       </div>
                     </div>
                   </div>
@@ -898,6 +1172,16 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                     <span>{regCount} {isHe ? 'נרשמו' : 'registered'}</span>
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditEvent(ev)}
+                        className="shrink-0 p-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink hover:text-accent active:scale-[0.97] transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
+                        title={isHe ? 'עריכת אירוע (אדמין)' : 'Edit event'}
+                      >
+                        <Edit3 className="w-4 h-4 text-accent shrink-0" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleShareEvent(ev)}
@@ -1207,30 +1491,28 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       )}
 
       {/* =====================================================================
-          REGISTRATION MODAL: AGE REMOVED, SUBSCRIBER QUESTION ADDED
+          REGISTRATION MODAL: PROMINENT POSTER / IMAGE + FULL RICH DESCRIPTION
          ===================================================================== */}
       {selectedEventForReg && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
           onClick={() => setSelectedEventForReg(null)}
         >
           <div
-            className="hallmark-plate max-w-lg w-full p-6 sm:p-7 space-y-5"
+            className="hallmark-plate max-w-xl w-full p-5 sm:p-7 space-y-5 my-auto max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal Header */}
             <div className="flex items-start justify-between gap-4 border-b border-rule pb-4">
-              <div>
+              <div className="space-y-1">
                 <span className="text-xs font-semibold text-accent">
-                  {isHe ? 'הרשמה לאירוע במרכז הנוער' : 'Youth Center Event Registration'}
+                  {isHe ? 'מרכז הנוער גואה · Goa Teens House' : 'Youth Center Goa · Goa Teens House'}
                 </span>
-                <h3 className="font-display text-xl font-bold text-ink mt-0.5">
+                <h3 className="font-display text-xl sm:text-2xl font-bold text-ink leading-tight">
                   {isHe ? selectedEventForReg.titleHe : selectedEventForReg.titleEn}
                 </h3>
-                <p className="text-xs text-muted mt-1 font-medium">
-                  {formatEventSchedule(selectedEventForReg)}
-                </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => handleShareEvent(selectedEventForReg, regSubmitted)}
@@ -1248,6 +1530,63 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Poster / Image Banner (if available) */}
+            {selectedEventForReg.imageUrl && (
+              <div className="relative rounded-2xl overflow-hidden border border-rule bg-paper-2 shadow-xs group max-h-72 sm:max-h-80 flex items-center justify-center">
+                <img
+                  src={selectedEventForReg.imageUrl}
+                  alt={isHe ? selectedEventForReg.titleHe : selectedEventForReg.titleEn}
+                  className="w-full max-h-72 sm:max-h-80 object-contain bg-paper-2 cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
+                  onClick={() => setPreviewImageUrl(selectedEventForReg.imageUrl)}
+                  title={isHe ? 'לחץ להגדלת התמונה / פוסטר' : 'Click to enlarge image / poster'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageUrl(selectedEventForReg.imageUrl)}
+                  className="absolute bottom-2.5 left-2.5 px-3 py-1.5 rounded-xl bg-black/65 hover:bg-black/85 text-white text-xs font-semibold flex items-center gap-1.5 backdrop-blur-xs transition-colors shadow-sm"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>{isHe ? 'הגדלת פוסטר' : 'View Full Poster'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Quick Metadata Badges Strip */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-paper-2 text-ink font-semibold border border-rule">
+                <Clock className="w-3.5 h-3.5 text-accent" />
+                <span>{formatEventSchedule(selectedEventForReg)}</span>
+              </span>
+              {selectedEventForReg.priceAmount && selectedEventForReg.priceAmount > 0 ? (
+                <span className="px-3 py-1 rounded-full bg-amber-500/15 text-amber-900 dark:text-amber-300 font-bold border border-amber-500/30">
+                  ₹{selectedEventForReg.priceAmount.toLocaleString()} {isHe ? 'לחודש (תקופת ניסיון)' : '/ month (trial)'}
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-500/30">
+                  {isHe ? 'השתתפות חינם' : 'Free Entry'}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-paper-2 text-muted font-medium border border-rule">
+                <MapPin className="w-3.5 h-3.5 text-accent" />
+                <span>
+                  {isHe ? selectedEventForReg.locationDetailsHe : selectedEventForReg.locationDetailsEn}
+                </span>
+              </span>
+            </div>
+
+            {/* Full Rich Description Box */}
+            {(selectedEventForReg.descriptionHe || selectedEventForReg.descriptionEn) && (
+              <div className="p-4 rounded-2xl bg-paper-2/70 border border-rule space-y-1.5 text-start">
+                <div className="text-xs font-bold text-accent uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isHe ? 'תיאור ופרטי הפעילות' : 'Event Details & Overview'}</span>
+                </div>
+                <div className="text-xs sm:text-sm text-ink-2 leading-relaxed whitespace-pre-line max-h-56 overflow-y-auto pr-1">
+                  {isHe ? selectedEventForReg.descriptionHe : selectedEventForReg.descriptionEn}
+                </div>
+              </div>
+            )}
 
             {regSubmitted ? (
               <div className="py-6 text-center space-y-5">
@@ -1428,59 +1767,147 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       )}
 
       {/* =====================================================================
-          MODAL 2: ADD NEW YOUTH CENTER EVENT (ADMIN ONLY)
+          MODAL 2: ADD NEW YOUTH CENTER EVENT (ADMIN ONLY) - WITH IMAGE & DESCRIPTION
          ===================================================================== */}
       {isAdmin && showAddEventModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
           onClick={() => setShowAddEventModal(false)}
         >
           <div
-            className="hallmark-plate max-w-lg w-full p-6 sm:p-7 space-y-5"
+            className="hallmark-plate max-w-xl w-full p-5 sm:p-7 space-y-5 my-auto max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-rule pb-3">
-              <h3 className="font-display text-xl font-bold text-ink">
-                {isHe ? 'הוספת אירוע חדש למרכז הנוער (אדמין)' : 'Add New Youth Center Event'}
-              </h3>
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-accent">
+                  {isHe ? 'ניהול מרכז הנוער · אדמין' : 'Youth Center Admin'}
+                </span>
+                <h3 className="font-display text-xl font-bold text-ink">
+                  {isHe ? 'הוספת אירוע חדש למרכז הנוער' : 'Add New Youth Center Event'}
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddEventModal(false)}
-                className="p-1.5 rounded-full bg-paper-2 text-ink"
+                className="p-1.5 rounded-full bg-paper-2 text-ink hover:bg-paper-3 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleCreateYouthEvent} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-ink mb-1">
-                  {isHe ? 'שם האירוע / הפעילות *' : 'Event Title *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newTitleHe}
-                  onChange={(e) => setNewTitleHe(e.target.value)}
-                  placeholder={isHe ? 'לדוגמה: סדנת קומיקס / ערב פיצה וג׳אם' : 'Event title'}
-                  className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2 text-sm text-ink"
-                />
+              {/* Event Title He / En */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שם האירוע בעברית *' : 'Event Title (Hebrew) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newTitleHe}
+                    onChange={(e) => setNewTitleHe(e.target.value)}
+                    placeholder={isHe ? 'לדוגמה: טורניר פינג פונג' : 'Event Title He'}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שם האירוע באנגלית (אופציונלי)' : 'Event Title (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={newTitleEn}
+                    onChange={(e) => setNewTitleEn(e.target.value)}
+                    placeholder="e.g. Ping Pong Tournament"
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2 text-sm text-ink"
+                  />
+                </div>
               </div>
 
+              {/* Event Image Upload / URL */}
+              <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule space-y-3">
+                <label className="block text-xs font-semibold text-ink">
+                  {isHe ? 'תמונה / פוסטר לאירוע' : 'Event Poster / Image'}
+                </label>
+
+                {newImageUrl ? (
+                  <div className="relative w-full max-h-48 rounded-xl overflow-hidden border border-rule bg-paper flex items-center justify-center">
+                    <img
+                      src={newImageUrl}
+                      alt="Event Preview"
+                      className="max-h-48 w-full object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewImageUrl('')}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black text-white text-xs transition-colors"
+                      title={isHe ? 'הסר תמונה' : 'Remove Image'}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+                    <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs font-semibold shadow-xs active:scale-[0.97] transition-all">
+                      <Upload className="w-4 h-4" />
+                      <span>{isHe ? 'העלאת תמונה מהמכשיר' : 'Upload from Device'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleProcessImageFile(file, (url) => setNewImageUrl(url));
+                        }}
+                      />
+                    </label>
+                    <input
+                      type="url"
+                      value={newImageUrl}
+                      onChange={(e) => setNewImageUrl(e.target.value)}
+                      placeholder={isHe ? 'או הדבק כתובת URL לתמונה...' : 'Or paste Image URL...'}
+                      className="flex-1 rounded-xl border border-rule bg-paper px-3 py-2 text-xs text-ink"
+                    />
+                  </div>
+                )}
+                <p className="text-[11px] text-muted">
+                  {isHe
+                    ? 'ניתן להעלות תמונה או פוסטר ישירות מהטלפון או המחשב (התמונה תותאם אוטומטית).'
+                    : 'Upload any flyer or image directly from your phone/desktop.'}
+                </p>
+              </div>
+
+              {/* Event Description He / En */}
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1">
-                  {isHe ? 'תיאור קצר *' : 'Short Description *'}
+                  {isHe ? 'תיאור מפורט של הפעילות (עברית) *' : 'Detailed Description (Hebrew) *'}
                 </label>
                 <textarea
-                  rows={2}
+                  rows={4}
                   required
                   value={newDescHe}
                   onChange={(e) => setNewDescHe(e.target.value)}
-                  placeholder={isHe ? 'מה עושים במפגש ולאיזה גילאים מתאים?' : 'Description'}
-                  className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2 text-sm text-ink"
+                  placeholder={isHe ? 'מה עושים במפגש, למי מתאים, ציוד, וכו׳...' : 'Detailed description...'}
+                  className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink leading-relaxed"
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  {isHe ? 'תיאור באנגלית (אופציונלי)' : 'Description (English, optional)'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={newDescEn}
+                  onChange={(e) => setNewDescEn(e.target.value)}
+                  placeholder="Event details in English..."
+                  className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink leading-relaxed"
+                />
+              </div>
+
+              {/* Schedule: Day of Week, Start Time, End Time */}
               <div className="grid sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1">
@@ -1522,7 +1949,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-3">
+              {/* Date & Price */}
+              <div className="grid sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1">
                     {isHe ? 'תאריך ספציפי (אופציונלי)' : 'Specific Date (Optional)'}
@@ -1536,7 +1964,49 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-ink mb-1">
-                    {isHe ? 'טלפון איש קשר' : 'Contact Phone'}
+                    {isHe ? 'עלות (0 = חינם)' : 'Price (0 = Free)'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={newPriceAmount}
+                    onChange={(e) => setNewPriceAmount(Number(e.target.value))}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'מטבע' : 'Currency'}
+                  </label>
+                  <select
+                    value={newPriceCurrency}
+                    onChange={(e) => setNewPriceCurrency(e.target.value as any)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  >
+                    <option value="FREE">{isHe ? 'חינם (FREE)' : 'Free'}</option>
+                    <option value="INR">רופי הודי (INR ₹)</option>
+                    <option value="ILS">שקלים (ILS ₪)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Host Contact */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שם המארח / מוביל הפעילות' : 'Host / Instructor Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={newHostName}
+                    onChange={(e) => setNewHostName(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'טלפון איש קשר (וואטסאפ)' : 'Contact Phone'}
                   </label>
                   <input
                     type="tel"
@@ -1553,6 +2023,313 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 <span>{isHe ? 'פרסום אירוע במרכז הנוער' : 'Publish Youth Event'}</span>
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          MODAL 3: EDIT EXISTING YOUTH CENTER EVENT (ADMIN ONLY)
+         ===================================================================== */}
+      {isAdmin && editingEvent && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={() => setEditingEvent(null)}
+        >
+          <div
+            className="hallmark-plate max-w-xl w-full p-5 sm:p-7 space-y-5 my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-rule pb-3">
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-accent">
+                  {isHe ? 'עריכת אירוע במרכז הנוער · אדמין' : 'Edit Youth Center Event · Admin'}
+                </span>
+                <h3 className="font-display text-xl font-bold text-ink">
+                  {isHe ? editTitleHe || 'עריכת אירוע' : editTitleEn || 'Edit Event'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingEvent(null)}
+                className="p-1.5 rounded-full bg-paper-2 text-ink hover:bg-paper-3 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedEvent} className="space-y-4">
+              {/* Event Title He / En */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שם האירוע בעברית *' : 'Event Title (Hebrew) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editTitleHe}
+                    onChange={(e) => setEditTitleHe(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שם האירוע באנגלית' : 'Event Title (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitleEn}
+                    onChange={(e) => setEditTitleEn(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2 text-sm text-ink"
+                  />
+                </div>
+              </div>
+
+              {/* Event Image Upload / URL */}
+              <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule space-y-3">
+                <label className="block text-xs font-semibold text-ink">
+                  {isHe ? 'תמונה / פוסטר לאירוע' : 'Event Poster / Image'}
+                </label>
+
+                {editImageUrl ? (
+                  <div className="relative w-full max-h-52 rounded-xl overflow-hidden border border-rule bg-paper flex items-center justify-center">
+                    <img
+                      src={editImageUrl}
+                      alt="Event Preview"
+                      className="max-h-52 w-full object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditImageUrl('')}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black text-white text-xs transition-colors"
+                      title={isHe ? 'הסר תמונה' : 'Remove Image'}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+                    <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs font-semibold shadow-xs active:scale-[0.97] transition-all">
+                      <Upload className="w-4 h-4" />
+                      <span>{isHe ? 'העלאת תמונה חדשה מהמכשיר' : 'Upload New from Device'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleProcessImageFile(file, (url) => setEditImageUrl(url));
+                        }}
+                      />
+                    </label>
+                    <input
+                      type="url"
+                      value={editImageUrl}
+                      onChange={(e) => setEditImageUrl(e.target.value)}
+                      placeholder={isHe ? 'או הדבק קישור לתמונה...' : 'Or paste Image URL...'}
+                      className="flex-1 rounded-xl border border-rule bg-paper px-3 py-2 text-xs text-ink"
+                    />
+                  </div>
+                )}
+                {editImageUrl && (
+                  <div className="flex justify-start">
+                    <label className="cursor-pointer inline-flex items-center gap-1.5 text-xs text-accent hover:underline">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isHe ? 'החלף תמונה מהמכשיר' : 'Replace Image from Device'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleProcessImageFile(file, (url) => setEditImageUrl(url));
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Event Description He / En */}
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  {isHe ? 'תיאור מפורט של הפעילות (עברית) *' : 'Detailed Description (Hebrew) *'}
+                </label>
+                <textarea
+                  rows={5}
+                  required
+                  value={editDescHe}
+                  onChange={(e) => setEditDescHe(e.target.value)}
+                  className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  {isHe ? 'תיאור באנגלית (אופציונלי)' : 'Description (English)'}
+                </label>
+                <textarea
+                  rows={4}
+                  value={editDescEn}
+                  onChange={(e) => setEditDescEn(e.target.value)}
+                  className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm text-ink leading-relaxed"
+                />
+              </div>
+
+              {/* Schedule: Day of Week, Start Time, End Time */}
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'יום בשבוע' : 'Day of Week'}
+                  </label>
+                  <select
+                    value={editDayOfWeek}
+                    onChange={(e) => setEditDayOfWeek(Number(e.target.value))}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  >
+                    {DAY_NAMES_HE.map((d, idx) => (
+                      <option key={idx} value={idx}>
+                        {isHe ? d : DAY_NAMES_EN[idx]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שעת התחלה' : 'Start Time'}
+                  </label>
+                  <input
+                    type="time"
+                    value={editStartTime}
+                    onChange={(e) => setEditStartTime(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שעת סיום' : 'End Time'}
+                  </label>
+                  <input
+                    type="time"
+                    value={editEndTime}
+                    onChange={(e) => setEditEndTime(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+              </div>
+
+              {/* Date & Price */}
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'תאריך ספציפי (אופציונלי)' : 'Specific Date (Optional)'}
+                  </label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'עלות (0 = חינם)' : 'Price (0 = Free)'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={editPriceAmount}
+                    onChange={(e) => setEditPriceAmount(Number(e.target.value))}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'מטבע' : 'Currency'}
+                  </label>
+                  <select
+                    value={editPriceCurrency}
+                    onChange={(e) => setEditPriceCurrency(e.target.value as any)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  >
+                    <option value="FREE">{isHe ? 'חינם (FREE)' : 'Free'}</option>
+                    <option value="INR">רופי הודי (INR ₹)</option>
+                    <option value="ILS">שקלים (ILS ₪)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Host Contact */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'שם המארח / מוביל הפעילות' : 'Host / Instructor'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editHostName}
+                    onChange={(e) => setEditHostName(e.target.value)}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1">
+                    {isHe ? 'טלפון איש קשר (וואטסאפ)' : 'Contact Phone'}
+                  </label>
+                  <input
+                    type="tel"
+                    value={editHostPhone}
+                    onChange={(e) => setEditHostPhone(e.target.value)}
+                    dir="ltr"
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3 py-2 text-sm text-ink"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button type="submit" className="flex-1 hallmark-btn-primary py-3 text-sm">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{isHe ? 'שמירת שינויים באירוע' : 'Save Changes'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingEvent(null)}
+                  className="px-5 py-3 rounded-2xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink text-sm font-semibold transition-colors"
+                >
+                  {isHe ? 'ביטול' : 'Cancel'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          LIGHTBOX: FULLSCREEN IMAGE / POSTER PREVIEW MODAL
+         ===================================================================== */}
+      {previewImageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <div
+            className="relative max-w-2xl max-h-[92vh] w-full flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImageUrl(null)}
+              className="absolute -top-12 right-0 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+              title={isHe ? 'סגירה' : 'Close'}
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={previewImageUrl}
+              alt="Poster Preview"
+              className="max-h-[85vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl border border-white/10"
+            />
           </div>
         </div>
       )}

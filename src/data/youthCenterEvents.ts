@@ -1,36 +1,65 @@
 import { LuzEntity } from '../types/luz';
 
 export const CORE_YOUTH_CENTER_EVENTS: LuzEntity[] = [
-  // 1. Friday 06/11/2026 - פתיחה חגיגית ופעילות ODT
+  // 1. Friday 06/11/2026 - פתיחה חגיגית — Goa Teens House | משחק הכדור עם אילן
   {
     id: 'yc-2026-11-06-odt-opening',
     type: 'workshop',
-    titleHe: 'פתיחה חגיגית ופעילות ODT',
-    titleEn: 'Grand Opening & Outdoor ODT Team Challenge',
-    descriptionHe:
-      'אירוע פתיחה חגיגי של מרכז הנוער גואה! פעילות ODT (Outdoor Training) לגיבוש קבוצתי, אתגרי שטח, כיבוד מפנק והיכרות עם המרחב.',
-    descriptionEn:
-      'Grand opening celebration of the Goa Youth Center! Outdoor training (ODT) team-building challenges, celebration treats, and space introduction for ages 11–15.',
+    titleHe: 'פתיחה חגיגית — Goa Teens House | משחק הכדור עם אילן',
+    titleEn: 'Grand Opening — Goa Teens House | The Ball Game with Ilan',
+    descriptionHe: `היי לכולם! 🌿
+
+בעקבות הסקרים ומפגש ההיכרות, התוכנית של מרכז הנוער (Goa Teens House) גובשה סביב הפעילויות שהנוער בחר:
+🏓 פינג פונג | 🎲 משחקי קופסה | 🎬 ערבי סרטים
+המרחב יהיה פתוח גם למפגש חופשי (Hangouts) — מקום לנוער לבלות יחד, להירגע וליזום תוכניות משלהם.
+
+כדי לשמור על עלויות נמוכות, נתחיל בתקופת ניסיון ללא מדריך בתשלום, בהישענות על מעורבות הורים משותפת: תורנויות בשעות הפתיחה, סיוע במרחב והובלת פעילויות מדי פעם (בסביבות משמרת אחת להורה בכל חודש עד שישה שבועות).
+
+🎉 פתיחה חגיגית — יום שישי, 6 בנובמבר בשעה 10:00 בבוקר!
+הנוער מוזמן לפתוח את הפעילות במפגש היכרות וגיבוש:
+• משחק הכדור עם אילן (The Ball Game) — חוויה קבוצתית כיפית של תנועה, חיבור והמון צחוק!
+• בוחרים יחד שם למרחב! (Let's Choose a Name!)
+• פירות מרעננים ולימונדה צוננת (Fruits & Ice-cold Lemonade)
+
+💰 עלויות חודשיות (תקופת ניסיון):
+₹2,500 לילד | ₹3,500 למשפחה (2 ילדים ומעלה).
+* תשלום במזומן בלבד עבור החודש הראשון.`,
+    descriptionEn: `Hi everyone! 🌿
+
+Following the surveys and our introductory meeting, the plan for Goa Teens House has been simplified around the activities the teens chose:
+🏓 Ping pong | 🎲 Board games | 🎬 Movie nights
+The space will also be open for free hangouts — a place for the teens to spend time together and make their own plans.
+
+To keep costs low, we’ll start with a trial period without a paid instructor, relying on shared parent involvement: opening-hour shifts, helping with the space, and occasionally leading activities. This is expected to mean around one shift per parent every month to six weeks.
+
+🎉 Grand Opening — Friday, November 6 at 10:00 AM!
+The teens are invited to kick things off with their first get-together — a morning of games, fun, and getting to know each other:
+• The Ball Game with Ilan — a playful group experience of movement, connection, and lots of laughter!
+• Let's Choose a Name for our space!
+• Fresh fruits & ice-cold lemonade
+
+💰 Monthly Membership (Trial Period):
+₹2,500 per child | ₹3,500 per family (2 children or more).
+* Cash payment only (for the first month).`,
     area: 'Colomb',
     locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
     locationDetailsEn: 'Colomb Youth Center (near Shailish)',
-    hostName: 'צוות מרכז הנוער גואה',
-    hostNameEn: 'Youth Center Goa Team',
+    hostName: 'אילן & הורי Goa Teens House',
+    hostNameEn: 'Ilan & Goa Teens House Parents',
     hostPhone: '+972-52-478-0033',
-    priceAmount: 0,
-    priceCurrency: 'FREE',
+    priceAmount: 2500,
+    priceCurrency: 'INR',
     audience: 'youth_11_15',
     ingestionSource: 'web',
-    imageUrl:
-      'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&q=80&w=1000',
-    tags: ['פתיחה חגיגית', 'ODT', 'גיבוש', 'נוער'],
+    imageUrl: '/images/events/goa-teens-opening-nov6.jpg',
+    tags: ['פתיחה חגיגית', 'The Ball Game', 'אילן', 'Goa Teens House', 'פינג פונג', 'משחקי קופסה'],
     rsvpCount: 0,
     date: '2026-11-06',
     dayOfWeek: 5, // Friday
     weekCycle: 'all',
     isYouthCenter: true,
-    startTime: '16:00',
-    endTime: '19:00',
+    startTime: '10:00',
+    endTime: '13:00',
   },
   // 2. Saturday 07/11/2026 - הקרנת סרט
   {
