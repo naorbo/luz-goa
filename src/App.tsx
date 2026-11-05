@@ -178,7 +178,12 @@ function loadStoreForEnvironment(env: AppEnvironment): EnvStore {
 
 export function App() {
   const [lang, setLang] = useState<Language>(() => {
-    const saved = localStorage.getItem('luz_lang_v2');
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlLang = params.get('lang');
+      if (urlLang === 'he' || urlLang === 'en') return urlLang;
+    }
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('luz_lang_v2') : null;
     return saved === 'en' || saved === 'he' ? saved : 'en';
   });
 
