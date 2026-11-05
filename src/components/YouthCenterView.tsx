@@ -66,6 +66,8 @@ const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
 const YC_DEDICATED_SHEET_URL_STORAGE_KEY = 'luz_yc_dedicated_spreadsheet_url_v1';
 export const DEFAULT_YC_SPREADSHEET_URL =
   'https://docs.google.com/spreadsheets/d/1I3EEIlSbA83KK_t-ElZVb5ILACKs598FhjkR7pOASH4/edit';
+export const DEFAULT_YC_WEBHOOK_URL =
+  'https://script.google.com/macros/s/AKfycbxOvJbRgHTIgN-Fp2iCMpC-Qq0ORKy4bLUWXeqhr-7bvRIXIAWH_Umu1ost7CyQ2VV2HA/exec';
 
 const DAY_NAMES_HE = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'יום שבת'];
 const DAY_SHORT_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
@@ -142,12 +144,13 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   // Dedicated Google Sheet Webhook URL
   const [ycSheetWebhookUrl, setYcSheetWebhookUrl] = useState<string>(() => {
     try {
-      return (
-        localStorage.getItem(YC_SHEET_WEBHOOK_STORAGE_KEY) ||
-        DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL
-      );
+      const saved = localStorage.getItem(YC_SHEET_WEBHOOK_STORAGE_KEY);
+      if (saved && saved.trim() && !saved.includes('AKfycbwGwt1q-aWG9CWNrCqDNBx2NG3w_cKQhNFTTxJ2XmIlHGNIh_aK2xM6jDIjq9Yj2LGp')) {
+        return saved.trim();
+      }
+      return DEFAULT_YC_WEBHOOK_URL;
     } catch {
-      return DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL;
+      return DEFAULT_YC_WEBHOOK_URL;
     }
   });
 
@@ -332,7 +335,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     }
 
     // Dispatch to Dedicated Youth Center Google Sheet via Webhook (All English schema & text)
-    const targetUrl = (ycSheetWebhookUrl || DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL).trim();
+    const targetUrl = (ycSheetWebhookUrl || DEFAULT_YC_WEBHOOK_URL).trim();
     if (targetUrl.startsWith('https://')) {
       setSyncingSheet(true);
       try {
