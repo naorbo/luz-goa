@@ -66,7 +66,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 }) => {
   const isHe = lang === 'he';
 
-  const [displayMode, setDisplayMode] = useState<'cards' | 'calendar'>('cards');
+  const [displayMode, setDisplayMode] = useState<'cards' | 'calendar'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('view') === 'calendar' || params.get('mode') === 'calendar') return 'calendar';
+    }
+    return 'cards';
+  });
   const [selectedType, setSelectedType] = useState<EntityType | 'all'>('all');
   const [selectedArea, setSelectedArea] = useState<GoaArea | 'all'>('all');
   const [selectedDate, setSelectedDate] = useState<string | 'all'>('all');

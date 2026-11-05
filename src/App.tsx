@@ -190,7 +190,15 @@ export function App() {
     loadNotificationConfig()
   );
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('explore');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'youth_center' || tab === 'businesses' || tab === 'explore') return tab;
+      if (window.location.hash === '#youth-center' || window.location.hash === '#youth') return 'youth_center';
+    }
+    return 'explore';
+  });
   const [selectedEntity, setSelectedEntity] = useState<LuzEntity | null>(null);
   const [firestoreStatus, setFirestoreStatus] = useState<
     'disconnected' | 'connecting' | 'live' | 'error'
