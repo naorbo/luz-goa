@@ -29,12 +29,13 @@ export interface ShareResult {
 /**
  * Builds the canonical shareable URL for a given event entity.
  */
-export function buildEventShareUrl(entityId: string): string {
+export function buildEventShareUrl(entityId: string, isYouthCenter?: boolean): string {
+  const tabQuery = isYouthCenter ? '&tab=youth_center' : '';
   if (typeof window === 'undefined') {
-    return `https://naorbo.github.io/luz-goa/?event=${encodeURIComponent(entityId)}`;
+    return `https://my-luz-dc028.web.app/?event=${encodeURIComponent(entityId)}${tabQuery}`;
   }
   const baseUrl = `${window.location.origin}${window.location.pathname}`.replace(/\/+$/, '');
-  return `${baseUrl}?event=${encodeURIComponent(entityId)}`;
+  return `${baseUrl}?event=${encodeURIComponent(entityId)}${tabQuery}`;
 }
 
 /**
@@ -46,7 +47,8 @@ export function buildEventShareContent(
 ): { title: string; text: string; url: string; fullMessage: string } {
   const isHe = options?.isHe ?? true;
   const title = isHe ? entity.titleHe : entity.titleEn;
-  const url = buildEventShareUrl(entity.id);
+  const isYC = Boolean(entity.isYouthCenter || entity.id.startsWith('yc-'));
+  const url = buildEventShareUrl(entity.id, isYC);
 
   let schedule = options?.customSchedule || '';
   if (!schedule) {

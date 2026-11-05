@@ -56,6 +56,8 @@ interface YouthCenterViewProps {
   onConfirmBooking?: (
     bookingData: Omit<BookingRecord, 'id' | 'createdAt' | 'status'>
   ) => void;
+  initialEventId?: string | null;
+  onClearInitialEvent?: () => void;
 }
 
 const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_nov26';
@@ -90,6 +92,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   entities = [],
   onAddEntity,
   onConfirmBooking,
+  initialEventId,
+  onClearInitialEvent,
 }) => {
   const isHe = lang === 'he';
 
@@ -199,6 +203,19 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       getSortKey(a).localeCompare(getSortKey(b))
     );
   }, [entities]);
+
+  // Deep-linking: auto-open registration modal when an event is targeted via URL
+  useEffect(() => {
+    if (initialEventId && youthEvents.length > 0) {
+      const match = youthEvents.find((e) => e.id === initialEventId);
+      if (match) {
+        setSelectedEventForReg(match);
+        setIsSubscriber(true);
+        setRegSubmitted(false);
+        onClearInitialEvent?.();
+      }
+    }
+  }, [initialEventId, youthEvents, onClearInitialEvent]);
 
   // Chronological calendar by exact date
   const chronologicalDayGroups = useMemo(() => {
@@ -673,22 +690,22 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                 </div>
                               </div>
 
-                              {/* Right/End: Quick Actions (Mobile-first responsive 3-button bar) */}
+                              {/* Right/End: Quick Actions (Crafted Responsive 3-Button Bar) */}
                               <div className="w-full md:w-auto flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-rule">
                                 <button
                                   type="button"
                                   onClick={() => handleShareEvent(ev)}
-                                  className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] min-w-[42px] md:min-h-0 md:min-w-0"
+                                  className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-accent hover:border-accent/40 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px] min-w-[44px]"
                                   title={isHe ? 'שיתוף אירוע' : 'Share event'}
                                 >
-                                  <Share2 className="w-4 h-4 text-accent shrink-0" />
+                                  <Share2 className="w-4 h-4 shrink-0" />
                                   <span className="hidden sm:inline">{isHe ? 'שיתוף' : 'Share'}</span>
                                 </button>
                                 <a
                                   href={gcalLink}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] md:min-h-0"
+                                  className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink hover:border-ink/30 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
                                 >
                                   <CalendarPlus className="w-4 h-4 text-accent shrink-0" />
                                   <span className="truncate">{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
@@ -696,7 +713,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleOpenRegisterModal(ev)}
-                                  className="flex-1 min-w-0 md:flex-initial hallmark-btn-primary !py-2.5 md:!py-1.5 !px-3 sm:!px-4 rounded-xl md:rounded-full text-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-sm min-h-[42px] md:min-h-0"
+                                  className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
                                 >
                                   <UserCheck className="w-4 h-4 shrink-0" />
                                   <span className="truncate">{isHe ? 'הרשמה לאירוע' : 'Register'}</span>
@@ -787,17 +804,17 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleShareEvent(ev)}
-                      className="p-2.5 sm:p-2 rounded-xl sm:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-ink shadow-2xs active:scale-[0.98] transition-all"
+                      className="shrink-0 p-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-accent hover:border-accent/40 active:scale-[0.97] transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
                       title={isHe ? 'שיתוף אירוע' : 'Share event'}
                     >
-                      <Share2 className="w-4 h-4 text-accent" />
+                      <Share2 className="w-4 h-4 shrink-0" />
                     </button>
                     <button
                       type="button"
                       onClick={() => handleOpenRegisterModal(ev)}
-                      className="flex-1 sm:flex-initial hallmark-btn-primary text-xs sm:text-sm !py-2.5 sm:!py-2 !px-4 rounded-xl sm:rounded-full inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-sm min-h-[42px] sm:min-h-0"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
                     >
-                      <UserCheck className="w-4 h-4" />
+                      <UserCheck className="w-4 h-4 shrink-0" />
                       <span>{isHe ? 'הרשמה לאירוע' : 'Register for Event'}</span>
                     </button>
                   </div>
@@ -994,26 +1011,23 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 <h3 className="font-display text-xl font-bold text-ink mt-0.5">
                   {isHe ? selectedEventForReg.titleHe : selectedEventForReg.titleEn}
                 </h3>
-                <p className="text-xs text-muted mt-1">
-                  {formatEventSchedule(selectedEventForReg)} ·{' '}
-                  {isHe
-                    ? selectedEventForReg.locationDetailsHe
-                    : selectedEventForReg.locationDetailsEn}
+                <p className="text-xs text-muted mt-1 font-medium">
+                  {formatEventSchedule(selectedEventForReg)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleShareEvent(selectedEventForReg, regSubmitted)}
-                  className="p-1.5 rounded-full bg-paper-2 text-ink hover:bg-paper-3 transition-colors"
+                  className="p-2 rounded-xl bg-paper-2 text-accent hover:bg-paper-3 transition-colors active:scale-[0.97]"
                   title={isHe ? 'שיתוף אירוע' : 'Share event'}
                 >
-                  <Share2 className="w-4 h-4 text-accent" />
+                  <Share2 className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedEventForReg(null)}
-                  className="p-1.5 rounded-full bg-paper-2 text-ink hover:bg-paper-3"
+                  className="p-2 rounded-xl bg-paper-2 text-ink hover:bg-paper-3 transition-colors active:scale-[0.97]"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1021,52 +1035,35 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
             </div>
 
             {regSubmitted ? (
-              <div className="py-6 text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-8 h-8" />
+              <div className="py-6 text-center space-y-5">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto ring-8 ring-emerald-500/5">
+                  <CheckCircle2 className="w-9 h-9" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <h4 className="font-display text-2xl font-bold text-ink">
                     {isHe ? 'ההרשמה לאירוע נקלטה בהצלחה!' : 'Registered Successfully!'}
                   </h4>
-                  <p className="text-sm text-ink-2">
-                    {isHe
-                      ? `${participantName} נוספ/ה לספירת הנרשמים במפגש, והפרטים סונכרנו לגיליון ה-Google Sheets של מרכז הנוער.`
-                      : `${participantName} has been registered and synced to the Youth Center Google Sheet.`}
-                  </p>
+                  <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule text-sm text-ink-2 max-w-sm mx-auto">
+                    <p className="font-semibold text-ink">
+                      {participantName}
+                    </p>
+                    <p className="text-xs text-muted mt-0.5">
+                      {isHe
+                        ? 'נוספ/ה לספירת הנרשמים במפגש, והפרטים סונכרנו לגיליון מרכז הנוער.'
+                        : 'Added to session count and synced to Youth Center Google Sheet.'}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-3">
                   <button
                     type="button"
                     onClick={() => handleShareEvent(selectedEventForReg, true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent text-white text-xs sm:text-sm font-semibold hover:bg-accent/90 transition-all shadow-sm active:scale-[0.98]"
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-accent hover:bg-accent/90 text-white font-semibold text-sm shadow-md hover:shadow-lg active:scale-[0.97] transition-all min-h-[48px]"
                   >
-                    <Share2 className="w-4 h-4" />
+                    <Share2 className="w-4 h-4 shrink-0" />
                     <span>{isHe ? 'שיתוף המפגש עם חברים' : 'Share Session with Friends'}</span>
                   </button>
-                  <a
-                    href={`https://wa.me/${selectedEventForReg.hostPhone.replace(
-                      /[^0-9]/g,
-                      ''
-                    )}?text=${encodeURIComponent(
-                      isHe
-                        ? `היי! רשמתי את ${participantName} (${
-                            isSubscriber ? 'מנוי חודשי' : 'תשלום חד-פעמי'
-                          }) לאירוע "${selectedEventForReg.titleHe}" במרכז הנוער (${formatEventSchedule(
-                            selectedEventForReg
-                          )}). הורה: ${parentName}`
-                        : `Hi! I registered ${participantName} (${
-                            isSubscriber ? 'Monthly subscriber' : 'Single entry'
-                          }) for "${selectedEventForReg.titleEn}" at Youth Center Goa.`
-                    )}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hallmark-btn-primary text-xs sm:text-sm"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>{isHe ? 'שליחת הודעה בוואטסאפ לצוות' : 'Message Team on WhatsApp'}</span>
-                  </a>
                   <button
                     type="button"
                     onClick={() => {
@@ -1074,9 +1071,9 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       setParticipantName('');
                       setNotes('');
                     }}
-                    className="hallmark-btn-secondary text-xs sm:text-sm"
+                    className="sm:flex-initial inline-flex items-center justify-center px-6 py-3.5 rounded-2xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink font-semibold text-sm active:scale-[0.97] transition-all min-h-[48px]"
                   >
-                    {isHe ? 'סיום' : 'Done'}
+                    <span>{isHe ? 'סיום' : 'Done'}</span>
                   </button>
                 </div>
               </div>
@@ -1196,9 +1193,9 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 <button
                   type="submit"
                   disabled={syncingSheet}
-                  className="w-full hallmark-btn-primary py-3 text-sm"
+                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-accent hover:bg-accent/90 text-white font-semibold text-sm shadow-md hover:shadow-lg active:scale-[0.97] disabled:opacity-50 transition-all min-h-[48px]"
                 >
-                  <UserCheck className="w-4 h-4" />
+                  <UserCheck className="w-4 h-4 shrink-0" />
                   <span>
                     {syncingSheet
                       ? isHe

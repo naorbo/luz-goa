@@ -205,6 +205,7 @@ export function App() {
     return 'explore';
   });
   const [selectedEntity, setSelectedEntity] = useState<LuzEntity | null>(null);
+  const [initialYouthEventId, setInitialYouthEventId] = useState<string | null>(null);
   const [firestoreStatus, setFirestoreStatus] = useState<
     'disconnected' | 'connecting' | 'live' | 'error'
   >('disconnected');
@@ -250,7 +251,13 @@ export function App() {
         entities.find((e) => e.id === eventId) ||
         CORE_YOUTH_CENTER_EVENTS.find((e) => e.id === eventId);
       if (match) {
-        setSelectedEntity(match);
+        if (match.isYouthCenter || match.id.startsWith('yc-')) {
+          setActiveTab('youth_center');
+          setInitialYouthEventId(match.id);
+          setSelectedEntity(null);
+        } else {
+          setSelectedEntity(match);
+        }
       }
     }
   }, [entities]);
@@ -973,6 +980,10 @@ export function App() {
             onSwitchToTest={() => handleSwitchEnvironment('test')}
             onGoToProvider={() => setActiveTab('provider')}
             onGoToBusinesses={() => setActiveTab('businesses')}
+            onNavigateToYouthEvent={(eventId) => {
+              setActiveTab('youth_center');
+              setInitialYouthEventId(eventId);
+            }}
             onTrackClick={handleTrackClick}
           />
         )}
@@ -1019,6 +1030,8 @@ export function App() {
             bookings={bookings}
             onAddEntity={handleAddEntity}
             onConfirmBooking={handleConfirmBooking}
+            initialEventId={initialYouthEventId}
+            onClearInitialEvent={() => setInitialYouthEventId(null)}
           />
         )}
 

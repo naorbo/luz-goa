@@ -15,6 +15,7 @@ import {
   CalendarPlus,
   Share2,
   CheckCircle2,
+  UserCheck,
 } from 'lucide-react';
 import {
   LuzEntity,
@@ -43,6 +44,7 @@ interface ExploreViewProps {
   onSwitchToTest: () => void;
   onGoToProvider: () => void;
   onGoToBusinesses: () => void;
+  onNavigateToYouthEvent?: (eventId: string) => void;
   onTrackClick?: (
     event: Omit<ClickAnalyticsEvent, 'id' | 'sessionId' | 'timestamp' | 'environment'>
   ) => void;
@@ -62,6 +64,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   onOpenBenBot,
   onGoToProvider,
   onGoToBusinesses,
+  onNavigateToYouthEvent,
   onTrackClick,
 }) => {
   const isHe = lang === 'he';
@@ -97,6 +100,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   };
 
   const handleEntityClick = (item: LuzEntity) => {
+    if (item.isYouthCenter || item.id.startsWith('yc-')) {
+      onNavigateToYouthEvent?.(item.id);
+      return;
+    }
     onSelectEntity(item);
     onTrackClick?.({
       eventType: 'event_card_click',
@@ -582,10 +589,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                       e.stopPropagation();
                                       handleShareEvent(ev);
                                     }}
-                                    className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] min-w-[42px] md:min-h-0 md:min-w-0"
+                                    className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-accent hover:border-accent/40 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px] min-w-[44px]"
                                     title={isHe ? 'שיתוף אירוע' : 'Share event'}
                                   >
-                                    <Share2 className="w-4 h-4 text-accent shrink-0" />
+                                    <Share2 className="w-4 h-4 shrink-0" />
                                     <span className="hidden sm:inline">{isHe ? 'שיתוף' : 'Share'}</span>
                                   </button>
                                   <a
@@ -593,7 +600,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                     target="_blank"
                                     rel="noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="flex-1 min-w-0 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2.5 md:py-1.5 rounded-xl md:rounded-full border border-rule-strong bg-plate hover:bg-paper-2 text-xs font-semibold text-ink shadow-2xs active:scale-[0.98] transition-all text-center min-h-[42px] md:min-h-0"
+                                    className="flex-1 min-w-0 sm:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink hover:border-ink/30 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
                                   >
                                     <CalendarPlus className="w-4 h-4 text-accent shrink-0" />
                                     <span className="truncate">{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
@@ -604,9 +611,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                       e.stopPropagation();
                                       handleEntityClick(ev);
                                     }}
-                                    className="flex-1 min-w-0 sm:flex-initial hallmark-btn-primary !py-2.5 md:!py-1.5 !px-3 sm:!px-4 rounded-xl md:rounded-full text-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-sm min-h-[42px] md:min-h-0"
+                                    className="flex-1 min-w-0 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
                                   >
-                                    <MessageCircle className="w-4 h-4 shrink-0" />
+                                    <UserCheck className="w-4 h-4 shrink-0" />
                                     <span className="truncate">{isHe ? 'פרטים והרשמה' : 'Book'}</span>
                                   </button>
                                 </div>
@@ -758,10 +765,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                             e.stopPropagation();
                             handleShareEvent(item);
                           }}
-                          className="p-2 rounded-xl border border-rule-strong bg-plate hover:bg-paper-2 text-ink shadow-2xs active:scale-[0.98] transition-all"
+                          className="shrink-0 p-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-accent hover:border-accent/40 active:scale-[0.97] transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
                           title={isHe ? 'שיתוף אירוע' : 'Share event'}
                         >
-                          <Share2 className="w-4 h-4 text-accent" />
+                          <Share2 className="w-4 h-4 shrink-0" />
                         </button>
                         <button
                           type="button"
@@ -769,9 +776,9 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                             e.stopPropagation();
                             handleEntityClick(item);
                           }}
-                          className="hallmark-btn-primary text-xs sm:text-sm !py-2 !px-4"
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
                         >
-                          <MessageCircle className="w-4 h-4" />
+                          <UserCheck className="w-4 h-4 shrink-0" />
                           <span>{isHe ? 'פרטים והרשמה' : 'Details & Book'}</span>
                         </button>
                       </div>
