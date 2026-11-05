@@ -493,9 +493,9 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
           YOUTH CENTER EVENTS: CARDS VIEW vs CHRONOLOGICAL CALENDAR VIEW
          ===================================================================== */}
       {viewMode === 'calendar' ? (
-        <section className="space-y-6" aria-label={isHe ? 'לוח שבועי כרונולוגי' : 'Chronological Youth Calendar'}>
+        <section className="space-y-6 w-full max-w-full min-w-0" aria-label={isHe ? 'לוח שבועי כרונולוגי' : 'Chronological Youth Calendar'}>
           {/* Date Selector Strip */}
-          <div className="hallmark-plate p-4 sm:p-5 space-y-4">
+          <div className="hallmark-plate p-4 sm:p-5 space-y-4 w-full max-w-full min-w-0 overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
@@ -521,7 +521,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
             </div>
 
             {/* Chronological Date Cards Strip */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 w-full max-w-full min-w-0">
               {chronologicalDayGroups.map((dayGroup) => {
                 const isSelected = selectedDate === dayGroup.dateStr;
                 return (

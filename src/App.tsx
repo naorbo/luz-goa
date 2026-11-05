@@ -834,7 +834,7 @@ export function App() {
                 <div className="font-display text-xl font-bold text-ink group-hover:text-accent transition-colors leading-tight">
                   LUZ Goa
                 </div>
-                <div className="text-xs text-muted">
+                <div className="text-xs text-muted hidden sm:block">
                   {isHe
                     ? 'אירועים, בעלי מקצוע ובתים בדרום גואה'
                     : 'South Goa Events, Pros & Homes'}
@@ -960,7 +960,7 @@ export function App() {
       )}
 
       {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 md:py-10">
+      <main className="flex-1 max-w-7xl w-full max-w-full min-w-0 mx-auto px-4 md:px-8 py-6 md:py-10">
         {activeTab === 'explore' && (
           <ExploreView
             entities={entities}
