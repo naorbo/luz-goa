@@ -965,6 +965,21 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   </span>
                 </div>
               )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-sand-200 text-[11px]">
+                <span className="text-canopy-700 font-medium">
+                  {isHe ? 'מסמך ה-Log של האתר (פניות ולידים לספקים):' : 'Site Log Google Sheet (Referrals & CRM):'}
+                </span>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1Wy_m63Rrsux7XIpn_gpVPQufGWvbYKOu0YAPZzuLW6k/edit"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-bold text-terracotta-600 hover:text-terracotta-700 underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>{isHe ? 'פתיחת גיליון ה-Log של האתר' : 'Open Site Log Sheet'}</span>
+                </a>
+              </div>
             </div>
 
             {/* 2. Fallback Direct Email Channel (FormSubmit / Web3Forms) */}

@@ -4,17 +4,20 @@ export function isGoogleAppsScriptUrl(url: string): boolean {
 
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * ============================================================================
- * LUZ GOA — Google Apps Script Backend (Leads CRM + Youth Center Roster + Alerts)
+ * LUZ GOA — Google Apps Script Backend (Site Log CRM + Dedicated Youth Center)
  * Official Runner & Sender Account: luzschedu@gmail.com
  * ============================================================================
  * 1. Sign in to Google as luzschedu@gmail.com and open https://script.new
  *    (or open your existing Apps Script project attached to your Google Sheet)
  * 2. Paste this file, save (Ctrl+S).
- * 3. Run \`setupAndTestLuzAlerts\` once to grant permissions.
- * 4. Deploy -> Manage deployments -> Edit -> New version -> Deploy.
+ * 3. Run \`setupAndTestYouthCenterSheet\` in the top toolbar:
+ *    - This creates a BRAND-NEW dedicated Google Sheet strictly for the Youth Center
+ *      named "LUZ Goa — Youth Center Registrations" and logs its URL in the execution log!
+ *    - The existing site log document (1Wy_m63...) remains solely for website leads.
+ * 4. Deploy -> Manage deployments -> Edit -> New version -> Deploy:
  *    - Execute as: Me (luzschedu@gmail.com)
  *    - Who has access: Anyone
- * 5. All text stored in Google Sheets (Youth Center + Leads CRM) is in English!
+ * 5. All text stored in Google Sheets (Youth Center + Leads CRM) is 100% in English!
  * ============================================================================
  */
 
@@ -24,13 +27,16 @@ const CONFIG = {
   ADMIN_EMAIL: 'luzschedu@gmail.com',
   SEND_EMAIL_ALERTS: true,
 
-  // Dedicated Youth Center Registrations Spreadsheet & Tab
+  // 1. Existing Google Sheet strictly for Site Log / Provider Referrals & Leads CRM
+  LEADS_SPREADSHEET_ID: '1Wy_m63Rrsux7XIpn_gpVPQufGWvbYKOu0YAPZzuLW6k',
+  LEADS_SHEET_TITLE: 'LUZ Goa — Site Log & Provider Leads CRM',
+  LEADS_TAB_NAME: 'LUZ_Referrals',
+
+  // 2. Brand-New Dedicated Google Sheet strictly for Youth Center Registrations
+  // Leave empty to auto-create in Google Drive, or paste a new Sheet ID here:
+  YOUTH_CENTER_SPREADSHEET_ID: '',
   YOUTH_CENTER_SHEET_TITLE: 'LUZ Goa — Youth Center Registrations',
   YOUTH_CENTER_TAB_NAME: 'Youth_Center_Events',
-
-  // Provider Referrals & Leads CRM Spreadsheet & Tab
-  LEADS_SHEET_TITLE: 'LUZ Goa — Provider Referrals & Leads CRM',
-  LEADS_TAB_NAME: 'LUZ_Referrals',
 
   // Optional: Private Telegram Bot token & Chat ID
   TELEGRAM_BOT_TOKEN: '',
@@ -59,15 +65,22 @@ function setupAndTestLuzAlerts() {
         contactLang: 'en',
       },
       customer: { name: 'LUZ System Test', phone: '+972-52-000-0000' },
-      serviceOrDateSummary: 'Verification test from luzschedu@gmail.com (Google Sheets + Gmail)',
+      serviceOrDateSummary: 'Verification test from luzschedu@gmail.com (Site Log CRM)',
     },
     spreadsheet,
     sheet
   );
-  Logger.log('Leads CRM Sheet URL: ' + spreadsheet.getUrl());
+  Logger.log('Site Log CRM Sheet URL: ' + spreadsheet.getUrl());
 }
 
 function setupAndTestYouthCenterSheet() {
+  const props = PropertiesService.getScriptProperties();
+  const currentYcId = props.getProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID');
+  // Clear any incorrect reference to the site log
+  if (currentYcId === CONFIG.LEADS_SPREADSHEET_ID) {
+    props.deleteProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID');
+  }
+
   const { spreadsheet, sheet } = getOrCreateYouthCenterSheet_();
   processYouthCenterRegistration_(
     {
@@ -93,15 +106,28 @@ function setupAndTestYouthCenterSheet() {
     spreadsheet,
     sheet
   );
-  Logger.log('Youth Center Sheet URL: ' + spreadsheet.getUrl());
+  Logger.log('Brand-New Dedicated Youth Center Sheet URL: ' + spreadsheet.getUrl());
 }
 
-function doGet() {
+function doGet(e) {
+  const action = e && e.parameter ? e.parameter.action : '';
+  if (action === 'createYouthCenterSheet') {
+    const { spreadsheet } = getOrCreateYouthCenterSheet_();
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        ok: true,
+        youthCenterSheetUrl: spreadsheet.getUrl(),
+        youthCenterSheetId: spreadsheet.getId(),
+      })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+
   return ContentService.createTextOutput(
     JSON.stringify({
       ok: true,
       service: 'LUZ Goa Apps Script Webhook',
       senderAccount: CONFIG.SENDER_EMAIL,
+      siteLogSheetUrl: 'https://docs.google.com/spreadsheets/d/' + CONFIG.LEADS_SPREADSHEET_ID + '/edit',
       status: 'active',
     })
   ).setMimeType(ContentService.MimeType.JSON);
@@ -203,7 +229,7 @@ function processYouthCenterRegistration_(data, spreadsheet, sheet) {
       '<div><strong>Goa Time (IST):</strong> ' + goaTime + ' | ' + String(data.environment || 'prod').toUpperCase() + '</div>',
       '</div>',
       '<div style="margin-top:16px;">',
-      '<a href="' + spreadsheet.getUrl() + '" style="display:inline-block;background:#163024;color:#FAF6EE;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;margin-right:8px;">Open Youth Center Google Sheet</a>',
+      '<a href="' + spreadsheet.getUrl() + '" style="display:inline-block;background:#163024;color:#FAF6EE;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;margin-right:8px;">Open Dedicated Youth Center Sheet</a>',
       parentDigits ? '<a href="https://wa.me/' + parentDigits + '" style="display:inline-block;background:#2A6F7B;color:#FFFFFF;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;">WhatsApp Parent</a>' : '',
       '</div></div>',
     ].join('');
@@ -252,7 +278,7 @@ function processReferralEvent_(data, spreadsheet, sheet) {
 
     const htmlBody = [
       '<div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;background:#FAF6EE;padding:20px;border-radius:14px;border:1px solid #E5DCCB;color:#163024;">',
-      '<h2 style="margin:0 0 12px 0;color:#163024;">פנייה חדשה לספק מתוך LUZ גואה</h2>',
+      '<h2 style="margin:0 0 12px 0;color:#163024;">פנייה חדשה לספק מתוך LUZ גואה (Site Log)</h2>',
       '<div style="background:#FFFFFF;padding:16px;border-radius:10px;border:1px solid #E5DCCB;line-height:1.7;">',
       '<div><strong>מזהה הפניה (נשלח לספק):</strong> <span style="font-family:monospace;background:#163024;color:#EAB354;padding:2px 7px;border-radius:5px;">#' +
         (data.referralCode || '') +
@@ -271,7 +297,7 @@ function processReferralEvent_(data, spreadsheet, sheet) {
       '<div><strong>זמן (גואה) וסביבה:</strong> ' + goaTime + ' | ' + String(data.environment || 'prod').toUpperCase() + '</div>',
       '</div>',
       '<div style="margin-top:16px;">',
-      '<a href="' + spreadsheet.getUrl() + '" style="display:inline-block;background:#163024;color:#FAF6EE;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;margin-left:8px;">פתיחת גיליון הלידים (Google Sheets)</a>',
+      '<a href="' + spreadsheet.getUrl() + '" style="display:inline-block;background:#163024;color:#FAF6EE;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;margin-left:8px;">פתיחת גיליון הלידים של האתר (Google Sheets)</a>',
       providerDigits ? '<a href="https://wa.me/' + providerDigits + '" style="display:inline-block;background:#C85A32;color:#FFFFFF;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;margin-left:8px;">וואטסאפ לספק</a>' : '',
       customerDigits ? '<a href="https://wa.me/' + customerDigits + '" style="display:inline-block;background:#2A6F7B;color:#FFFFFF;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;">וואטסאפ לפונה</a>' : '',
       '</div></div>',
@@ -319,21 +345,28 @@ function processReferralEvent_(data, spreadsheet, sheet) {
 function getOrCreateYouthCenterSheet_() {
   let ss = null;
   const props = PropertiesService.getScriptProperties();
-  const savedId = props.getProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID');
-  if (savedId) {
-    try { ss = SpreadsheetApp.openById(savedId); } catch (e) { ss = null; }
-  }
-  if (!ss) {
-    const active = SpreadsheetApp.getActiveSpreadsheet();
-    if (active && active.getName().indexOf('Youth Center') !== -1) {
-      ss = active;
+  const configuredId = (CONFIG.YOUTH_CENTER_SPREADSHEET_ID || '').trim();
+  const savedId = (props.getProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID') || '').trim();
+  const targetId = configuredId || savedId;
+
+  // IMPORTANT: Never use the site log spreadsheet (1Wy_m63...) for Youth Center!
+  if (targetId && targetId !== CONFIG.LEADS_SPREADSHEET_ID) {
+    try {
+      ss = SpreadsheetApp.openById(targetId);
+    } catch (e) {
+      ss = null;
     }
   }
+
+  // If no dedicated Youth Center spreadsheet exists, create a brand-new file in Google Drive!
   if (!ss) {
     ss = SpreadsheetApp.create(CONFIG.YOUTH_CENTER_SHEET_TITLE);
     props.setProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID', ss.getId());
     try {
-      DriveApp.getFileById(ss.getId()).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      DriveApp.getFileById(ss.getId()).setSharing(
+        DriveApp.Access.ANYONE_WITH_LINK,
+        DriveApp.Permission.VIEW
+      );
     } catch (e) {
       // Ignore domain permission limitation
     }
@@ -360,23 +393,33 @@ function getOrCreateYouthCenterSheet_() {
     headerRange.setBackground('#163024');
     headerRange.setFontColor('#FAF6EE');
     headerRange.setFontWeight('bold');
+
+    try {
+      // Remove empty default Sheet1 if exists
+      const sheet1 = ss.getSheetByName('Sheet1');
+      if (sheet1 && ss.getSheets().length > 1) {
+        ss.deleteSheet(sheet1);
+      }
+    } catch (e) {}
   }
 
   return { spreadsheet: ss, sheet: sheet };
 }
 
 function getOrCreateLeadsSheet_() {
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let ss = null;
+  const props = PropertiesService.getScriptProperties();
+  const targetId = (CONFIG.LEADS_SPREADSHEET_ID || props.getProperty('LUZ_GOA_SPREADSHEET_ID') || '').trim();
+
+  if (targetId) {
+    try { ss = SpreadsheetApp.openById(targetId); } catch (e) { ss = null; }
+  }
   if (!ss) {
-    const props = PropertiesService.getScriptProperties();
-    const savedId = props.getProperty('LUZ_GOA_SPREADSHEET_ID');
-    if (savedId) {
-      try { ss = SpreadsheetApp.openById(savedId); } catch (e) { ss = null; }
-    }
-    if (!ss) {
-      ss = SpreadsheetApp.create(CONFIG.LEADS_SHEET_TITLE);
-      props.setProperty('LUZ_GOA_SPREADSHEET_ID', ss.getId());
-    }
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  }
+  if (!ss) {
+    ss = SpreadsheetApp.create(CONFIG.LEADS_SHEET_TITLE);
+    props.setProperty('LUZ_GOA_SPREADSHEET_ID', ss.getId());
   }
 
   let sheet = ss.getSheetByName(CONFIG.LEADS_TAB_NAME);

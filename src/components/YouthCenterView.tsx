@@ -63,6 +63,7 @@ interface YouthCenterViewProps {
 
 const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_nov26';
 const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
+const YC_DEDICATED_SHEET_URL_STORAGE_KEY = 'luz_yc_dedicated_spreadsheet_url_v1';
 
 const DAY_NAMES_HE = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'יום שבת'];
 const DAY_SHORT_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
@@ -147,6 +148,26 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       return DEFAULT_GLOBAL_WEBHOOK_OR_GAS_URL;
     }
   });
+
+  // Dedicated Youth Center Google Sheet Document URL (Separate from Site Log)
+  const [ycSpreadsheetUrl, setYcSpreadsheetUrl] = useState<string>(() => {
+    try {
+      return localStorage.getItem(YC_DEDICATED_SHEET_URL_STORAGE_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (ycSpreadsheetUrl.trim()) {
+        localStorage.setItem(YC_DEDICATED_SHEET_URL_STORAGE_KEY, ycSpreadsheetUrl.trim());
+      }
+    } catch {
+      // ignore
+    }
+  }, [ycSpreadsheetUrl]);
+
   const [showSheetSettings, setShowSheetSettings] = useState(false);
 
   // Persistent list of Youth Center Event Registrations
@@ -460,6 +481,46 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     const a = document.createElement('a');
     a.href = url;
     a.download = 'youth_center_goa_event_registrations.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadYouthCenterCsvTemplate = () => {
+    const headers = [
+      'Timestamp (Goa IST)',
+      'Registration ID',
+      'Event Name',
+      'Date & Schedule',
+      'Participant Name',
+      'Monthly Subscriber?',
+      'Parent Name',
+      'Parent WhatsApp Phone',
+      'Notes / Special Requests',
+      'Environment',
+    ];
+    const sampleRow = [
+      '2026-11-06 16:30:00',
+      '#YC-1001',
+      'Pottery Workshop with Local Clay',
+      'Friday, Nov 6 · 16:30 – 18:30',
+      'Liam Boiarsky',
+      'Yes (Monthly Subscriber)',
+      'Naor Boiarsky',
+      '+972-52-478-0033',
+      'None',
+      'PROD',
+    ];
+    const csvContent =
+      '\uFEFF' +
+      [headers, sampleRow]
+        .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'LUZ_Youth_Center_Template.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -894,17 +955,31 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 ))}
               </select>
 
-              <a
-                href="https://docs.google.com/spreadsheets/d/1Wy_m63Rrsux7XIpn_gpVPQufGWvbYKOu0YAPZzuLW6k/edit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-2 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-[0.98]"
-                title={isHe ? 'פתיחת גיליון Google Sheets של נרשמי המתנ״ס (באנגלית)' : 'Open Youth Center Registrations Google Sheet'}
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span>{isHe ? 'פתיחת Google Sheets (באנגלית)' : 'Open Google Sheet (English)'}</span>
-                <ExternalLink className="w-3 h-3 text-emerald-700 opacity-70 shrink-0" />
-              </a>
+              {/* Dedicated Youth Center Google Sheet Button */}
+              {ycSpreadsheetUrl.trim() ? (
+                <a
+                  href={ycSpreadsheetUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-[0.98]"
+                  title={isHe ? 'פתיחת גיליון Google Sheets הייעודי של המתנ״ס (באנגלית)' : 'Open Dedicated Youth Center Google Sheet'}
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>{isHe ? 'פתיחת Google Sheets למתנ״ס' : 'Open Youth Center Sheet'}</span>
+                  <ExternalLink className="w-3 h-3 text-emerald-700 opacity-70 shrink-0" />
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowSheetSettings(true)}
+                  className="px-3.5 py-2 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold transition-all inline-flex items-center gap-1.5 active:scale-[0.98]"
+                  title={isHe ? 'חיבור מסמך Google Sheets ייעודי רק למתנ״ס' : 'Connect Dedicated Youth Center Google Sheet'}
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>{isHe ? 'חיבור גיליון ייעודי למתנ״ס' : 'Connect Youth Center Sheet'}</span>
+                  <Plus className="w-3 h-3 text-emerald-700 opacity-70 shrink-0" />
+                </button>
+              )}
 
               <button
                 type="button"
@@ -921,42 +996,123 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 className="px-3.5 py-2 rounded-full bg-paper-2 hover:bg-paper-3 text-xs font-semibold text-ink transition-colors inline-flex items-center gap-1.5"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-ink-2" />
-                <span>{isHe ? 'הגדרת Webhook' : 'Webhook URL'}</span>
+                <span>{isHe ? 'הגדרות גיליון ו-Webhook' : 'Sheet & Webhook'}</span>
               </button>
             </div>
           </div>
 
           {showSheetSettings && (
-            <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2 text-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="p-5 rounded-2xl bg-paper-2 border border-rule space-y-4 text-xs">
+              <div className="flex items-center justify-between border-b border-rule pb-2.5">
+                <div className="font-bold text-ink text-sm flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>
+                    {isHe
+                      ? 'ניהול מסמך Google Sheets ייעודי רק למתנ״ס (נפרד מ-Log האתר)'
+                      : 'Dedicated Youth Center Google Sheet (Separate from Site Log)'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSheetSettings(false)}
+                  className="p-1 rounded-lg hover:bg-paper-3 text-muted hover:text-ink transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 1. Dedicated Youth Center Spreadsheet URL */}
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <label className="font-bold text-ink block">
+                    {isHe
+                      ? '1. קישור למסמך ה-Google Sheets הייעודי של המתנ״ס (באנגלית):'
+                      : '1. Dedicated Youth Center Google Sheet URL (English):'}
+                  </label>
+                  {ycSpreadsheetUrl.trim() && (
+                    <a
+                      href={ycSpreadsheetUrl.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-emerald-800 font-bold hover:underline"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      {isHe ? 'פתיחת המסמך המחובר' : 'Open Connected Sheet'}
+                    </a>
+                  )}
+                </div>
+                <input
+                  type="url"
+                  value={ycSpreadsheetUrl}
+                  onChange={(e) => setYcSpreadsheetUrl(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+                  className="w-full rounded-xl border border-rule-strong bg-plate px-3.5 py-2 text-xs hallmark-code text-ink"
+                  dir="ltr"
+                />
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <a
+                    href="https://sheets.new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isHe ? 'יצירת מסמך חדש ב-Google Sheets (בלחיצה אחת)' : 'Create New Sheet (sheets.new)'}</span>
+                    <ExternalLink className="w-3 h-3 opacity-80" />
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={downloadYouthCenterCsvTemplate}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-paper border border-rule-strong hover:bg-paper-3 font-semibold text-ink text-[11px] transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5 text-accent" />
+                    <span>{isHe ? 'הורדת תבנית עמודות באנגלית (CSV Template)' : 'Download English Columns Template'}</span>
+                  </button>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-paper border border-rule text-muted space-y-1 text-[11px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>
+                      {isHe
+                        ? 'מסמך ה-Log של האתר (ספקים, פניות ולידים) נשמר בנפרד:'
+                        : 'Site Log Document (Referrals & CRM) remains strictly separate:'}
+                    </span>
+                    <a
+                      href="https://docs.google.com/spreadsheets/d/1Wy_m63Rrsux7XIpn_gpVPQufGWvbYKOu0YAPZzuLW6k/edit"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-bold text-accent hover:underline shrink-0"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>{isHe ? 'פתיחת Log האתר (1Wy_m63...)' : 'Open Site Log Sheet'}</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Webhook for Real-time Auto Sync */}
+              <div className="space-y-1.5 pt-2 border-t border-rule">
                 <label className="font-bold text-ink block">
                   {isHe
-                    ? 'כתובת ה-Webhook של גיליון Google Sheets הייעודי למרכז הנוער:'
-                    : 'Dedicated Youth Center Google Sheet Webhook URL:'}
+                    ? '2. כתובת Webhook לסנכרון אוטומטי (Google Apps Script):'
+                    : '2. Dedicated Webhook URL for Real-Time Sync (Google Apps Script):'}
                 </label>
-                <a
-                  href="https://docs.google.com/spreadsheets/d/1Wy_m63Rrsux7XIpn_gpVPQufGWvbYKOu0YAPZzuLW6k/edit"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-emerald-800 font-bold hover:underline"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  {isHe ? 'קישור ישיר לגיליון הפעיל' : 'Direct Link to Active Sheet'}
-                </a>
+                <input
+                  type="url"
+                  value={ycSheetWebhookUrl}
+                  onChange={(e) => setYcSheetWebhookUrl(e.target.value)}
+                  placeholder="https://script.google.com/macros/s/.../exec"
+                  className="w-full rounded-xl border border-rule-strong bg-plate px-3.5 py-2 text-xs hallmark-code text-ink"
+                  dir="ltr"
+                />
+                <p className="text-muted leading-relaxed text-[11px]">
+                  {isHe
+                    ? 'קוד ה-Apps Script המעודכן מזהה הרשמות מתנ״ס ויוצר/מעדכן אוטומטית מסמך חדש ונפרד בשם "LUZ Goa — Youth Center Registrations" בדרייב, מבלי לפגוע או לגעת במסמך ה-Log של האתר.'
+                    : 'The updated Apps Script backend writes youth center registrations strictly to the dedicated Youth Center sheet and never touches the site log sheet.'}
+                </p>
               </div>
-              <input
-                type="url"
-                value={ycSheetWebhookUrl}
-                onChange={(e) => setYcSheetWebhookUrl(e.target.value)}
-                placeholder="https://script.google.com/macros/s/.../exec"
-                className="w-full rounded-xl border border-rule-strong bg-plate px-3.5 py-2 text-xs hallmark-code text-ink"
-                dir="ltr"
-              />
-              <p className="text-muted leading-relaxed">
-                {isHe
-                  ? 'כל הרשמה למתנ״ס נשלחת בפורמט אנגלי מלא (כותרות, שמות, סטטוס מנוי וזמנים לפי שעון גואה) ונרשמת בגיליון "LUZ Goa — Youth Center Registrations".'
-                  : 'Every youth center signup is dispatched in 100% English format to the dedicated "LUZ Goa — Youth Center Registrations" sheet.'}
-              </p>
             </div>
           )}
 
