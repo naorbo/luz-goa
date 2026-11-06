@@ -202,6 +202,7 @@ export function App() {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
       if (tab === 'youth_center' || tab === 'businesses' || tab === 'explore') return tab;
+      if (params.get('biz') || params.get('business') || window.location.hash.startsWith('#biz')) return 'businesses';
       if (params.get('gate') || params.get('checkin')) return 'youth_center';
       if (window.location.hash === '#youth-center' || window.location.hash === '#youth' || window.location.hash === '#gate') return 'youth_center';
     }
@@ -252,6 +253,12 @@ export function App() {
     if (gateId) {
       setActiveTab('youth_center');
       setInitialYouthEventId(gateId);
+      setSelectedEntity(null);
+      return;
+    }
+    const bizId = params.get('biz') || params.get('business');
+    if (bizId) {
+      setActiveTab('businesses');
       setSelectedEntity(null);
       return;
     }
@@ -1006,6 +1013,7 @@ export function App() {
         {activeTab === 'businesses' && (
           <BusinessesView
             businesses={businesses}
+            entities={entities}
             lang={lang}
             appEnv={isAdminAuthenticated ? appEnv : 'prod'}
             isAdmin={isAdminAuthenticated}
@@ -1016,6 +1024,7 @@ export function App() {
             onTrackReferral={handleTrackReferral}
             onSwitchToTest={() => handleSwitchEnvironment('test')}
             onTrackClick={handleTrackClick}
+            onSelectEntity={(ent) => setSelectedEntity(ent)}
           />
         )}
 

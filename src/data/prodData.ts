@@ -18,6 +18,34 @@ import { CORE_YOUTH_CENTER_EVENTS } from './youthCenterEvents';
 export const PROD_ENTITIES: LuzEntity[] = [
   ...CORE_YOUTH_CENTER_EVENTS,
   {
+    id: 'prod-evt-mount-sessions',
+    type: 'event',
+    titleHe: 'The Mount Sessions: ג׳אם שקיעה ומוזיקה חיה בראש הגבעה',
+    titleEn: 'The Mount Sessions: Sunset Acoustic & Live Jam',
+    descriptionHe:
+      'מפגש מוזיקה חיה וג׳אם אקוסטי בשקיעה במתחם The Mount בקנקונה! פיצות טריות בטאבון, קוקטיילים טבעיים ואווירה קהילתית מחברת תחת כיפת השמיים.',
+    descriptionEn:
+      'Sunset acoustic live jam and music gathering at The Mount in Canacona! Wood-fired sourdough pizza, organic drinks, and conscious community vibes under the stars.',
+    area: 'Palolem',
+    locationDetailsHe: 'The Mount Eco-Resort, Tembewada, Canacona',
+    locationDetailsEn: 'The Mount Eco-Resort, Tembewada, Canacona',
+    mapUrl: 'https://maps.google.com/?q=The+Mount+Palolem+Canacona',
+    hostName: 'The Mount & Community Musicians',
+    hostNameEn: 'The Mount Collective',
+    hostPhone: '+91 832 264 3456',
+    priceAmount: 500,
+    priceCurrency: 'INR',
+    audience: 'all',
+    ingestionSource: 'web',
+    imageUrl:
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
+    tags: ['The Mount', 'Live Music', 'קנקונה', 'ג׳אם', 'שקיעה', 'Music'],
+    rsvpCount: 34,
+    date: '2026-11-08',
+    startTime: '17:30',
+    endTime: '22:00',
+  },
+  {
     id: 'prod-wks-chess-tom',
     type: 'workshop',
     titleHe: 'שיעורי שחמט לילדים עם תום (מתחילים ומתקדמים)',
@@ -276,6 +304,90 @@ export const PROD_ENTITIES: LuzEntity[] = [
 ];
 
 export const PROD_BUSINESSES: CommunityBusiness[] = [
+  // ================= 0. מתחמי אירוח, בתי קפה ומרחבים אקולוגיים (spaces_cafes) =================
+  {
+    id: 'prod-biz-the-mount-canacona',
+    category: 'spaces_cafes',
+    specialtyHe: 'אקו-ריזורט, קפה אורגני, פיצות מחמצת בטאבון, יוגה שאלה ומוזיקה חיה',
+    specialtyEn: 'Hilltop Eco-Resort, Organic Cafe, Wood-Fired Pizza, Yoga Shala & Live Music',
+    businessNameHe: 'The Mount — אקו-ריזורט, קפה ומרחב קהילתי בקנקונה',
+    businessNameEn: 'The Mount Eco-Resort & Cafe, Canacona',
+    ownerNameHe: 'צוות The Mount (קנקונה / פאלולם)',
+    ownerNameEn: 'The Mount Team (Canacona)',
+    bioHe:
+      'מתחם קסום בראש הגבעה בטמבוואדה (קנקונה / פאלולם) הטובל ביער טרופי ובריזה מהים. המקום משלב בית קפה אורגני ופיצות מחמצת בטאבון עצים, שיעורי יוגה יומיים וסאונד הילינג בשאלה הפתוחה, סופי שבוע של ג׳אמים ומוזיקה חיה (The Mount Sessions), ובקתות אקולוגיות ללינה שלווה בטבע של דרום גואה.',
+    bioEn:
+      'A serene hilltop sanctuary in Tembewada (Canacona / Palolem) surrounded by lush tropical canopy and ocean breezes. Featuring an organic farm-to-table cafe with artisan wood-fired sourdough pizzas, daily yoga and sound healing in our open-air wooden shala, weekend live acoustic & sunset sessions (The Mount Sessions), and rustic eco-cottages for a grounded stay in South Goa.',
+    area: 'Palolem',
+    locationDetailsHe: 'Bhaireliwada, Tembewada, Palolem / Chaudi, Canacona, South Goa',
+    locationDetailsEn: 'Bhaireliwada, Tembewada, Palolem / Chaudi, Canacona, South Goa 403702',
+    homeVisitAvailable: false,
+    phone: '+91 832 264 3456',
+    instagramHandle: 'themountgoa',
+    websiteUrl: 'https://themount.co.in',
+    preferredContactLang: 'en',
+    imageUrl:
+      'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=1200',
+    availableDays: [0, 1, 2, 3, 4, 5, 6],
+    timeSlots: ['08:30', '10:00', '12:30', '16:00', '18:30', '20:30'],
+    bookedSlots: {},
+    servicesMenu: [
+      {
+        id: 'mount-pizza-dinner',
+        nameHe: 'פיצות מחמצת בטאבון עצים וארוחות שף אורגניות',
+        nameEn: 'Wood-Fired Sourdough Pizza & Farm Dinner',
+        priceAmount: 550,
+        priceCurrency: 'INR',
+        durationMinutes: 90,
+      },
+      {
+        id: 'mount-yoga-session',
+        nameHe: 'שיעור יוגה פתוח (Drop-in) בשאלה הפתוחה מול הטבע',
+        nameEn: 'Morning Yoga Drop-in Class in Open Shala',
+        priceAmount: 500,
+        priceCurrency: 'INR',
+        durationMinutes: 75,
+      },
+      {
+        id: 'mount-sound-bath',
+        nameHe: 'סאונד הילינג ושקיעה ברוגע (סופשבוע)',
+        nameEn: 'Sunset Sound Bath & Breathwork Session',
+        priceAmount: 700,
+        priceCurrency: 'INR',
+        durationMinutes: 90,
+      },
+      {
+        id: 'mount-sessions-ticket',
+        nameHe: 'The Mount Sessions: מוזיקה חיה, ג׳אם שקיעה ודיג׳יי',
+        nameEn: 'The Mount Sessions (Live Music & Sunset Jam)',
+        priceAmount: 500,
+        priceCurrency: 'INR',
+        durationMinutes: 240,
+      },
+      {
+        id: 'mount-eco-cottage',
+        nameHe: 'אירוח בבקתת אקו זוגית בטבע (כולל ארוחת בוקר)',
+        nameEn: 'Rustic Eco-Cottage Stay (Double, incl. Breakfast)',
+        priceAmount: 3800,
+        priceCurrency: 'INR',
+        durationMinutes: 1440,
+      },
+    ],
+    tags: [
+      'The Mount',
+      'Canacona',
+      'קנקונה',
+      'בית קפה',
+      'פיצה',
+      'יוגה',
+      'הופעות',
+      'Palolem',
+      'Eco Resort',
+      'Live Music',
+    ],
+    verifiedCommunityMember: true,
+    endorsementsCount: 48,
+  },
   // ================= 1. טיפולי גוף, מים, נשימה ורפואה משלימה (body_therapy) =================
   {
     id: 'prod-biz-lidor-nahum',

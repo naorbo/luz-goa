@@ -22,6 +22,8 @@ import {
   FlaskConical,
   Globe,
   Users,
+  TreePine,
+  Eye,
 } from 'lucide-react';
 import {
   CommunityBusiness,
@@ -34,6 +36,7 @@ import {
   LeadReferralEvent,
   ReferralActionType,
   ClickAnalyticsEvent,
+  LuzEntity,
 } from '../types/luz';
 import { downloadIcsFile, buildGoogleCalendarUrl } from '../utils/calendarAndParser';
 import {
@@ -44,9 +47,11 @@ import {
   generateLuzReferralCode,
   resolveProviderContactLang,
 } from '../utils/referralAndAlerts';
+import { BusinessProfileModal } from './BusinessProfileModal';
 
 interface BusinessesViewProps {
   businesses: CommunityBusiness[];
+  entities?: LuzEntity[];
   lang: Language;
   appEnv: AppEnvironment;
   isAdmin?: boolean;
@@ -64,6 +69,7 @@ interface BusinessesViewProps {
   onTrackClick?: (
     event: Omit<ClickAnalyticsEvent, 'id' | 'sessionId' | 'timestamp' | 'environment'>
   ) => void;
+  onSelectEntity?: (entity: LuzEntity) => void;
 }
 
 export const BUSINESS_CATEGORIES: Array<{
@@ -74,6 +80,14 @@ export const BUSINESS_CATEGORIES: Array<{
   examplesEn: string;
   icon: React.ElementType;
 }> = [
+  {
+    id: 'spaces_cafes',
+    labelHe: 'מתחמי אירוח, בתי קפה ויוגה',
+    labelEn: 'Eco-Resorts, Cafes & Shalas',
+    examplesHe: 'The Mount, סוכה, שאלה פתוחה, בקתות',
+    examplesEn: 'The Mount, Yoga Shalas, Cafes, Eco-Stay',
+    icon: TreePine,
+  },
   {
     id: 'body_therapy',
     labelHe: 'טיפולי גוף, מים ונשימה',
@@ -151,6 +165,7 @@ const UPCOMING_DATES = [
 
 export const BusinessesView: React.FC<BusinessesViewProps> = ({
   businesses,
+  entities = [],
   lang,
   appEnv,
   isAdmin = false,
@@ -161,6 +176,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   onTrackReferral,
   onSwitchToTest,
   onTrackClick,
+  onSelectEntity,
 }) => {
   const isHe = lang === 'he';
 
@@ -172,7 +188,26 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
 
   // Modal states
   const [activeBusiness, setActiveBusiness] = useState<CommunityBusiness | null>(null);
+  const [profileBusiness, setProfileBusiness] = useState<CommunityBusiness | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Deep Link support (?biz=prod-biz-the-mount-canacona or ?biz=mount)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const bizId = params.get('biz') || params.get('business');
+    if (bizId) {
+      const match = businesses.find(
+        (b) =>
+          b.id === bizId ||
+          b.id.toLowerCase().includes(bizId.toLowerCase()) ||
+          b.businessNameEn.toLowerCase().includes(bizId.toLowerCase())
+      );
+      if (match) {
+        setProfileBusiness(match);
+      }
+    }
+  }, [businesses]);
 
   // Booking inside Business Modal
   const [selectedOfferId, setSelectedOfferId] = useState<string>('');
@@ -338,6 +373,7 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
   const handleCreateBusiness = (e: React.FormEvent) => {
     e.preventDefault();
     const defaultCategoryImages: Record<BusinessCategory, string> = {
+      spaces_cafes: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=1000',
       body_therapy: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&q=80&w=1000',
       beauty_cosmetics: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&q=80&w=1000',
       tattoo_art: 'https://images.unsplash.com/photo-1598371839696-5c5bb00bdc28?auto=format&fit=crop&q=80&w=1000',
@@ -582,7 +618,10 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
               >
                 <div>
                   {/* Clean Atmospheric Photo Header */}
-                  <div className="relative h-44 bg-paper-2 overflow-hidden">
+                  <div
+                    className="relative h-44 bg-paper-2 overflow-hidden cursor-pointer"
+                    onClick={() => setProfileBusiness(biz)}
+                  >
                     <img
                       src={biz.imageUrl}
                       alt={isHe ? biz.businessNameHe : biz.businessNameEn}
@@ -595,10 +634,16 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                         <CatIcon className="w-3.5 h-3.5 text-accent" />
                         <span>{isHe ? catMeta.labelHe : catMeta.labelEn}</span>
                       </span>
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-accent" />
-                        <span>{biz.area}</span>
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-accent text-white shadow-sm inline-flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          <span>{isHe ? 'דף עסק' : 'Profile'}</span>
+                        </span>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-accent" />
+                          <span>{biz.area}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -608,7 +653,10 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                       <div className="text-xs font-semibold text-accent mb-0.5">
                         {isHe ? biz.specialtyHe : biz.specialtyEn}
                       </div>
-                      <h3 className="font-display text-xl font-bold text-ink leading-snug">
+                      <h3
+                        onClick={() => setProfileBusiness(biz)}
+                        className="font-display text-xl font-bold text-ink leading-snug cursor-pointer hover:text-accent transition-colors"
+                      >
                         {isHe ? biz.businessNameHe : biz.businessNameEn}
                       </h3>
                       <div className="text-xs text-muted mt-0.5">
@@ -644,26 +692,36 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
                   </div>
                 </div>
 
-                {/* Simple 2-Button Action Footer */}
-                <div className="px-5 py-4 bg-paper/60 border-t border-rule flex items-center gap-2.5">
+                {/* 3-Button Action Footer */}
+                <div className="px-5 py-4 bg-paper/60 border-t border-rule flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setProfileBusiness(biz)}
+                    className="flex-1 hallmark-btn-primary text-xs sm:text-sm !py-2.5 !px-3 font-bold flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>{isHe ? 'צפה בדף העסק' : 'View Page'}</span>
+                  </button>
+
                   <a
                     href={buildBusinessWhatsAppReferralUrl(biz, cardRefCode, defaultUserName)}
                     onClick={() => trackBusinessLead(biz, 'whatsapp_click', cardRefCode)}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 hallmark-btn-primary text-xs sm:text-sm !py-2.5 !px-4"
+                    className="hallmark-btn-secondary text-xs sm:text-sm !py-2.5 !px-3 flex items-center gap-1.5"
+                    title={isHe ? 'וואטסאפ ישיר' : 'WhatsApp'}
                   >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>{isHe ? 'וואטסאפ ישיר' : 'WhatsApp'}</span>
+                    <MessageSquare className="w-4 h-4 text-accent" />
+                    <span className="hidden sm:inline">{isHe ? 'וואטסאפ' : 'WhatsApp'}</span>
                   </a>
 
                   <button
                     type="button"
                     onClick={() => openBookingForBusiness(biz)}
-                    className="hallmark-btn-secondary text-xs sm:text-sm !py-2.5 !px-3.5"
+                    className="hallmark-btn-secondary text-xs sm:text-sm !py-2.5 !px-2.5"
+                    title={isHe ? 'תיאום תור' : 'Book'}
                   >
                     <Calendar className="w-4 h-4 text-accent" />
-                    <span>{isHe ? 'תיאום תור' : 'Book Slot'}</span>
                   </button>
                 </div>
               </article>
@@ -1116,6 +1174,33 @@ export const BusinessesView: React.FC<BusinessesViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* FULL BUSINESS PROFILE SHOWCASE MODAL */}
+      {profileBusiness && (
+        <BusinessProfileModal
+          business={profileBusiness}
+          lang={lang}
+          onClose={() => setProfileBusiness(null)}
+          onBookSlot={(b, offerId) => {
+            setProfileBusiness(null);
+            openBookingForBusiness(b);
+            if (offerId) setSelectedOfferId(offerId);
+          }}
+          defaultUserName={defaultUserName}
+          relatedEvents={entities.filter(
+            (e) =>
+              (profileBusiness.id.includes('the-mount') &&
+                (e.id.includes('mount') ||
+                  e.tags.some((t) => t.toLowerCase().includes('mount')) ||
+                  e.locationDetailsEn?.toLowerCase().includes('mount'))) ||
+              e.titleEn.toLowerCase().includes(profileBusiness.businessNameEn.toLowerCase().slice(0, 8))
+          )}
+          onSelectEvent={(evt) => {
+            setProfileBusiness(null);
+            onSelectEntity?.(evt);
+          }}
+        />
       )}
     </div>
   );

@@ -27,6 +27,7 @@ export type VolunteerRole =
   | 'ideas';
 
 export type BusinessCategory =
+  | 'spaces_cafes'      // מתחמי אירוח, בתי קפה, יוגה ואקולוגיה
   | 'body_therapy'      // טיפולי גוף, מים, נשימה ורפואה משלימה
   | 'beauty_cosmetics'  // שיער, תספורות, ראסטות, רוקחות טבעית וטיפוח
   | 'tattoo_art'        // טיפול באומנות, יצירה, עיצוב ואיור

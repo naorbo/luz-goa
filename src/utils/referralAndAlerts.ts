@@ -118,7 +118,8 @@ export function appendLuzAttributionParams(rawUrl: string, referralCode: string)
 export function buildBusinessWhatsAppReferralUrl(
   biz: CommunityBusiness,
   referralCode: string,
-  customerName?: string
+  customerName?: string,
+  specificItemName?: string
 ): string {
   const providerLang = resolveProviderContactLang(
     biz.preferredContactLang,
@@ -127,12 +128,13 @@ export function buildBusinessWhatsAppReferralUrl(
   );
   const digits = biz.phone.replace(/[^0-9]/g, '');
   const cleanCustomer = customerName?.trim();
+  const itemToMention = specificItemName?.trim() || (providerLang === 'en' ? biz.specialtyEn : biz.specialtyHe);
 
   const text =
     providerLang === 'en'
       ? [
           `Hi ${biz.ownerNameEn}, I reached out to you via the *LUZ Goa Community Platform* (${PLATFORM_SHORT_URL}).`,
-          `I would love to get details / book regarding: *${biz.specialtyEn}*.`,
+          `I would love to get details / book regarding: *${itemToMention}*.`,
           cleanCustomer ? `My name: ${cleanCustomer}` : '',
           `(LUZ Referral: #${referralCode})`,
         ]
@@ -140,7 +142,7 @@ export function buildBusinessWhatsAppReferralUrl(
           .join('\n')
       : [
           `היי ${biz.ownerNameHe}, הגעתי אליך דרך פלטפורמת הקהילה *LUZ גואה* (${PLATFORM_SHORT_URL}).`,
-          `אשמח לפרטים / לתיאום לגבי: *${biz.specialtyHe}*.`,
+          `אשמח לפרטים / לתיאום לגבי: *${itemToMention}*.`,
           cleanCustomer ? `השם שלי: ${cleanCustomer}` : '',
           `(מזהה הפניה מ-LUZ: #${referralCode})`,
         ]
