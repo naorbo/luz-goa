@@ -202,7 +202,8 @@ export function App() {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
       if (tab === 'youth_center' || tab === 'businesses' || tab === 'explore') return tab;
-      if (window.location.hash === '#youth-center' || window.location.hash === '#youth') return 'youth_center';
+      if (params.get('gate') || params.get('checkin')) return 'youth_center';
+      if (window.location.hash === '#youth-center' || window.location.hash === '#youth' || window.location.hash === '#gate') return 'youth_center';
     }
     return 'explore';
   });
@@ -243,10 +244,17 @@ export function App() {
     });
   }, [activeTab, lang, entities, businesses, selectedEntity]);
 
-  // Deep-linking: auto-open modal if URL contains ?event=EVENT_ID
+  // Deep-linking: auto-open modal or gate if URL contains ?event=EVENT_ID or ?gate=EVENT_ID
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    const gateId = params.get('gate') || params.get('checkin');
+    if (gateId) {
+      setActiveTab('youth_center');
+      setInitialYouthEventId(gateId);
+      setSelectedEntity(null);
+      return;
+    }
     const eventId = params.get('event');
     if (eventId) {
       const match =
