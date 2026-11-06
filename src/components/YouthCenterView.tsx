@@ -24,6 +24,20 @@ import {
   ChevronUp,
   Eye,
   Sparkles,
+  ClipboardCheck,
+  UserPlus,
+  Undo2,
+  Search,
+  PhoneCall,
+  Send,
+  Check,
+  Copy,
+  Filter,
+  ArrowRight,
+  ArrowLeft,
+  AlertCircle,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import {
   YouthCenterFamily,
@@ -51,6 +65,11 @@ export interface YouthCenterEventRegistration {
   parentPhone: string;
   notes: string;
   createdAt: string;
+  // Attendance tracking for volunteer parent shifts:
+  attended?: boolean;
+  attendedAt?: string;
+  isWalkIn?: boolean;
+  checkedInBy?: string;
 }
 
 interface YouthCenterViewProps {
@@ -74,6 +93,13 @@ const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_nov26';
 const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
 const YC_DEDICATED_SHEET_URL_STORAGE_KEY = 'luz_yc_dedicated_spreadsheet_url_v1';
 const YC_EVENT_OVERRIDES_STORAGE_KEY = 'luz_yc_event_custom_overrides_v2';
+const GATE_UNLOCKED_STORAGE_KEY = 'luz_yc_gate_unlocked_v1';
+export const GATE_MASTER_PASSCODE = 'Matnas2026';
+
+export function verifyGatePasscode(input: string): boolean {
+  const clean = input.trim().toLowerCase();
+  return clean === 'matnas2026' || clean === 'matnas';
+}
 export const DEFAULT_YC_SPREADSHEET_URL =
   'https://docs.google.com/spreadsheets/d/1I3EEIlSbA83KK_t-ElZVb5ILACKs598FhjkR7pOASH4/edit';
 export const DEFAULT_YC_WEBHOOK_URL =
@@ -115,10 +141,45 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 }) => {
   const isHe = lang === 'he';
 
-  const [viewMode, setViewMode] = useState<'cards' | 'calendar'>('calendar');
+  const [viewMode, setViewMode] = useState<'cards' | 'calendar' | 'gate'>('calendar');
   const [selectedEventForReg, setSelectedEventForReg] = useState<LuzEntity | null>(null);
   const [filterEventId, setFilterEventId] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string | 'all'>('all');
+
+  // Volunteer Door / Gate Check-In Portal State (100% Free, Mobile-First)
+  const [gateEventId, setGateEventId] = useState<string | null>(null);
+  const [volunteerName, setVolunteerName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('luz_yc_volunteer_name') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [gateSearchQuery, setGateSearchQuery] = useState<string>('');
+  const [gateFilter, setGateFilter] = useState<'all' | 'pending' | 'attended' | 'walkin'>('all');
+  const [gateToast, setGateToast] = useState<string | null>(null);
+
+  // Volunteer Gate Passcode Protection ('Matnas2026')
+  const [isGateUnlocked, setIsGateUnlocked] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(GATE_UNLOCKED_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [gatePasscodeInput, setGatePasscodeInput] = useState<string>('');
+  const [gatePasscodeError, setGatePasscodeError] = useState<string>('');
+
+  const hasGateAccess = isAdmin || isGateUnlocked;
+
+  // Walk-in modal state
+  const [showWalkInModal, setShowWalkInModal] = useState<boolean>(false);
+  const [walkInChildName, setWalkInChildName] = useState<string>('');
+  const [walkInParentName, setWalkInParentName] = useState<string>('');
+  const [walkInParentPhone, setWalkInParentPhone] = useState<string>('');
+  const [walkInIsSubscriber, setWalkInIsSubscriber] = useState<boolean>(false);
+  const [walkInNotes, setWalkInNotes] = useState<string>('');
+  const [walkInSaving, setWalkInSaving] = useState<boolean>(false);
 
   // Multi-line description expansion toggle
   const [expandedDescIds, setExpandedDescIds] = useState<Record<string, boolean>>({});
@@ -390,9 +451,29 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     );
   }, [entities, eventOverrides]);
 
-  // Deep-linking: auto-open registration modal when an event is targeted via URL
+  // Deep-linking: auto-open registration modal or gate when an event is targeted via URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const gateParam = params.get('gate') || params.get('checkin');
+      if (gateParam) {
+        setViewMode('gate');
+        setGateEventId(gateParam);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (initialEventId && youthEvents.length > 0) {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('gate') || params.get('checkin')) {
+          setViewMode('gate');
+          setGateEventId(initialEventId);
+          onClearInitialEvent?.();
+          return;
+        }
+      }
       const match = youthEvents.find((e) => e.id === initialEventId);
       if (match) {
         setSelectedEventForReg(match);
@@ -402,6 +483,78 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       }
     }
   }, [initialEventId, youthEvents, onClearInitialEvent]);
+
+  useEffect(() => {
+    try {
+      if (volunteerName.trim()) {
+        localStorage.setItem('luz_yc_volunteer_name', volunteerName.trim());
+      }
+    } catch {
+      // ignore
+    }
+  }, [volunteerName]);
+
+  // Active event in Gate check-in view
+  const activeGateEvent = useMemo(() => {
+    if (gateEventId) {
+      const match = youthEvents.find((e) => e.id === gateEventId);
+      if (match) return match;
+    }
+    return youthEvents[0] || CORE_YOUTH_CENTER_EVENTS[0];
+  }, [gateEventId, youthEvents]);
+
+  // Gate live metrics (Pre-registered vs Walk-in vs Expected)
+  const gateMetrics = useMemo(() => {
+    if (!activeGateEvent) {
+      return { totalAttended: 0, attendedPreReg: 0, totalPreReg: 0, attendedWalkIns: 0, pendingCount: 0 };
+    }
+    const eventRegs = registrations.filter((r) => r.eventId === activeGateEvent.id);
+    const preRegs = eventRegs.filter((r) => !r.isWalkIn);
+    const attendedPreReg = preRegs.filter((r) => r.attended).length;
+    const attendedWalkIns = eventRegs.filter((r) => r.isWalkIn && r.attended).length;
+    const totalAttended = attendedPreReg + attendedWalkIns;
+    const totalPreReg = preRegs.length;
+    const pendingCount = Math.max(0, totalPreReg - attendedPreReg);
+
+    return {
+      totalAttended,
+      attendedPreReg,
+      totalPreReg,
+      attendedWalkIns,
+      pendingCount,
+    };
+  }, [activeGateEvent, registrations]);
+
+  // Gate attendee filtered list for display
+  const gateFilteredList = useMemo(() => {
+    if (!activeGateEvent) return [];
+    return registrations.filter((r) => r.eventId === activeGateEvent.id);
+  }, [activeGateEvent, registrations]);
+
+  const gateDisplayList = useMemo(() => {
+    let list = gateFilteredList;
+
+    if (gateFilter === 'pending') {
+      list = list.filter((r) => !r.attended);
+    } else if (gateFilter === 'attended') {
+      list = list.filter((r) => r.attended);
+    } else if (gateFilter === 'walkin') {
+      list = list.filter((r) => r.isWalkIn);
+    }
+
+    if (gateSearchQuery.trim()) {
+      const q = gateSearchQuery.trim().toLowerCase();
+      list = list.filter(
+        (r) =>
+          r.participantName.toLowerCase().includes(q) ||
+          r.parentName.toLowerCase().includes(q) ||
+          r.parentPhone.toLowerCase().includes(q) ||
+          (r.notes && r.notes.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }, [gateFilteredList, gateFilter, gateSearchQuery]);
 
   // Chronological calendar by exact date
   const chronologicalDayGroups = useMemo(() => {
@@ -552,6 +705,278 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     setRegSubmitted(true);
   };
 
+  // =========================================================================
+  // VOLUNTEER DOOR / GATE CHECK-IN PORTAL HANDLERS (100% Free, Mobile-First)
+  // =========================================================================
+
+  const handleOpenGateForEvent = (eventId: string) => {
+    setGateEventId(eventId);
+    setViewMode('gate');
+    setGateSearchQuery('');
+    setGateFilter('all');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleGatePasscodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (verifyGatePasscode(gatePasscodeInput)) {
+      setIsGateUnlocked(true);
+      try {
+        localStorage.setItem(GATE_UNLOCKED_STORAGE_KEY, 'true');
+      } catch {
+        // ignore
+      }
+      setGatePasscodeError('');
+      setGatePasscodeInput('');
+      setGateToast(
+        isHe
+          ? 'שער הנוכחות נפתח בהצלחה! משמרת נעימה 🌿'
+          : 'Gate unlocked successfully! Have a great shift 🌿'
+      );
+      setTimeout(() => setGateToast(null), 3000);
+    } else {
+      setGatePasscodeError(
+        isHe
+          ? 'קוד שגוי. הסיסמה היא: Matnas2026'
+          : 'Incorrect passcode. Passcode is: Matnas2026'
+      );
+    }
+  };
+
+  const handleLockGate = () => {
+    setIsGateUnlocked(false);
+    try {
+      localStorage.removeItem(GATE_UNLOCKED_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    setGateToast(isHe ? 'שער הנוכחות ננעל' : 'Gate locked');
+    setTimeout(() => setGateToast(null), 2500);
+  };
+
+  const handleToggleAttendance = (regId: string) => {
+    const defaultVolunteer = isHe ? 'הורה מתנדב' : 'Volunteer Parent';
+    const finalVolunteer = volunteerName.trim() || defaultVolunteer;
+
+    setRegistrations((prev) =>
+      prev.map((r) => {
+        if (r.id !== regId) return r;
+        const nextAttended = !r.attended;
+        return {
+          ...r,
+          attended: nextAttended,
+          attendedAt: nextAttended ? new Date().toISOString() : undefined,
+          checkedInBy: nextAttended ? finalVolunteer : undefined,
+        };
+      })
+    );
+
+    const target = registrations.find((r) => r.id === regId);
+    if (target) {
+      const willBeAttended = !target.attended;
+      const msg = willBeAttended
+        ? (isHe ? `✅ ${target.participantName} סומן/ה כנוכח/ת!` : `✅ ${target.participantName} checked in!`)
+        : (isHe ? `↩️ בוטל סימון הנוכחות עבור ${target.participantName}` : `↩️ Check-in undone for ${target.participantName}`);
+      setGateToast(msg);
+      setTimeout(() => setGateToast(null), 2500);
+    }
+  };
+
+  const handleSaveWalkIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walkInChildName.trim()) return;
+
+    setWalkInSaving(true);
+    const scheduleLabelEn = formatEventScheduleEn(activeGateEvent);
+    const scheduleLabelHe = formatEventSchedule(activeGateEvent);
+    const defaultVolunteer = isHe ? 'הורה מתנדב' : 'Volunteer Parent';
+    const finalVolunteer = volunteerName.trim() || defaultVolunteer;
+
+    const newWalkInReg: YouthCenterEventRegistration = {
+      id: `yc-walkin-${Date.now()}`,
+      eventId: activeGateEvent.id,
+      eventTitleHe: activeGateEvent.titleHe,
+      eventTitleEn: activeGateEvent.titleEn,
+      eventSchedule: isHe ? scheduleLabelHe : scheduleLabelEn,
+      participantName: walkInChildName.trim(),
+      isSubscriber: walkInIsSubscriber,
+      parentName: walkInParentName.trim() || (isHe ? 'ללא ציון' : 'Not specified'),
+      parentPhone: walkInParentPhone.trim() || '—',
+      notes: walkInNotes.trim() || (isHe ? 'הגיע/ה ללא הרשמה מראש (Walk-in בשער)' : 'Walk-in at gate (Not pre-registered)'),
+      createdAt: new Date().toISOString(),
+      attended: true,
+      attendedAt: new Date().toISOString(),
+      isWalkIn: true,
+      checkedInBy: finalVolunteer,
+    };
+
+    setRegistrations((prev) => [newWalkInReg, ...prev]);
+
+    // Fire Google Sheet Webhook if available (100% free)
+    const targetUrl = (ycSheetWebhookUrl || DEFAULT_YC_WEBHOOK_URL).trim();
+    if (targetUrl.startsWith('https://')) {
+      try {
+        const payload = {
+          event: 'luz.youth_center_event_rsvp',
+          dedicatedSheetName: 'LUZ Goa — Youth Center Registrations',
+          sheetTabName: 'Youth_Center_Events',
+          referralCode: `YC-WALKIN-${Date.now().toString().slice(-4)}`,
+          environment: 'prod',
+          actionType: 'youth_center_walkin_attendance',
+          actionLabelEn: 'Youth Center Gate Walk-In (Attended)',
+          actionLabelHe: 'נוכח בשער ללא הרשמה מראש (Walk-in)',
+          youthCenterEvent: {
+            eventId: activeGateEvent.id,
+            titleEn: activeGateEvent.titleEn,
+            titleHe: activeGateEvent.titleHe,
+            schedule: scheduleLabelEn,
+            location: activeGateEvent.locationDetailsEn || 'Colomb Youth Center',
+            participantName: newWalkInReg.participantName,
+            isSubscriber: walkInIsSubscriber ? 'Yes (Subscriber)' : 'No (Walk-in Guest)',
+            parentName: newWalkInReg.parentName,
+            parentPhone: newWalkInReg.parentPhone,
+            notes: `[WALK-IN AT GATE by ${finalVolunteer}] ${newWalkInReg.notes}`,
+            registeredAt: newWalkInReg.createdAt,
+          },
+        };
+        void fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+          mode: 'no-cors',
+        });
+      } catch {
+        // ignore
+      }
+    }
+
+    setWalkInSaving(false);
+    setShowWalkInModal(false);
+    setWalkInChildName('');
+    setWalkInParentName('');
+    setWalkInParentPhone('');
+    setWalkInIsSubscriber(false);
+    setWalkInNotes('');
+
+    setGateToast(
+      isHe
+        ? `🎉 ${newWalkInReg.participantName} נוסף/ה וסומן/ה כנוכח/ת!`
+        : `🎉 ${newWalkInReg.participantName} added and checked in!`
+    );
+    setTimeout(() => setGateToast(null), 3000);
+  };
+
+  const handleDeleteRegistration = (regId: string) => {
+    if (!window.confirm(isHe ? 'האם להסיר רשומת נוכחות זו?' : 'Remove this registration?')) {
+      return;
+    }
+    setRegistrations((prev) => prev.filter((r) => r.id !== regId));
+    setGateToast(isHe ? 'הרשומה הוסרה' : 'Registration removed');
+    setTimeout(() => setGateToast(null), 2500);
+  };
+
+  const handleShareAttendanceSummaryWhatsApp = (event: LuzEntity) => {
+    const eventRegs = registrations.filter((r) => r.eventId === event.id);
+    const preRegs = eventRegs.filter((r) => !r.isWalkIn);
+    const attendedPreRegs = preRegs.filter((r) => r.attended);
+    const attendedWalkIns = eventRegs.filter((r) => r.isWalkIn && r.attended);
+    const totalAttended = attendedPreRegs.length + attendedWalkIns.length;
+    const noShows = preRegs.filter((r) => !r.attended);
+
+    const eventTitle = isHe ? event.titleHe : event.titleEn;
+    const schedule = formatEventSchedule(event);
+    const volunteer = volunteerName.trim() || (isHe ? 'הורה מתנדב' : 'Volunteer Parent');
+
+    let text = `*דוח נוכחות — מרכז הנוער גואה (Goa Teens House)*\n`;
+    text += `🎯 *פעילות:* ${eventTitle}\n`;
+    text += `📅 *מועד:* ${schedule}\n`;
+    text += `👤 *הורה מתנדב בשער:* ${volunteer}\n`;
+    text += `----------------------------------------\n`;
+    text += `👥 *סה"כ נוכחים במקום:* ${totalAttended}\n`;
+    text += `✅ *נרשמו מראש והגיעו:* ${attendedPreRegs.length} מתוך ${preRegs.length}\n`;
+    text += `🚶 *הגיעו ללא הרשמה (Walk-in):* ${attendedWalkIns.length}\n`;
+    text += `⏳ *נרשמו וטרם הגיעו:* ${noShows.length}\n`;
+    text += `----------------------------------------\n\n`;
+
+    if (totalAttended > 0) {
+      text += `*📋 פירוט נוכחים (${totalAttended}):*\n`;
+      let idx = 1;
+      attendedPreRegs.forEach((r) => {
+        const timeStr = r.attendedAt
+          ? new Date(r.attendedAt).toLocaleTimeString('he-IL', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '';
+        text += `${idx++}. ${r.participantName} ${r.isSubscriber ? '(מנוי)' : '(אורח)'}${timeStr ? ` · ${timeStr}` : ''}\n`;
+      });
+      attendedWalkIns.forEach((r) => {
+        text += `${idx++}. 🚶 ${r.participantName} (Walk-in${r.parentName && r.parentName !== 'ללא ציון' ? `, הורה: ${r.parentName}` : ''}${r.parentPhone && r.parentPhone !== '—' ? ` ${r.parentPhone}` : ''})\n`;
+      });
+      text += `\n`;
+    }
+
+    if (noShows.length > 0) {
+      text += `*⏳ טרם הגיעו (${noShows.length}):*\n`;
+      noShows.forEach((r, i) => {
+        text += `${i + 1}. ${r.participantName} (הורה: ${r.parentName}${r.parentPhone && r.parentPhone !== '—' ? `, ${r.parentPhone}` : ''})\n`;
+      });
+      text += `\n`;
+    }
+
+    text += `נשלח מתוך LUZ Community OS (Goa Teens House) 🌿`;
+
+    const cleanPhone = (event.hostPhone || '').replace(/[^0-9]/g, '');
+    const url = cleanPhone && cleanPhone.length >= 9
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handlePingNoShowParentWhatsApp = (
+    reg: YouthCenterEventRegistration,
+    event: LuzEntity
+  ) => {
+    const cleanPhone = (reg.parentPhone || '').replace(/[^0-9]/g, '');
+    const eventTitle = isHe ? event.titleHe : event.titleEn;
+    const text = isHe
+      ? `שלום ${reg.parentName}, ראינו שרשמתם את ${reg.participantName} למפגש "${eventTitle}" במרכז הנוער שמתקיים כעת. האם אתם בדרך? נשמח לעדכון 🙏`
+      : `Hi ${reg.parentName}, we noticed ${reg.participantName} is registered for "${eventTitle}" at the Youth Center happening now. Are you on your way? Please let us know 🙏`;
+
+    const url = cleanPhone && cleanPhone.length >= 9
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyGateLink = (eventId: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    const url = `${origin}${path}?tab=youth_center&gate=${eventId}`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          setGateToast(
+            isHe
+              ? 'קישור שער הכניסה הועתק! ניתן לשלוח בוואטסאפ להורה התורן'
+              : 'Gate link copied! Ready to share with duty volunteer'
+          );
+          setTimeout(() => setGateToast(null), 3000);
+        })
+        .catch(() => {
+          setGateToast(url);
+          setTimeout(() => setGateToast(null), 4000);
+        });
+    } else {
+      setGateToast(url);
+      setTimeout(() => setGateToast(null), 4000);
+    }
+  };
+
   const handleCreateYouthEvent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitleHe.trim()) return;
@@ -619,6 +1044,10 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       'Monthly Subscriber?',
       'Parent Name',
       'Parent WhatsApp Phone',
+      'Attended? (Gate)',
+      'Attendance Time',
+      'Walk-In (Unregistered)?',
+      'Checked In By',
       'Notes / Special Requests',
     ];
 
@@ -634,6 +1063,14 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
           second: '2-digit',
         }) + ' IST';
 
+      const attendanceTime = r.attendedAt
+        ? new Date(r.attendedAt).toLocaleString('en-GB', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+          }) + ' IST'
+        : 'N/A';
+
       return [
         istTime,
         r.eventTitleEn || r.eventTitleHe,
@@ -642,6 +1079,10 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         r.isSubscriber ? 'Yes (Subscriber)' : 'No (Single Entry)',
         r.parentName,
         r.parentPhone,
+        r.attended ? 'Yes (Attended)' : 'No (Expected)',
+        attendanceTime,
+        r.isWalkIn ? 'Yes (Walk-in)' : 'No (Pre-registered)',
+        r.checkedInBy || 'N/A',
         r.notes || 'None',
       ];
     });
@@ -758,6 +1199,23 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               <CalendarDays className="w-4 h-4" />
               <span>{isHe ? 'לוח שבועי כרונולוגי' : 'Calendar View'}</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('gate');
+                if (!gateEventId && youthEvents.length > 0) {
+                  setGateEventId(youthEvents[0].id);
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                viewMode === 'gate'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-ink-2 hover:text-ink'
+              }`}
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              <span>{isHe ? 'שער נוכחות למתנדב' : 'Volunteer Gate'}</span>
+            </button>
           </div>
 
           {isAdmin && (
@@ -774,9 +1232,472 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       </section>
 
       {/* =====================================================================
-          YOUTH CENTER EVENTS: CARDS VIEW vs CHRONOLOGICAL CALENDAR VIEW
+          YOUTH CENTER: VOLUNTEER DOOR & CHECK-IN GATE vs CALENDAR vs CARDS
          ===================================================================== */}
-      {viewMode === 'calendar' ? (
+      {viewMode === 'gate' ? (
+        !hasGateAccess ? (
+          <section className="hallmark-plate p-6 sm:p-10 max-w-lg mx-auto text-center space-y-6 my-8" aria-label={isHe ? 'שער נעול למתנדבים' : 'Locked Gate'}>
+            <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center mx-auto shadow-sm">
+              <Lock className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="font-display text-2xl font-bold text-ink">
+                {isHe ? 'שער כניסה ונוכחות — מרכז הנוער' : 'Volunteer Gate — Youth Center'}
+              </h2>
+              <p className="text-sm text-muted max-w-sm mx-auto leading-relaxed">
+                {isHe
+                  ? 'ממשק זה מיועד להורה המתנדב/ת במשמרת לסימון נוכחות בזמן אמת, רישום המגיעים (Walk-in) ומעקב. לכניסה, הזינו את קוד הגישה:'
+                  : 'This portal is for the volunteer parent on duty to check in attendees and register walk-ins in real time. Please enter the gate passcode:'}
+              </p>
+            </div>
+
+            <form onSubmit={handleGatePasscodeSubmit} className="space-y-4 max-w-xs mx-auto">
+              <div className="space-y-1 text-start">
+                <label className="block text-xs font-semibold text-muted text-center">
+                  {isHe ? 'קוד גישה למתנדבים' : 'Volunteer Passcode'}
+                </label>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  value={gatePasscodeInput}
+                  onChange={(e) => {
+                    setGatePasscodeInput(e.target.value);
+                    if (gatePasscodeError) setGatePasscodeError('');
+                  }}
+                  placeholder="Matnas2026"
+                  className="w-full px-4 py-3 text-center rounded-xl bg-paper border border-rule font-mono font-bold text-lg text-ink focus:outline-none focus:border-accent tracking-wider shadow-inner"
+                  autoFocus
+                />
+              </div>
+
+              {gatePasscodeError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center gap-2 justify-center">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{gatePasscodeError}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-bold text-sm shadow-sm transition-all active:scale-[0.98]"
+              >
+                <Unlock className="w-4 h-4" />
+                <span>{isHe ? 'פתיחת שער הנוכחות' : 'Unlock Gate'}</span>
+              </button>
+            </form>
+
+            <div className="pt-2 border-t border-rule">
+              <button
+                type="button"
+                onClick={() => setViewMode('calendar')}
+                className="inline-flex items-center gap-2 text-xs font-semibold text-muted hover:text-ink transition-colors"
+              >
+                {isHe ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+                <span>{isHe ? 'חזרה ללוח הפעילויות' : 'Back to Calendar'}</span>
+              </button>
+            </div>
+          </section>
+        ) : (
+          <section className="space-y-6 w-full max-w-full min-w-0" aria-label={isHe ? 'שער כניסה וסימון נוכחות' : 'Volunteer Gate & Check-in'}>
+            {/* Top Control Bar: Back, Event Selector, Volunteer Name */}
+            <div className="hallmark-plate p-4 sm:p-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-rule">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('calendar')}
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted hover:text-ink transition-colors"
+                >
+                  {isHe ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+                  <span>{isHe ? 'חזרה ללוח הפעילויות' : 'Back to Calendar'}</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyGateLink(activeGateEvent.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-rule bg-paper text-xs font-semibold text-ink hover:text-accent transition-colors"
+                    title={isHe ? 'העתק קישור ישיר לשער למתנדב' : 'Copy direct gate link'}
+                  >
+                    <Copy className="w-3.5 h-3.5 text-accent" />
+                    <span>{isHe ? 'העתק קישור לשער' : 'Copy Gate Link'}</span>
+                  </button>
+
+                  {!isAdmin && (
+                    <button
+                      type="button"
+                      onClick={handleLockGate}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-rule bg-paper text-xs font-semibold text-muted hover:text-red-600 hover:border-red-300 transition-colors"
+                      title={isHe ? 'נעילת השער בתום המשמרת' : 'Lock gate when shift ends'}
+                    >
+                      <Lock className="w-3.5 h-3.5 text-red-500" />
+                      <span>{isHe ? 'נעילת שער' : 'Lock Gate'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+            {/* Event Selector & Volunteer Shift details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  {isHe ? 'בחירת אירוע לסימון נוכחות:' : 'Select Event for Gate Attendance:'}
+                </label>
+                <select
+                  value={gateEventId || activeGateEvent.id}
+                  onChange={(e) => setGateEventId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-paper border border-rule font-bold text-ink text-sm sm:text-base focus:outline-none focus:border-accent"
+                >
+                  {youthEvents.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {isHe ? ev.titleHe : ev.titleEn} ({formatEventSchedule(ev)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  {isHe ? 'שם ההורה המתנדב/ת במשמרת:' : 'Volunteer Parent on Duty:'}
+                </label>
+                <div className="relative">
+                  <UserCheck className="w-4 h-4 text-accent absolute top-3 start-3.5" />
+                  <input
+                    type="text"
+                    value={volunteerName}
+                    onChange={(e) => setVolunteerName(e.target.value)}
+                    placeholder={isHe ? 'לדוגמה: יעל (הורה תורן)' : 'e.g. Yael (Parent on duty)'}
+                    className="w-full ps-10 pe-3.5 py-2 rounded-xl bg-paper border border-rule font-medium text-ink text-sm focus:outline-none focus:border-accent"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Active Event Banner & Details */}
+            <div className="p-3.5 rounded-xl bg-paper-2 border border-rule flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ink-2">
+                <span className="font-bold text-ink">{isHe ? activeGateEvent.titleHe : activeGateEvent.titleEn}</span>
+                <span>📅 {formatEventSchedule(activeGateEvent)}</span>
+                <span>📍 {isHe ? activeGateEvent.locationDetailsHe : activeGateEvent.locationDetailsEn}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted">
+                  {isHe ? 'איש קשר:' : 'Host:'} {isHe ? activeGateEvent.hostName : activeGateEvent.hostNameEn || activeGateEvent.hostName} ({activeGateEvent.hostPhone})
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 4 LIVE METRIC STATS CARDS */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* Total Present */}
+            <div className="hallmark-plate p-4 sm:p-5 border-2 border-emerald-500/40 bg-emerald-500/5 space-y-1">
+              <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300">
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {isHe ? 'סה״כ נוכחים במקום' : 'Total Present'}
+                </span>
+                <Users className="w-4 h-4" />
+              </div>
+              <div className="font-display text-2xl sm:text-3xl font-bold text-emerald-950 dark:text-emerald-100">
+                {gateMetrics.totalAttended}
+              </div>
+              <p className="text-[11px] text-emerald-800/80">
+                {isHe ? 'ילדים ומשתתפים בתוך המתחם' : 'Attendees currently inside'}
+              </p>
+            </div>
+
+            {/* Pre-Registered & Attended */}
+            <div className="hallmark-plate p-4 sm:p-5 space-y-1">
+              <div className="flex items-center justify-between text-accent">
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {isHe ? 'נרשמו מראש והגיעו' : 'Pre-registered & In'}
+                </span>
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div className="font-display text-2xl sm:text-3xl font-bold text-ink">
+                {gateMetrics.attendedPreReg} <span className="text-sm font-normal text-muted">/ {gateMetrics.totalPreReg}</span>
+              </div>
+              <p className="text-[11px] text-muted">
+                {gateMetrics.totalPreReg > 0
+                  ? `${Math.round((gateMetrics.attendedPreReg / gateMetrics.totalPreReg) * 100)}% ${isHe ? 'מימוש הרשמה' : 'attendance rate'}`
+                  : (isHe ? 'אין נרשמים מראש' : 'No pre-registrations')}
+              </p>
+            </div>
+
+            {/* Walk-in (Unregistered) */}
+            <div className="hallmark-plate p-4 sm:p-5 space-y-1">
+              <div className="flex items-center justify-between text-amber-700 dark:text-amber-300">
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {isHe ? 'הגיעו ללא הרשמה (Walk-in)' : 'Walk-in (Unregistered)'}
+                </span>
+                <UserPlus className="w-4 h-4" />
+              </div>
+              <div className="font-display text-2xl sm:text-3xl font-bold text-ink">
+                {gateMetrics.attendedWalkIns}
+              </div>
+              <p className="text-[11px] text-muted">
+                {isHe ? 'משתתפים שהצטרפו בשער' : 'Arrived directly at the door'}
+              </p>
+            </div>
+
+            {/* Expected Pending / No-show */}
+            <div className="hallmark-plate p-4 sm:p-5 space-y-1">
+              <div className="flex items-center justify-between text-muted">
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {isHe ? 'נרשמו וטרם הגיעו' : 'Still Expected'}
+                </span>
+                <Clock className="w-4 h-4" />
+              </div>
+              <div className="font-display text-2xl sm:text-3xl font-bold text-ink">
+                {gateMetrics.pendingCount}
+              </div>
+              <p className="text-[11px] text-muted">
+                {isHe ? 'נרשמו מראש וטרם סומנו' : 'Registered but not checked-in'}
+              </p>
+            </div>
+          </div>
+
+          {/* ACTION BAR: Big Prominent Walk-in Button + WhatsApp Summary Button */}
+          <div className="hallmark-plate p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-paper-2/60">
+            <button
+              type="button"
+              onClick={() => setShowWalkInModal(true)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-sm sm:text-base shadow-sm hover:shadow active:scale-[0.98] transition-all"
+            >
+              <UserPlus className="w-5 h-5 shrink-0" />
+              <span>{isHe ? '+ הוסף משתתף שלא נרשם (Walk-in)' : '+ Add Unregistered Walk-in'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleShareAttendanceSummaryWhatsApp(activeGateEvent)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-xs hover:shadow-sm active:scale-[0.98] transition-all"
+            >
+              <MessageCircle className="w-4 h-4 shrink-0" />
+              <span>{isHe ? '📤 שלח דוח סיכום לוואטסאפ של המארגן' : '📤 Send WhatsApp Summary to Host'}</span>
+            </button>
+          </div>
+
+          {/* SEARCH & FILTER CHIPS */}
+          <div className="hallmark-plate p-4 sm:p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-muted absolute top-3 start-3.5" />
+                <input
+                  type="text"
+                  value={gateSearchQuery}
+                  onChange={(e) => setGateSearchQuery(e.target.value)}
+                  placeholder={isHe ? 'חיפוש מהיר לפי שם ילד/ה, שם הורה או טלפון...' : 'Quick search by participant, parent, phone...'}
+                  className="w-full ps-10 pe-3.5 py-2.5 rounded-xl bg-paper border border-rule text-xs sm:text-sm font-medium text-ink focus:outline-none focus:border-accent"
+                />
+                {gateSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setGateSearchQuery('')}
+                    className="absolute top-2.5 end-3 text-xs text-muted hover:text-ink"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setGateFilter('all')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    gateFilter === 'all'
+                      ? 'bg-ink text-paper'
+                      : 'bg-paper text-ink-2 hover:bg-paper-2 border border-rule'
+                  }`}
+                >
+                  {isHe ? `הכל (${gateFilteredList.length})` : `All (${gateFilteredList.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGateFilter('pending')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    gateFilter === 'pending'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-paper text-amber-800 dark:text-amber-300 hover:bg-paper-2 border border-amber-300 dark:border-amber-700'
+                  }`}
+                >
+                  {isHe ? `טרם הגיעו (${gateMetrics.pendingCount})` : `Expected (${gateMetrics.pendingCount})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGateFilter('attended')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    gateFilter === 'attended'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-paper text-emerald-800 dark:text-emerald-300 hover:bg-paper-2 border border-emerald-300 dark:border-emerald-700'
+                  }`}
+                >
+                  {isHe ? `נוכחים (${gateMetrics.totalAttended})` : `Present (${gateMetrics.totalAttended})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGateFilter('walkin')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    gateFilter === 'walkin'
+                      ? 'bg-accent text-white'
+                      : 'bg-paper text-ink-2 hover:bg-paper-2 border border-rule'
+                  }`}
+                >
+                  {isHe ? `Walk-in (${gateMetrics.attendedWalkIns})` : `Walk-ins (${gateMetrics.attendedWalkIns})`}
+                </button>
+              </div>
+            </div>
+
+            {/* ATTENDEE CARDS LIST */}
+            <div className="space-y-3 pt-2">
+              {gateDisplayList.length === 0 ? (
+                <div className="p-8 text-center bg-paper rounded-2xl border border-rule space-y-3">
+                  <UserCheck className="w-8 h-8 text-muted mx-auto" />
+                  <div className="font-display text-base font-bold text-ink">
+                    {isHe ? 'לא נמצאו משתתפים בסינון זה' : 'No attendees found for this filter'}
+                  </div>
+                  <p className="text-xs text-muted max-w-sm mx-auto">
+                    {gateSearchQuery
+                      ? (isHe ? 'נסה לשנות את מילות החיפוש או הוסף אותו כ-Walk-in חדש.' : 'Try adjusting search keywords or add as a new walk-in.')
+                      : (isHe ? 'עדיין אין נרשמים לאירוע זה. ניתן ללחוץ על "+ הוסף משתתף שלא נרשם" כדי לסמן הגעות במקום.' : 'No registrants yet. Click "+ Add Unregistered Walk-in" to check in arrivals.')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowWalkInModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white font-semibold text-xs shadow-xs"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>{isHe ? 'הוסף משתתף שלא נרשם מראש' : 'Add Walk-in Attendee'}</span>
+                  </button>
+                </div>
+              ) : (
+                gateDisplayList.map((reg) => {
+                  const isCheckedIn = Boolean(reg.attended);
+                  const arrivalTime = reg.attendedAt
+                    ? new Date(reg.attendedAt).toLocaleTimeString('he-IL', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : null;
+
+                  return (
+                    <div
+                      key={reg.id}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                        isCheckedIn
+                          ? 'bg-emerald-500/5 border-emerald-500/30'
+                          : 'bg-paper border-rule hover:border-rule-strong'
+                      }`}
+                    >
+                      {/* Left: Participant Info */}
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="font-display text-base sm:text-lg font-bold text-ink">
+                            {reg.participantName}
+                          </h4>
+                          {reg.isSubscriber ? (
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                              {isHe ? 'מנוי חודשי' : 'Subscriber'}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-paper-2 text-ink-2 border border-rule">
+                              {isHe ? 'אורח (חד-פעמי)' : 'Guest'}
+                            </span>
+                          )}
+                          {reg.isWalkIn && (
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                              {isHe ? '🚶 Walk-in (הגיע ללא הרשמה)' : '🚶 Walk-in'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-ink-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span>
+                            {isHe ? 'הורה:' : 'Parent:'} <span className="font-semibold text-ink">{reg.parentName}</span>
+                          </span>
+                          {reg.parentPhone && reg.parentPhone !== '—' && (
+                            <span dir="ltr" className="font-mono text-muted">
+                              {reg.parentPhone}
+                            </span>
+                          )}
+                          {reg.notes && reg.notes !== 'None' && (
+                            <span className="text-muted italic truncate max-w-xs">
+                              💬 {reg.notes}
+                            </span>
+                          )}
+                        </div>
+
+                        {isCheckedIn && (
+                          <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 pt-0.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>
+                              {isHe
+                                ? `נוכח/ת במקום (הגיע ב-${arrivalTime || 'לא צוין'}${reg.checkedInBy ? ` ע"י ${reg.checkedInBy}` : ''})`
+                                : `Checked in (at ${arrivalTime || 'now'}${reg.checkedInBy ? ` by ${reg.checkedInBy}` : ''})`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Check-in / Undo Action Button + Ping Parent Button */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!isCheckedIn ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAttendance(reg.id)}
+                              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-xs active:scale-[0.97] transition-all min-h-[42px]"
+                            >
+                              <Check className="w-4 h-4 shrink-0" />
+                              <span>{isHe ? 'סמן כנוכח/ת ✅' : 'Check In ✅'}</span>
+                            </button>
+
+                            {reg.parentPhone && reg.parentPhone !== '—' && (
+                              <button
+                                type="button"
+                                onClick={() => handlePingNoShowParentWhatsApp(reg, activeGateEvent)}
+                                className="p-2.5 rounded-xl border border-rule bg-paper hover:bg-paper-2 text-emerald-700 dark:text-emerald-400 hover:border-emerald-500/40 transition-colors"
+                                title={isHe ? 'שלח תזכורת בוואטסאפ להורה' : 'Send WhatsApp ping to parent'}
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAttendance(reg.id)}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-rule bg-paper hover:bg-paper-2 text-ink-2 hover:text-ink text-xs font-semibold active:scale-[0.97] transition-all min-h-[42px]"
+                              title={isHe ? 'בטל סימון נוכחות אם סומן בטעות' : 'Undo check-in'}
+                            >
+                              <Undo2 className="w-3.5 h-3.5 text-muted" />
+                              <span>{isHe ? 'בטל סימון' : 'Undo'}</span>
+                            </button>
+
+                            {reg.isWalkIn && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteRegistration(reg.id)}
+                                className="p-2 rounded-xl text-muted hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                title={isHe ? 'מחק רשומת Walk-in' : 'Delete Walk-in record'}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </section>
+      )) : viewMode === 'calendar' ? (
         <section className="space-y-6 w-full max-w-full min-w-0" aria-label={isHe ? 'לוח שבועי כרונולוגי' : 'Chronological Youth Calendar'}>
           {/* Date Selector Strip */}
           <div className="hallmark-plate p-4 sm:p-5 space-y-4 w-full max-w-full min-w-0 overflow-hidden">
@@ -1044,6 +1965,15 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                               </a>
                               <button
                                 type="button"
+                                onClick={() => handleOpenGateForEvent(ev.id)}
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
+                                title={isHe ? 'שער כניסה וסימון נוכחות (להורה מתנדב)' : 'Volunteer Gate & Check-in'}
+                              >
+                                <ClipboardCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                <span className="hidden sm:inline">{isHe ? 'שער נוכחות' : 'Gate'}</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => handleOpenRegisterModal(ev)}
                                 className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
                               >
@@ -1189,6 +2119,15 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       title={isHe ? 'שיתוף אירוע' : 'Share event'}
                     >
                       <Share2 className="w-4 h-4 shrink-0" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGateForEvent(ev.id)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
+                      title={isHe ? 'שער כניסה וסימון נוכחות (להורה מתנדב)' : 'Volunteer Gate & Check-in'}
+                    >
+                      <ClipboardCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>{isHe ? 'שער נוכחות' : 'Gate'}</span>
                     </button>
                     <button
                       type="button"
@@ -1434,6 +2373,9 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       {isHe ? 'הורה וטלפון' : 'Parent & Phone'}
                     </th>
                     <th className="py-3 px-4 text-start font-semibold">
+                      {isHe ? 'נוכחות בשער' : 'Gate Attendance'}
+                    </th>
+                    <th className="py-3 px-4 text-start font-semibold">
                       {isHe ? 'הערות' : 'Notes'}
                     </th>
                   </tr>
@@ -1465,6 +2407,28 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       <td className="py-3 px-4 text-muted">{reg.eventSchedule}</td>
                       <td className="py-3 px-4 text-ink-2">
                         {reg.parentName} · <span dir="ltr">{reg.parentPhone}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {reg.attended ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>{isHe ? 'הגיע/ה' : 'Attended'}</span>
+                              {reg.isWalkIn && <span className="text-[10px] text-amber-800 dark:text-amber-300">(Walk-in)</span>}
+                            </span>
+                            {reg.attendedAt && (
+                              <span className="text-[10px] text-muted">
+                                {new Date(reg.attendedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                                {reg.checkedInBy && ` (${reg.checkedInBy})`}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-paper-2 text-muted border border-rule">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{isHe ? 'טרם הגיע/ה' : 'Expected'}</span>
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-muted">{reg.notes}</td>
                     </tr>
@@ -2339,6 +3303,156 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         <div className="fixed bottom-6 inset-x-4 max-w-sm mx-auto z-50 bg-ink text-paper px-4 py-3 rounded-2xl shadow-elevated flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold border border-white/10 text-center animate-reveal">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{shareToast}</span>
+        </div>
+      )}
+
+      {/* =====================================================================
+          GATE: ADD WALK-IN ATTENDEE MODAL (Rapid 5-second Door Registration)
+         ===================================================================== */}
+      {showWalkInModal && activeGateEvent && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={() => setShowWalkInModal(false)}
+        >
+          <div
+            className="hallmark-plate max-w-lg w-full p-5 sm:p-7 space-y-5 my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-rule pb-3">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-accent">
+                  {isHe ? 'שער כניסה ונוכחות' : 'Gate Check-In'}
+                </span>
+                <h3 className="font-display text-xl sm:text-2xl font-bold text-ink">
+                  {isHe ? 'הוספת משתתף שהגיע ללא הרשמה (Walk-in)' : 'Add Unregistered Walk-in Attendee'}
+                </h3>
+                <p className="text-xs text-muted mt-0.5">
+                  {isHe ? activeGateEvent.titleHe : activeGateEvent.titleEn}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWalkInModal(false)}
+                className="p-1.5 rounded-xl hover:bg-paper-2 text-muted hover:text-ink transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveWalkIn} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-ink mb-1">
+                  {isHe ? 'שם המשתתף/ת (ילד/ה) *' : 'Participant Name *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={walkInChildName}
+                  onChange={(e) => setWalkInChildName(e.target.value)}
+                  placeholder={isHe ? 'לדוגמה: איתי כהן' : 'e.g. Itai Cohen'}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-paper border border-rule font-medium text-ink text-sm focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    {isHe ? 'שם ההורה' : 'Parent Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={walkInParentName}
+                    onChange={(e) => setWalkInParentName(e.target.value)}
+                    placeholder={isHe ? 'לדוגמה: שרה' : 'e.g. Sarah'}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-paper border border-rule font-medium text-ink text-sm focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted mb-1">
+                    {isHe ? 'טלפון וואטסאפ של ההורה' : 'Parent WhatsApp Phone'}
+                  </label>
+                  <input
+                    type="tel"
+                    dir="ltr"
+                    value={walkInParentPhone}
+                    onChange={(e) => setWalkInParentPhone(e.target.value)}
+                    placeholder="+972-50-000-0000"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-paper border border-rule font-mono text-ink text-sm focus:outline-none focus:border-accent text-start"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  {isHe ? 'מעמד מנוי' : 'Subscription Status'}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWalkInIsSubscriber(true)}
+                    className={`p-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
+                      walkInIsSubscriber
+                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-900 dark:text-emerald-200 shadow-xs'
+                        : 'bg-paper border-rule text-ink-2 hover:bg-paper-2'
+                    }`}
+                  >
+                    {isHe ? '✓ מנוי חודשי' : '✓ Monthly Subscriber'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWalkInIsSubscriber(false)}
+                    className={`p-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
+                      !walkInIsSubscriber
+                        ? 'bg-accent/15 border-accent text-ink shadow-xs'
+                        : 'bg-paper border-rule text-ink-2 hover:bg-paper-2'
+                    }`}
+                  >
+                    {isHe ? 'אורח (תשלום חד-פעמי)' : 'Guest (Single entry)'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted mb-1">
+                  {isHe ? 'הערות (למשל: שולם 100 רופי במזומן)' : 'Notes (e.g. Paid cash 100 INR)'}
+                </label>
+                <input
+                  type="text"
+                  value={walkInNotes}
+                  onChange={(e) => setWalkInNotes(e.target.value)}
+                  placeholder={isHe ? 'הערות נוספות...' : 'Additional notes...'}
+                  className="w-full px-3.5 py-2 rounded-xl bg-paper border border-rule text-xs sm:text-sm text-ink focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-rule">
+                <button
+                  type="button"
+                  onClick={() => setShowWalkInModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-rule text-xs sm:text-sm font-semibold text-muted hover:text-ink transition-colors"
+                >
+                  {isHe ? 'ביטול' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={walkInSaving || !walkInChildName.trim()}
+                  className="hallmark-btn-primary text-xs sm:text-sm !py-2.5 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isHe ? 'הוסף וסמן כנוכח/ת מיד ✅' : 'Add & Check In Immediately ✅'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Gate Toast */}
+      {gateToast && (
+        <div className="fixed bottom-6 inset-x-4 max-w-sm mx-auto z-50 bg-ink text-paper px-4 py-3 rounded-2xl shadow-elevated flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold border border-white/10 text-center animate-reveal">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{gateToast}</span>
         </div>
       )}
     </div>
