@@ -11,6 +11,7 @@ import {
   INITIAL_FAMILIES,
   INITIAL_USER_PROFILE,
 } from './seedData';
+import { CORE_BEIT_BINA_EVENTS } from './beitBinaEvents';
 
 /**
  * ============================================================================
@@ -18,7 +19,7 @@ import {
  * ============================================================================
  */
 
-export const TEST_ENTITIES: LuzEntity[] = INITIAL_ENTITIES;
+export const TEST_ENTITIES: LuzEntity[] = [...CORE_BEIT_BINA_EVENTS, ...INITIAL_ENTITIES];
 
 export const TEST_BUSINESSES: CommunityBusiness[] = [
   {

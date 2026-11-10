@@ -14,6 +14,7 @@ import {
   Lock,
   LogOut,
   ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import {
   LuzEntity,
@@ -79,11 +80,13 @@ import {
   TEST_USER_PROFILE,
 } from './data/testData';
 import { CORE_YOUTH_CENTER_EVENTS } from './data/youthCenterEvents';
+import { CORE_BEIT_BINA_EVENTS } from './data/beitBinaEvents';
 import { ExploreView } from './components/ExploreView';
 import { BusinessesView } from './components/BusinessesView';
 import { ProviderView } from './components/ProviderView';
 import { BenBotView } from './components/BenBotView';
 import { YouthCenterView } from './components/YouthCenterView';
+import { BeitBinaView } from './components/BeitBinaView';
 import { AdminView } from './components/AdminView';
 import { EventsManagerView } from './components/EventsManagerView';
 import { BookingModal } from './components/BookingModal';
@@ -93,6 +96,7 @@ type ActiveTab =
   | 'businesses'
   | 'ben'
   | 'youth_center'
+  | 'beit_bina'
   | 'events_admin'
   | 'provider'
   | 'admin';
@@ -137,6 +141,9 @@ function mergeWithSeedById<T extends { id: string }>(saved: T[], seed: T[]): T[]
       whatsappGroupUrl: (item as any).whatsappGroupUrl ?? (seedItem as any).whatsappGroupUrl,
       mapUrl: (item as any).mapUrl ?? (seedItem as any).mapUrl,
       volunteers: (item as any).volunteers ?? (seedItem as any).volunteers,
+      isBeitBina: (seedItem as any).isBeitBina ?? (item as any).isBeitBina,
+      externalRegistrationUrl:
+        (seedItem as any).externalRegistrationUrl ?? (item as any).externalRegistrationUrl,
     };
   });
   const savedIds = new Set(saved.map((item) => item.id));
@@ -202,8 +209,11 @@ export function App() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab === 'youth_center' || tab === 'businesses' || tab === 'explore') return tab;
+      if (tab === 'youth_center' || tab === 'beit_bina' || tab === 'businesses' || tab === 'explore')
+        return tab;
       if (params.get('biz') || params.get('business') || window.location.hash.startsWith('#biz')) return 'businesses';
+      if (params.get('bina_gate') || window.location.hash === '#beit-bina' || window.location.hash === '#bina')
+        return 'beit_bina';
       if (params.get('gate') || params.get('checkin')) return 'youth_center';
       if (window.location.hash === '#youth-center' || window.location.hash === '#youth' || window.location.hash === '#gate') return 'youth_center';
     }
@@ -211,6 +221,7 @@ export function App() {
   });
   const [selectedEntity, setSelectedEntity] = useState<LuzEntity | null>(null);
   const [initialYouthEventId, setInitialYouthEventId] = useState<string | null>(null);
+  const [initialBeitBinaEventId, setInitialBeitBinaEventId] = useState<string | null>(null);
   const [firestoreStatus, setFirestoreStatus] = useState<
     'disconnected' | 'connecting' | 'live' | 'error'
   >('disconnected');
@@ -250,6 +261,13 @@ export function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    const binaGateId = params.get('bina_gate');
+    if (binaGateId) {
+      setActiveTab('beit_bina');
+      setInitialBeitBinaEventId(binaGateId);
+      setSelectedEntity(null);
+      return;
+    }
     const gateId = params.get('gate') || params.get('checkin');
     if (gateId) {
       setActiveTab('youth_center');
@@ -267,9 +285,14 @@ export function App() {
     if (eventId) {
       const match =
         entities.find((e) => e.id === eventId) ||
-        CORE_YOUTH_CENTER_EVENTS.find((e) => e.id === eventId);
+        CORE_YOUTH_CENTER_EVENTS.find((e) => e.id === eventId) ||
+        CORE_BEIT_BINA_EVENTS.find((e) => e.id === eventId);
       if (match) {
-        if (match.isYouthCenter || match.id.startsWith('yc-')) {
+        if (match.isBeitBina || match.id.startsWith('bina-')) {
+          setActiveTab('beit_bina');
+          setInitialBeitBinaEventId(match.id);
+          setSelectedEntity(null);
+        } else if (match.isYouthCenter || match.id.startsWith('yc-')) {
           setActiveTab('youth_center');
           setInitialYouthEventId(match.id);
           setSelectedEntity(null);
@@ -818,6 +841,13 @@ export function App() {
       icon: Users,
       badge: families.reduce((s, f) => s + f.children.length, 0),
     },
+    {
+      id: 'beit_bina',
+      labelHe: 'בית בינ"ה בגואה',
+      labelEn: 'Beit BINA Goa',
+      icon: Sparkles,
+      badge: CORE_BEIT_BINA_EVENTS.length,
+    },
     ...(isAdminAuthenticated
       ? [
           {
@@ -1007,6 +1037,10 @@ export function App() {
               setActiveTab('youth_center');
               setInitialYouthEventId(eventId);
             }}
+            onNavigateToBeitBinaEvent={(eventId) => {
+              setActiveTab('beit_bina');
+              setInitialBeitBinaEventId(eventId);
+            }}
             onTrackClick={handleTrackClick}
           />
         )}
@@ -1059,6 +1093,21 @@ export function App() {
             onConfirmBooking={handleConfirmBooking}
             initialEventId={initialYouthEventId}
             onClearInitialEvent={() => setInitialYouthEventId(null)}
+          />
+        )}
+
+        {activeTab === 'beit_bina' && (
+          <BeitBinaView
+            lang={lang}
+            isAdmin={isAdminAuthenticated}
+            entities={entities}
+            bookings={bookings}
+            onAddEntity={handleAddEntity}
+            onUpdateEntity={handleUpdateEntity}
+            onDeleteEntity={handleDeleteEntity}
+            onConfirmBooking={handleConfirmBooking}
+            initialEventId={initialBeitBinaEventId}
+            onClearInitialEvent={() => setInitialBeitBinaEventId(null)}
           />
         )}
 

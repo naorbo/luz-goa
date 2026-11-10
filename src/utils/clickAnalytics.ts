@@ -39,6 +39,7 @@ export type AnalyticsEventType =
   | 'search_performed'
   | 'hero_cta_click'
   | 'youth_center_click'
+  | 'beit_bina_click'
   | 'tab_switch'
   | string;
 
@@ -48,7 +49,7 @@ export interface ClickAnalyticsEvent {
   timestamp: string;
   environment: AppEnvironment;
   eventType: AnalyticsEventType;
-  targetType?: 'event' | 'business' | 'youth' | 'general';
+  targetType?: 'event' | 'business' | 'youth' | 'beit_bina' | 'general';
   targetId?: string;
   targetTitleHe?: string;
   targetTitleEn?: string;

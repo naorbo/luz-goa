@@ -4,20 +4,22 @@ export function isGoogleAppsScriptUrl(url: string): boolean {
 
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * ============================================================================
- * LUZ GOA — Google Apps Script Backend (Site Log CRM + Dedicated Youth Center)
+ * LUZ GOA — Google Apps Script Backend
+ * (1) Site Log CRM + (2) Dedicated Youth Center + (3) Dedicated Beit BINA Goa
  * Official Runner & Sender Account: luzschedu@gmail.com
  * ============================================================================
  * 1. Sign in to Google as luzschedu@gmail.com and open https://script.new
  *    (or open your existing Apps Script project attached to your Google Sheet)
  * 2. Paste this file, save (Ctrl+S).
- * 3. Run \`setupAndTestYouthCenterSheet\` in the top toolbar:
- *    - This creates a BRAND-NEW dedicated Google Sheet strictly for the Youth Center
- *      named "LUZ Goa — Youth Center Registrations" and logs its URL in the execution log!
- *    - The existing site log document (1Wy_m63...) remains solely for website leads.
+ * 3. Run \`setupAndTestBeitBinaSheet\` in the top toolbar:
+ *    - Creates a dedicated Google Sheet strictly for Beit BINA Goa
+ *      named "LUZ Goa — בית בינ״ה בגואה (הרשמות ונוכחות)"
+ *    - Features a Master Tab ("כל_ההרשמות") + AUTOMATICALLY opens a new Tab
+ *      for each individual event (e.g. "08.11 - אימון Movement")!
+ *    - Updates attendance ("הגיע ✅" / "טרם הגיע ⏳") in real time from the Gate!
  * 4. Deploy -> Manage deployments -> Edit -> New version -> Deploy:
  *    - Execute as: Me (luzschedu@gmail.com)
  *    - Who has access: Anyone
- * 5. All text stored in Google Sheets (Youth Center + Leads CRM) is 100% in English!
  * ============================================================================
  */
 
@@ -32,10 +34,15 @@ const CONFIG = {
   LEADS_SHEET_TITLE: 'LUZ Goa — Site Log & Provider Leads CRM',
   LEADS_TAB_NAME: 'LUZ_Referrals',
 
-  // 2. Brand-New Dedicated Google Sheet strictly for Youth Center Registrations
+  // 2. Dedicated Google Sheet strictly for Youth Center Registrations
   YOUTH_CENTER_SPREADSHEET_ID: '1I3EEIlSbA83KK_t-ElZVb5ILACKs598FhjkR7pOASH4',
   YOUTH_CENTER_SHEET_TITLE: 'LUZ Goa — Youth Center Registrations',
   YOUTH_CENTER_TAB_NAME: 'Youth_Center_Events',
+
+  // 3. Dedicated Google Sheet strictly for Beit BINA Goa (Auto-Tab per Event + Live Check-In)
+  BEIT_BINA_SPREADSHEET_ID: '',
+  BEIT_BINA_SHEET_TITLE: 'LUZ Goa — בית בינ"ה בגואה (הרשמות ונוכחות)',
+  BEIT_BINA_MASTER_TAB_NAME: 'כל_ההרשמות',
 
   // Optional: Private Telegram Bot token & Chat ID
   TELEGRAM_BOT_TOKEN: '',
@@ -44,6 +51,33 @@ const CONFIG = {
   // Optional: Forward payload to "Ben" WhatsApp Bot
   BEN_WHATSAPP_WEBHOOK_URL: '',
 };
+
+function setupAndTestBeitBinaSheet() {
+  const { spreadsheet, masterSheet } = getOrCreateBeitBinaSheet_();
+  processBeitBinaRegistration_(
+    {
+      referralCode: 'BINA-TEST-001',
+      environment: 'prod',
+      actionType: 'beit_bina_event_rsvp',
+      beitBinaEvent: {
+        registrationId: 'bina-reg-test-001',
+        eventId: 'bina-2026-11-08-movement',
+        titleHe: 'אימון Movement עם אוריאל וירין',
+        titleEn: 'Evening Movement Training with Uriel & Yarin',
+        eventTabName: '08.11 - אימון Movement',
+        scheduleHe: 'יום ראשון, 8 בנובמבר · 21:00 – 22:30',
+        participantName: 'דניאל לוי',
+        participantPhone: '+972-54-000-0000',
+        participantsCount: 1,
+        notes: 'בדיקת פתיחת כרטיסייה אוטומטית לאירוע בבית בינ"ה',
+        attended: false,
+      },
+    },
+    spreadsheet,
+    masterSheet
+  );
+  Logger.log('Dedicated Beit BINA Goa Sheet URL: ' + spreadsheet.getUrl());
+}
 
 function setupAndTestLuzAlerts() {
   const { spreadsheet, sheet } = getOrCreateLeadsSheet_();
@@ -75,7 +109,6 @@ function setupAndTestLuzAlerts() {
 function setupAndTestYouthCenterSheet() {
   const props = PropertiesService.getScriptProperties();
   const currentYcId = props.getProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID');
-  // Clear any incorrect reference to the site log
   if (currentYcId === CONFIG.LEADS_SPREADSHEET_ID) {
     props.deleteProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID');
   }
@@ -110,6 +143,16 @@ function setupAndTestYouthCenterSheet() {
 
 function doGet(e) {
   const action = e && e.parameter ? e.parameter.action : '';
+  if (action === 'createBeitBinaSheet') {
+    const { spreadsheet } = getOrCreateBeitBinaSheet_();
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        ok: true,
+        beitBinaSheetUrl: spreadsheet.getUrl(),
+        beitBinaSheetId: spreadsheet.getId(),
+      })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
   if (action === 'createYouthCenterSheet') {
     const { spreadsheet } = getOrCreateYouthCenterSheet_();
     return ContentService.createTextOutput(
@@ -124,7 +167,7 @@ function doGet(e) {
   return ContentService.createTextOutput(
     JSON.stringify({
       ok: true,
-      service: 'LUZ Goa Apps Script Webhook',
+      service: 'LUZ Goa Apps Script Webhook (Site Log + Youth Center + Beit BINA)',
       senderAccount: CONFIG.SENDER_EMAIL,
       siteLogSheetUrl: 'https://docs.google.com/spreadsheets/d/' + CONFIG.LEADS_SPREADSHEET_ID + '/edit',
       status: 'active',
@@ -137,11 +180,26 @@ function doPost(e) {
     const rawBody = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
     const data = JSON.parse(rawBody);
 
-    const isYouthCenter =
-      data.event === 'luz.youth_center_event_rsvp' ||
-      data.actionType === 'youth_center_event_rsvp' ||
-      data.actionType === 'youth_center_signup' ||
-      Boolean(data.youthCenterEvent);
+    // 1. Check if this is a Beit BINA live attendance toggle from the Gate
+    const isBeitBinaAttendanceUpdate =
+      data.event === 'luz.beit_bina_attendance_update' ||
+      data.actionType === 'beit_bina_attendance_update';
+
+    if (isBeitBinaAttendanceUpdate) {
+      const { spreadsheet, masterSheet } = getOrCreateBeitBinaSheet_(data.spreadsheetId);
+      const updated = processBeitBinaAttendanceUpdate_(data, spreadsheet, masterSheet);
+      return ContentService.createTextOutput(
+        JSON.stringify({ ok: true, updated: updated, sheetUrl: spreadsheet.getUrl() })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 2. Check if this is a Beit BINA event registration or Gate Walk-In
+    const isBeitBina =
+      data.event === 'luz.beit_bina_event_rsvp' ||
+      data.actionType === 'beit_bina_event_rsvp' ||
+      data.actionType === 'beit_bina_walkin_attendance' ||
+      data.actionType === 'beit_bina_signup' ||
+      Boolean(data.beitBinaEvent);
 
     const dedupKey = 'luz_' + (data.referralCode || '') + '_' + (data.actionType || '');
     const cache = CacheService.getScriptCache();
@@ -152,6 +210,26 @@ function doPost(e) {
     }
     cache.put(dedupKey, '1', 15);
 
+    if (isBeitBina) {
+      const { spreadsheet, masterSheet } = getOrCreateBeitBinaSheet_(data.spreadsheetId);
+      const result = processBeitBinaRegistration_(data, spreadsheet, masterSheet);
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          ok: true,
+          referralCode: data.referralCode,
+          sheetUrl: spreadsheet.getUrl(),
+          eventTabName: result.eventTabName,
+        })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 3. Check if this is a Youth Center registration
+    const isYouthCenter =
+      data.event === 'luz.youth_center_event_rsvp' ||
+      data.actionType === 'youth_center_event_rsvp' ||
+      data.actionType === 'youth_center_signup' ||
+      Boolean(data.youthCenterEvent);
+
     if (isYouthCenter) {
       const { spreadsheet, sheet } = getOrCreateYouthCenterSheet_();
       processYouthCenterRegistration_(data, spreadsheet, sheet);
@@ -160,6 +238,7 @@ function doPost(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
+    // 4. Default: Site Log & Provider Leads CRM
     const { spreadsheet, sheet } = getOrCreateLeadsSheet_();
     processReferralEvent_(data, spreadsheet, sheet);
 
@@ -171,6 +250,205 @@ function doPost(e) {
       JSON.stringify({ ok: false, error: String(err && err.message ? err.message : err) })
     ).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// ============================================================================
+// BEIT BINA GOA — AUTO-TAB PER EVENT + MASTER TAB + REAL-TIME ATTENDANCE SYNC
+// ============================================================================
+
+function sanitizeSheetTabName_(rawName) {
+  const cleaned = String(rawName || 'אירוע בית בינ"ה')
+    .replace(/[:\\\\/?*\\[\\]]/g, '-')
+    .replace(/\\s+/g, ' ')
+    .trim();
+  return cleaned.slice(0, 90) || 'אירוע בית בינ"ה';
+}
+
+function getBeitBinaHeaders_() {
+  return [
+    'זמן רישום (גואה IST)',
+    'מזהה רישום',
+    'שם האירוע',
+    'יום ושעה',
+    'שם המשתתף/ת',
+    'טלפון וואטסאפ',
+    'כמות משתתפים',
+    'סטטוס הגעה (שער נוכחות)',
+    'זמן הגעה וצוות מאשר',
+    'סוג רישום',
+    'הערות',
+  ];
+}
+
+function styleBeitBinaSheetHeader_(sheet, headers) {
+  try {
+    sheet.setRightToLeft(true);
+  } catch (e) {}
+  sheet.setFrozenRows(1);
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setBackground('#4A154B');
+  headerRange.setFontColor('#FFFFFF');
+  headerRange.setFontWeight('bold');
+}
+
+function getOrCreateBeitBinaSheet_(overrideSpreadsheetId) {
+  let ss = null;
+  const props = PropertiesService.getScriptProperties();
+  const configuredId = String(overrideSpreadsheetId || CONFIG.BEIT_BINA_SPREADSHEET_ID || '').trim();
+  const savedId = String(props.getProperty('LUZ_BEIT_BINA_SPREADSHEET_ID') || '').trim();
+  const targetId = configuredId || savedId;
+
+  if (
+    targetId &&
+    targetId !== CONFIG.LEADS_SPREADSHEET_ID &&
+    targetId !== CONFIG.YOUTH_CENTER_SPREADSHEET_ID
+  ) {
+    try {
+      ss = SpreadsheetApp.openById(targetId);
+    } catch (e) {
+      ss = null;
+    }
+  }
+
+  if (!ss) {
+    ss = SpreadsheetApp.create(CONFIG.BEIT_BINA_SHEET_TITLE);
+    props.setProperty('LUZ_BEIT_BINA_SPREADSHEET_ID', ss.getId());
+    try {
+      DriveApp.getFileById(ss.getId()).setSharing(
+        DriveApp.Access.ANYONE_WITH_LINK,
+        DriveApp.Permission.EDIT
+      );
+    } catch (e) {}
+  }
+
+  const headers = getBeitBinaHeaders_();
+  let masterSheet = ss.getSheetByName(CONFIG.BEIT_BINA_MASTER_TAB_NAME);
+  if (!masterSheet) {
+    masterSheet = ss.insertSheet(CONFIG.BEIT_BINA_MASTER_TAB_NAME, 0);
+    masterSheet.appendRow(headers);
+    styleBeitBinaSheetHeader_(masterSheet, headers);
+    try {
+      const sheet1 = ss.getSheetByName('Sheet1') || ss.getSheetByName('גיליון1');
+      if (sheet1 && ss.getSheets().length > 1) {
+        ss.deleteSheet(sheet1);
+      }
+    } catch (e) {}
+  }
+
+  return { spreadsheet: ss, masterSheet: masterSheet };
+}
+
+function getOrCreateBeitBinaEventTab_(spreadsheet, rawTabName) {
+  const tabName = sanitizeSheetTabName_(rawTabName);
+  let eventSheet = spreadsheet.getSheetByName(tabName);
+  if (!eventSheet) {
+    eventSheet = spreadsheet.insertSheet(tabName);
+    const headers = getBeitBinaHeaders_();
+    eventSheet.appendRow(headers);
+    styleBeitBinaSheetHeader_(eventSheet, headers);
+  }
+  return { eventSheet: eventSheet, tabName: tabName };
+}
+
+function processBeitBinaRegistration_(data, spreadsheet, masterSheet) {
+  const goaTime = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss');
+  const bb = data.beitBinaEvent || {};
+  const regId = bb.registrationId || data.referralCode || ('BINA-' + new Date().getTime());
+  const eventTitle = bb.titleHe || bb.titleEn || 'אירוע בית בינ"ה';
+  const scheduleStr = bb.scheduleHe || bb.schedule || '—';
+  const participantName = bb.participantName || '—';
+  const participantPhone = bb.participantPhone || '—';
+  const count = Number(bb.participantsCount) || 1;
+  const isAttended = Boolean(bb.attended);
+  const attendanceStatus = isAttended ? 'הגיע ✅' : 'טרם הגיע ⏳';
+  const checkInDetails = isAttended
+    ? (bb.attendedAt || goaTime) + (bb.checkedInBy ? ' (' + bb.checkedInBy + ')' : '')
+    : '—';
+  const regType = bb.isWalkIn ? 'הגיע בשער (Walk-in)' : 'הרשמה מראש באתר';
+  const notes = bb.notes || '—';
+
+  const rowValues = [
+    goaTime,
+    regId,
+    eventTitle,
+    scheduleStr,
+    participantName,
+    participantPhone,
+    count,
+    attendanceStatus,
+    checkInDetails,
+    regType,
+    notes,
+  ];
+
+  // 1. Append to Master Tab ("כל_ההרשמות")
+  masterSheet.appendRow(rowValues);
+
+  // 2. Automatically open/create dedicated Tab for this specific Event and append row
+  const desiredTabName = bb.eventTabName || ((bb.dateShort ? bb.dateShort + ' - ' : '') + eventTitle);
+  const { eventSheet, tabName } = getOrCreateBeitBinaEventTab_(spreadsheet, desiredTabName);
+  eventSheet.appendRow(rowValues);
+
+  return { eventTabName: tabName };
+}
+
+function updateAttendanceInSheetTab_(sheet, regId, participantName, statusText, checkInDetails) {
+  if (!sheet) return false;
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return false;
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+  let updated = false;
+  for (let i = dataRange.length - 1; i >= 0; i--) {
+    const rowRegId = String(dataRange[i][1] || '').trim();
+    const rowName = String(dataRange[i][4] || '').trim();
+    if ((regId && rowRegId === String(regId).trim()) || (participantName && rowName === String(participantName).trim())) {
+      const targetRowNumber = i + 2;
+      sheet.getRange(targetRowNumber, 8).setValue(statusText);
+      sheet.getRange(targetRowNumber, 9).setValue(checkInDetails);
+      updated = true;
+      break;
+    }
+  }
+  return updated;
+}
+
+function processBeitBinaAttendanceUpdate_(data, spreadsheet, masterSheet) {
+  const goaTime = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss');
+  const bb = data.beitBinaEvent || {};
+  const regId = bb.registrationId || '';
+  const participantName = bb.participantName || '';
+  const isAttended = Boolean(bb.attended);
+  const statusText = isAttended ? 'הגיע ✅' : 'טרם הגיע ⏳';
+  const checkInDetails = isAttended
+    ? goaTime + (bb.checkedInBy ? ' (' + bb.checkedInBy + ')' : '')
+    : 'בוטל סימון (' + goaTime + ')';
+
+  const updatedMaster = updateAttendanceInSheetTab_(
+    masterSheet,
+    regId,
+    participantName,
+    statusText,
+    checkInDetails
+  );
+
+  const eventTitle = bb.titleHe || bb.titleEn || 'אירוע בית בינ"ה';
+  const desiredTabName = bb.eventTabName || ((bb.dateShort ? bb.dateShort + ' - ' : '') + eventTitle);
+  const { eventSheet } = getOrCreateBeitBinaEventTab_(spreadsheet, desiredTabName);
+  const updatedEventTab = updateAttendanceInSheetTab_(
+    eventSheet,
+    regId,
+    participantName,
+    statusText,
+    checkInDetails
+  );
+
+  // If the record wasn't in the sheet yet (e.g. created offline), append it now
+  if (!updatedMaster && !updatedEventTab && participantName) {
+    processBeitBinaRegistration_(data, spreadsheet, masterSheet);
+    return true;
+  }
+
+  return updatedMaster || updatedEventTab;
 }
 
 function processYouthCenterRegistration_(data, spreadsheet, sheet) {
@@ -348,7 +626,6 @@ function getOrCreateYouthCenterSheet_() {
   const savedId = (props.getProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID') || '').trim();
   const targetId = configuredId || savedId;
 
-  // IMPORTANT: Never use the site log spreadsheet (1Wy_m63...) for Youth Center!
   if (targetId && targetId !== CONFIG.LEADS_SPREADSHEET_ID) {
     try {
       ss = SpreadsheetApp.openById(targetId);
@@ -357,7 +634,6 @@ function getOrCreateYouthCenterSheet_() {
     }
   }
 
-  // If no dedicated Youth Center spreadsheet exists, create a brand-new file in Google Drive!
   if (!ss) {
     ss = SpreadsheetApp.create(CONFIG.YOUTH_CENTER_SHEET_TITLE);
     props.setProperty('LUZ_YOUTH_CENTER_SPREADSHEET_ID', ss.getId());
@@ -366,9 +642,7 @@ function getOrCreateYouthCenterSheet_() {
         DriveApp.Access.ANYONE_WITH_LINK,
         DriveApp.Permission.VIEW
       );
-    } catch (e) {
-      // Ignore domain permission limitation
-    }
+    } catch (e) {}
   }
 
   let sheet = ss.getSheetByName(CONFIG.YOUTH_CENTER_TAB_NAME);
@@ -394,7 +668,6 @@ function getOrCreateYouthCenterSheet_() {
     headerRange.setFontWeight('bold');
 
     try {
-      // Remove empty default Sheet1 if exists
       const sheet1 = ss.getSheetByName('Sheet1');
       if (sheet1 && ss.getSheets().length > 1) {
         ss.deleteSheet(sheet1);

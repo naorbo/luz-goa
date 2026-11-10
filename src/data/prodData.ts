@@ -6,16 +6,18 @@ import {
   UserProfile,
 } from '../types/luz';
 import { CORE_YOUTH_CENTER_EVENTS } from './youthCenterEvents';
+import { CORE_BEIT_BINA_EVENTS } from './beitBinaEvents';
 
 /**
  * ============================================================================
  * PRODUCTION DATA (סביבת PROD — מידע אמיתי ומאומת בלבד!)
  * ============================================================================
  * כל הרשומות בקובץ זה חולצו ואומתו מתוך הייצוא של קבוצת הוואטסאפ:
- * "מה קורה בדרום גואה? אירועים מפגשים ועסקים" + כרטיסי הקשר (.vcf) + מסמך מרכז הנוער גואה.
+ * "מה קורה בדרום גואה? אירועים מפגשים ועסקים" + כרטיסי הקשר (.vcf) + מסמך מרכז הנוער גואה + בית בינ"ה בגואה.
  */
 
 export const PROD_ENTITIES: LuzEntity[] = [
+  ...CORE_BEIT_BINA_EVENTS,
   ...CORE_YOUTH_CENTER_EVENTS,
   {
     id: 'prod-evt-mount-sessions',

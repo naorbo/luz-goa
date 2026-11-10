@@ -49,6 +49,14 @@ export function syncSeoAndStructuredData(params: {
           ? 'מתנ"ס קולום לנוער וילדים בדרום גואה | LUZ Goa'
           : 'Colomb Youth Center (Ages 11–15) — South Goa Community | LUZ Goa';
         break;
+      case 'beit_bina':
+        title = isHe
+          ? 'בית בינ"ה בגואה — לו"ז שבועי, הרשמה לאירועים וקבלת שבת | LUZ Goa'
+          : 'Beit BINA in Goa — Weekly Schedule, Workshops & Kabbalat Shabbat | LUZ Goa';
+        description = isHe
+          ? 'הלו"ז השבועי של בית בינ"ה בגואה (8.11–14.11): טורניר שחמט וג׳חנון, אימוני Movement וקליסטניקס, לימוד משותף לחג הדיוואלי, סדנאות וקבלת שבת ישראלית חילונית.'
+          : 'Weekly schedule at Beit BINA in Goa: Chess tournament & Jachnun, Movement & Calisthenics, Diwali learning, workshops, and Israeli Kabbalat Shabbat.';
+        break;
       case 'ben':
         title = isHe
           ? 'הבוט "בן" — עוזר הוואטסאפ החכם של קהילת גואה | LUZ Goa'

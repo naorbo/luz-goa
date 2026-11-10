@@ -385,6 +385,112 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     }
   };
 
+  // =========================================================================
+  // YOUTH CENTER MORNING REMINDER BOT (09:30 IST) — SAFE TEST MODE (972508878902 ONLY)
+  // =========================================================================
+  const SAFE_TEST_PHONE = '972508878902';
+  const TARGET_GROUP_NAME_FUTURE = 'Youth center parents';
+  const [reminderPreviewEvent, setReminderPreviewEvent] = useState<LuzEntity | null>(null);
+  const [sendingBotReminder, setSendingBotReminder] = useState(false);
+  const [botStatusMessage, setBotStatusMessage] = useState<string | null>(null);
+
+  const buildYouthMorningReminderText = (ev: LuzEntity) => {
+    const schedule = formatEventSchedule(ev);
+    const eventUrl = `https://naorbo.github.io/luz-goa/?tab=youth_center&event=${encodeURIComponent(ev.id)}`;
+    const vols = ev.volunteers || eventVolunteers[ev.id] || [];
+    const volunteerLine =
+      vols.length > 0
+        ? `🤝 *הורה מתנדב/ת במפגש:* ${vols.map((v) => v.name).join(', ')}\n`
+        : `🙋 *הורה מתנדב/ת:* נשמח להורה תורן שירשום את עצמו בקישור!\n`;
+
+    return (
+      `☀️ *בוקר טוב הורים יקרים! תזכורת לאירוע היום במרכז הנוער גואה (Goa Teens House)* 🌿\n\n` +
+      `🎯 *${ev.titleHe}*\n` +
+      `📅 *מתי:* היום (${schedule})\n` +
+      `📍 *מיקום:* ${ev.locationDetailsHe || 'מרכז הנוער קולום (ליד שייליש)'}\n` +
+      volunteerLine +
+      `\n📝 *על הפעילות:*\n${ev.descriptionHe || ev.titleHe}\n\n` +
+      `👇 *להרשמה מהירה לאירוע ולשיבוץ הורה מתנדב:*\n` +
+      `${eventUrl}`
+    );
+  };
+
+  const handleSendSampleReminderTo972508878902 = async (
+    ev: LuzEntity,
+    preferMode: 'auto' | 'direct_wa' | 'share_with_image' = 'auto'
+  ) => {
+    const text = buildYouthMorningReminderText(ev);
+    const vols = ev.volunteers || eventVolunteers[ev.id] || [];
+
+    if (preferMode === 'share_with_image' && typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        setSendingBotReminder(true);
+        if (ev.imageUrl) {
+          const response = await fetch(ev.imageUrl);
+          const blob = await response.blob();
+          const file = new File([blob], 'youth-center-event.jpg', { type: blob.type || 'image/jpeg' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: ev.titleHe,
+              text,
+              files: [file],
+            });
+            setSendingBotReminder(false);
+            return;
+          }
+        }
+        await navigator.share({ title: ev.titleHe, text });
+        setSendingBotReminder(false);
+        return;
+      } catch {
+        setSendingBotReminder(false);
+      }
+    }
+
+    if (preferMode === 'auto') {
+      setSendingBotReminder(true);
+      setBotStatusMessage(null);
+      try {
+        const res = await fetch('http://localhost:8080/send-youth-reminder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: ev.id,
+            event: {
+              id: ev.id,
+              date: ev.date || '2026-11-05',
+              startTime: ev.startTime || '16:30',
+              endTime: ev.endTime || '18:30',
+              titleHe: ev.titleHe,
+              titleEn: ev.titleEn,
+              descriptionHe: ev.descriptionHe,
+              imageUrl: ev.imageUrl,
+              volunteerParent: vols.map((v) => v.name).join(', '),
+            },
+          }),
+        });
+        const data = await res.json();
+        if (data && data.ok) {
+          setBotStatusMessage(
+            `✅ נשלח בהצלחה מהבוט (עם תמונה + טקסט) אל ${SAFE_TEST_PHONE}! (קבוצת "${TARGET_GROUP_NAME_FUTURE}" נעולה ולא קיבלה הודעה)`
+          );
+          setSendingBotReminder(false);
+          return;
+        }
+      } catch {
+        // Fallback to direct WhatsApp link to 972508878902 if local bot needs QR scan
+      }
+      setSendingBotReminder(false);
+    }
+
+    // Direct 1-click WhatsApp dispatch strictly to 972508878902
+    const waUrl = `https://wa.me/${SAFE_TEST_PHONE}?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    setBotStatusMessage(
+      `📲 נפתחה שליחה ישירה בוואטסאפ אל ${SAFE_TEST_PHONE} בלבד! (לשליחה אוטומטית עם תמונה ב-09:30 ניתן גם לחבר את הבוט ב-localhost:8080/qr)`
+    );
+  };
+
   // Add new Youth Center Event modal state (Admin Only)
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [newTitleHe, setNewTitleHe] = useState('');
@@ -1431,6 +1537,19 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               <span>{isHe ? 'שער נוכחות למתנדב' : 'Volunteer Gate'}</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setBotStatusMessage(null);
+              setReminderPreviewEvent(youthEvents[0] || CORE_YOUTH_CENTER_EVENTS[0]);
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-emerald-600/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-bold transition-all active:scale-[0.98]"
+            title={isHe ? 'תצוגה ושליחת הודעת תזכורת בוקר (09:30) לדוגמא אל 972508878902' : 'Preview & Send 09:30 Morning Reminder Sample'}
+          >
+            <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>{isHe ? '🤖 בוט תזכורת בוקר (09:30)' : '🤖 09:30 Reminder Bot'}</span>
+          </button>
 
           {isAdmin && (
             <button

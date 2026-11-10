@@ -18,13 +18,29 @@ const GAS_WEBHOOK_URL =
 // Secret Admin Token configured via `fly secrets set SCRAPER_ADMIN_TOKEN=...`
 const SCRAPER_ADMIN_TOKEN = process.env.SCRAPER_ADMIN_TOKEN || '';
 
-// Target Community Group Name
+// Target Community Group Name (Scraper Listener)
 const TARGET_GROUP_KEYWORD = 'הקהילה! חיים בדרום גואה';
 const TARGET_GROUP_ALIASES = [
   'הקהילה! חיים בדרום גואה',
   'חיים בדרום גואה',
   'דרום גואה',
 ];
+
+// ============================================================================
+// Youth Center Event Reminder Bot Configuration
+// ============================================================================
+const YOUTH_REMINDER_GROUP_NAME = 'Youth center parents';
+const SAFE_TEST_RECIPIENT_PHONE = '972508878902';
+const SAFE_TEST_RECIPIENT_JID = `${SAFE_TEST_RECIPIENT_PHONE}@s.whatsapp.net`;
+const DAILY_REMINDER_TIME_IST = '09:30'; // 09:30 AM India Standard Time
+const SITE_PUBLIC_URL = 'https://naorbo.github.io/luz-goa';
+
+// STRICT SAFETY LOCK: 'test_dm_only' sends ONLY to 972508878902 and NEVER to the group
+// until the user explicitly approves switching to 'group_live'.
+let youthReminderMode = 'test_dm_only';
+let autoSendSampleOnConnect = true;
+const sentReminderLog = []; // [{ id, timestamp, recipient, eventTitle, mode }]
+const sentDailyKeys = new Set(); // Track 'YYYY-MM-DD:eventId' to avoid duplicate daily sends
 
 // Determine storage path: /data if mounted on Fly.io volume, else local ./auth_info
 const DATA_DIR = fs.existsSync('/data') ? '/data' : path.resolve('./auth_info');
@@ -35,20 +51,26 @@ if (!fs.existsSync(AUTH_DIR)) {
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '32kb' }));
-app.use(express.urlencoded({ extended: false, limit: '32kb' }));
+app.use(express.json({ limit: '512kb' }));
+app.use(express.urlencoded({ extended: false, limit: '64kb' }));
 
 // ============================================================================
-// 1. Network Security Headers Middleware
+// 1. Network Security & CORS Headers Middleware
 // ============================================================================
 app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Luz-Api-Key');
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';"
+    "default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none';"
   );
   next();
 });
@@ -429,9 +451,16 @@ async function connectToWhatsApp() {
       connectedUser = sock.user?.id || 'Connected';
       console.log('===> WhatsApp Connected successfully as:', connectedUser);
 
-      // Fetch all participating groups
-      setTimeout(() => {
-        refreshParticipatingGroups(sock);
+      // Fetch all participating groups & trigger queued sample reminder if requested
+      setTimeout(async () => {
+        await refreshParticipatingGroups(sock);
+        if (autoSendSampleOnConnect) {
+          autoSendSampleOnConnect = false;
+          console.log(`[Youth Reminder Bot] Sending initial sample reminder to ${SAFE_TEST_RECIPIENT_PHONE}...`);
+          await sendYouthEventReminder(YOUTH_CENTER_SCHEDULE[4] || YOUTH_CENTER_SCHEDULE[0], {
+            forceTestDm: true,
+          });
+        }
       }, 3000);
     }
   });
@@ -513,6 +542,329 @@ async function connectToWhatsApp() {
 }
 
 // ============================================================================
+// Youth Center Events Schedule & 09:30 IST Automated Reminder Engine
+// ============================================================================
+const YOUTH_CENTER_SCHEDULE = [
+  {
+    id: 'yc-2026-11-06-odt-opening',
+    titleHe: 'פתיחה חגיגית — Goa Teens House | משחק הכדור עם אילן',
+    titleEn: 'Grand Opening — Goa Teens House | The Ball Game with Ilan',
+    descriptionHe: 'מפגש היכרות וגיבוש לנוער: משחק הכדור עם אילן, בחירת שם למרחב, פירות מרעננים ולימונדה צוננת!',
+    date: '2026-11-06',
+    startTime: '10:00',
+    endTime: '13:00',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: `${SITE_PUBLIC_URL}/images/events/goa-teens-opening-nov6.jpg`,
+  },
+  {
+    id: 'yc-2026-11-07-movie',
+    titleHe: 'הקרנת סרט',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionHe: 'ערב סרט קהילתי על מסך ענק עם פופקורן, שתייה ואווירה כיפית לנוער במתחם הבמבוק בקולום.',
+    date: '2026-11-07',
+    startTime: '18:00',
+    endTime: '20:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-08-open-space',
+    titleHe: 'מרחב פתוח',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionHe: 'זמן חופשי לבני נוער להיפגש, לבלות, לשחק, להאזין למוזיקה וליצור יחד במרחב הבמבוק הפתוח.',
+    date: '2026-11-08',
+    startTime: '16:30',
+    endTime: '19:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-09-jam',
+    titleHe: 'פעילות ג׳אם',
+    titleEn: 'Sunset Music Jam Session',
+    descriptionHe: 'ג׳אם מוזיקלי פתוח לנוער: גיטרות, כלי הקשה, שירה ואלתור משותף לקראת השקיעה.',
+    date: '2026-11-09',
+    startTime: '17:00',
+    endTime: '19:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-12-board-games',
+    titleHe: 'משחקי קופסה ואסטרטגיה',
+    titleEn: 'Strategy Board Games & Tournaments',
+    descriptionHe: 'אחר צהריים של משחקי אסטרטגיה, קטאן, שחמט, משחקי שולחן וטורנירים מהנים.',
+    date: '2026-11-12',
+    startTime: '16:30',
+    endTime: '19:00',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-14-movie',
+    titleHe: 'הקרנת סרט',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionHe: 'הקרנת סרט מרתק על מסך גדול עם פופקורן ושיחה משותפת אחרי הסרט.',
+    date: '2026-11-14',
+    startTime: '18:00',
+    endTime: '20:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-15-open-space',
+    titleHe: 'מרחב פתוח',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionHe: 'מרחב פתוח וחופשי לנוער: מפגש חברים, עבודה על פרויקטים אישיים, משחקים ושיח.',
+    date: '2026-11-15',
+    startTime: '16:30',
+    endTime: '19:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-16-guest-talk',
+    titleHe: 'הרצאת אורח',
+    titleEn: 'Guest Speaker & Inspiring Stories',
+    descriptionHe: 'הרצאת אורח מעוררת השראה ומפגש בגובה העיניים עם אורח מיוחד מהקהילה על מסעות חיים, יצירה ומדע.',
+    date: '2026-11-16',
+    startTime: '17:00',
+    endTime: '18:45',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-19-art',
+    titleHe: 'סדנת אומנות',
+    titleEn: 'Youth Art & Creative Studio',
+    descriptionHe: 'סדנת אומנות ויצירה מעשית: ציור, חומרים טבעיים ויצירה מקורית בהנחיית יוצרים מהקהילה.',
+    date: '2026-11-19',
+    startTime: '16:30',
+    endTime: '19:00',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-21-movie',
+    titleHe: 'הקרנת סרט',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionHe: 'ערב סרט קולנוע ופופקורן לנוער במתחם הבמבוק בקולום.',
+    date: '2026-11-21',
+    startTime: '18:00',
+    endTime: '20:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-22-open-space',
+    titleHe: 'מרחב פתוח',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionHe: 'מרחב פתוח למפגש, שיחה חופשית, משחקי שולחן ומוזיקה.',
+    date: '2026-11-22',
+    startTime: '16:30',
+    endTime: '19:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-23-jam',
+    titleHe: 'פעילות ג׳אם',
+    titleEn: 'Acoustic Jam Session',
+    descriptionHe: 'פעילות ג׳אם מוזיקלי פתוח: הביאו כלי נגינה או בואו להקשיב ולהשתתף בשירה ואלתור.',
+    date: '2026-11-23',
+    startTime: '17:00',
+    endTime: '19:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-26-board-games',
+    titleHe: 'משחקי קופסה',
+    titleEn: 'Strategy Board Games & Challenges',
+    descriptionHe: 'מפגש משחקי קופסה ואסטרטגיה: שחמט, קטאן, משחקי קלפים וטורניר קבוצתי מהנה.',
+    date: '2026-11-26',
+    startTime: '16:30',
+    endTime: '19:00',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-28-movie',
+    titleHe: 'הקרנת סרט',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionHe: 'הקרנת סרט סוף שבוע על מסך ענק עם כיבוד ופופקורן חם.',
+    date: '2026-11-28',
+    startTime: '18:00',
+    endTime: '20:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-29-open-space',
+    titleHe: 'מרחב פתוח',
+    titleEn: 'Open Youth Space & Chill',
+    descriptionHe: 'מרחב פתוח לנוער: זמן חופשי, פינת יצירה, מוזיקה ומפגש חברים.',
+    date: '2026-11-29',
+    startTime: '16:30',
+    endTime: '19:30',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-30-guest-talk',
+    titleHe: 'הרצאת אורח',
+    titleEn: 'Guest Speaker & Youth Dialogue',
+    descriptionHe: 'הרצאת אורח מרתקת בנושאי מדע, יצירתיות וסיפורי חיים מעוררי השראה.',
+    date: '2026-11-30',
+    startTime: '17:00',
+    endTime: '18:45',
+    locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
+    imageUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=1000',
+  },
+];
+
+function buildYouthReminderCaption(ev) {
+  const link = `${SITE_PUBLIC_URL}/?tab=youth_center&event=${encodeURIComponent(ev.id)}`;
+  const volunteersList =
+    Array.isArray(ev.volunteers) && ev.volunteers.length > 0
+      ? ev.volunteers.map((v) => v.name || v).join(', ')
+      : 'טרם שובץ — נשמח להורה מתנדב/ת דרך הקישור למטה! 🙏';
+
+  return [
+    `🌴 *תזכורת להיום במרכז הנוער גואה (Goa Teens House)* 🌴`,
+    ``,
+    `🎯 *פעילות:* ${ev.titleHe}${ev.titleEn ? ` (${ev.titleEn})` : ''}`,
+    `📅 *תאריך:* ${ev.date || 'היום'}`,
+    `🕒 *שעות:* ${ev.startTime || '16:30'}${ev.endTime ? ` – ${ev.endTime}` : ''}`,
+    `📍 *מיקום:* ${ev.locationDetailsHe || 'מרכז הנוער קולום (ליד שייליש)'}`,
+    `🤝 *הורה מתנדב/ת:* ${volunteersList}`,
+    ``,
+    `📝 *פרטי המפגש:*`,
+    `${ev.descriptionHe || ''}`,
+    ``,
+    `👇 *להרשמה מהירה לאירוע ולשיבוץ הורה מתנדב:*`,
+    link,
+  ].join('\n');
+}
+
+async function fetchImageBuffer(imageUrl) {
+  if (!imageUrl) return null;
+  try {
+    let resolvedUrl = imageUrl;
+    if (imageUrl.startsWith('/')) {
+      const localPath = path.resolve('../../public', imageUrl.slice(1));
+      if (fs.existsSync(localPath)) {
+        return fs.readFileSync(localPath);
+      }
+      resolvedUrl = `${SITE_PUBLIC_URL}${imageUrl}`;
+    } else if (imageUrl.startsWith('data:image/')) {
+      const base64Part = imageUrl.split(',')[1];
+      if (base64Part) return Buffer.from(base64Part, 'base64');
+    }
+    const res = await fetch(resolvedUrl);
+    if (!res.ok) return null;
+    const arrBuf = await res.arrayBuffer();
+    return Buffer.from(arrBuf);
+  } catch (err) {
+    console.warn('[Youth Reminder Bot] Could not fetch image buffer:', err.message);
+    return null;
+  }
+}
+
+async function sendYouthEventReminder(ev, { forceTestDm = false } = {}) {
+  if (!sockInstance || currentStatus !== 'connected') {
+    return {
+      ok: false,
+      queued: true,
+      message: 'הבוט ממתין לחיבור וואטסאפ (סריקת QR ב-/qr). ההודעה תישלח אוטומטית מיד עם החיבור!',
+    };
+  }
+
+  // SAFETY ENFORCEMENT: Always send ONLY to 972508878902 unless explicitly unlocked to 'group_live'
+  let targetJid = SAFE_TEST_RECIPIENT_JID;
+  let recipientLabel = `בדיקה אישית (${SAFE_TEST_RECIPIENT_PHONE})`;
+
+  if (!forceTestDm && youthReminderMode === 'group_live') {
+    const youthGroup = participatingGroups.find(
+      (g) => g.subject && g.subject.trim().toLowerCase() === YOUTH_REMINDER_GROUP_NAME.toLowerCase()
+    );
+    if (!youthGroup) {
+      return {
+        ok: false,
+        message: `קבוצת "${YOUTH_REMINDER_GROUP_NAME}" לא נמצאה ברשימת הקבוצות המחוברות.`,
+      };
+    }
+    targetJid = youthGroup.id;
+    recipientLabel = `קבוצת "${youthGroup.subject}"`;
+  }
+
+  const caption = buildYouthReminderCaption(ev);
+  const imgBuf = await fetchImageBuffer(ev.imageUrl);
+
+  try {
+    if (imgBuf) {
+      await sockInstance.sendMessage(targetJid, {
+        image: imgBuf,
+        caption,
+      });
+    } else {
+      await sockInstance.sendMessage(targetJid, {
+        text: caption,
+      });
+    }
+
+    const logItem = {
+      id: `rem-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      recipient: recipientLabel,
+      eventTitle: ev.titleHe,
+      mode: forceTestDm ? 'test_dm_only' : youthReminderMode,
+      withImage: !!imgBuf,
+    };
+    sentReminderLog.unshift(logItem);
+    if (sentReminderLog.length > 30) sentReminderLog.pop();
+
+    console.log(`[Youth Reminder Sent] ✅ "${ev.titleHe}" -> ${recipientLabel}`);
+    return { ok: true, logItem, caption };
+  } catch (err) {
+    console.error('[Youth Reminder Error]', err.message);
+    return { ok: false, message: err.message };
+  }
+}
+
+// Daily 09:30 IST Scheduler (Checks every 45 seconds)
+setInterval(async () => {
+  if (!sockInstance || currentStatus !== 'connected') return;
+  try {
+    const nowIst = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
+    );
+    const yyyy = nowIst.getFullYear();
+    const mm = String(nowIst.getMonth() + 1).padStart(2, '0');
+    const dd = String(nowIst.getDate()).padStart(2, '0');
+    const hh = String(nowIst.getHours()).padStart(2, '0');
+    const min = String(nowIst.getMinutes()).padStart(2, '0');
+
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const timeStr = `${hh}:${min}`;
+
+    if (timeStr === DAILY_REMINDER_TIME_IST) {
+      const todaysEvents = YOUTH_CENTER_SCHEDULE.filter((e) => e.date === dateStr);
+      for (const ev of todaysEvents) {
+        const key = `${dateStr}:${ev.id}`;
+        if (!sentDailyKeys.has(key)) {
+          sentDailyKeys.add(key);
+          console.log(`[09:30 IST Scheduler] Sending daily reminder for ${ev.titleHe} (${dateStr})...`);
+          await sendYouthEventReminder(ev);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[09:30 IST Scheduler Error]', err.message);
+  }
+}, 45 * 1000);
+
+// ============================================================================
 // Express Routes
 // ============================================================================
 app.get('/health', generalApiLimiter, (req, res) => {
@@ -521,6 +873,11 @@ app.get('/health', generalApiLimiter, (req, res) => {
     status: 'ok',
     waStatus: currentStatus,
     connectedUser,
+    youthReminderGroupName: YOUTH_REMINDER_GROUP_NAME,
+    youthReminderMode,
+    safeTestRecipientPhone: SAFE_TEST_RECIPIENT_PHONE,
+    dailyReminderTimeIst: DAILY_REMINDER_TIME_IST,
+    sentRemindersCount: sentReminderLog.length,
     targetGroupName: TARGET_GROUP_KEYWORD,
     targetGroupFound: !!targetGroup,
     targetGroupSubject: targetGroup?.subject || null,
@@ -529,6 +886,47 @@ app.get('/health', generalApiLimiter, (req, res) => {
     recentEventsCount: recentEvents.length,
     recentMessagesCount: recentMessages.length,
   });
+});
+
+// Trigger a sample or specific Youth Center event reminder (strictly to 972508878902 in test mode)
+app.post('/send-youth-reminder', generalApiLimiter, async (req, res) => {
+  const customEvent = req.body?.event;
+  const targetEvent =
+    customEvent && customEvent.titleHe
+      ? customEvent
+      : YOUTH_CENTER_SCHEDULE.find((e) => e.id === req.body?.eventId) ||
+        YOUTH_CENTER_SCHEDULE[4] ||
+        YOUTH_CENTER_SCHEDULE[0];
+
+  if (!sockInstance || currentStatus !== 'connected') {
+    autoSendSampleOnConnect = true;
+    return res.json({
+      ok: false,
+      queued: true,
+      waStatus: currentStatus,
+      caption: buildYouthReminderCaption(targetEvent),
+      message: 'הבוט ממתין לסריקת QR. התזכורת נכנסה לתור ותישלח אוטומטית ל-972508878902 מיד עם החיבור!',
+    });
+  }
+
+  const result = await sendYouthEventReminder(targetEvent, { forceTestDm: true });
+  return res.json(result);
+});
+
+app.get('/send-sample-youth-reminder', generalApiLimiter, async (req, res) => {
+  const eventId = (req.query.eventId || '').toString().trim();
+  const targetEvent =
+    YOUTH_CENTER_SCHEDULE.find((e) => e.id === eventId) ||
+    YOUTH_CENTER_SCHEDULE[4] ||
+    YOUTH_CENTER_SCHEDULE[0];
+
+  if (!sockInstance || currentStatus !== 'connected') {
+    autoSendSampleOnConnect = true;
+    return res.redirect('/qr');
+  }
+
+  await sendYouthEventReminder(targetEvent, { forceTestDm: true });
+  return res.redirect('/');
 });
 
 app.get('/groups', generalApiLimiter, requireCallerAuth, async (req, res) => {
@@ -683,6 +1081,29 @@ app.get('/', generalApiLimiter, requireCallerAuth, (req, res) => {
               <div>
                 <a href="/refresh-groups" class="btn" style="background: #3b5f4c;">רענן קבוצות עכשיו 🔄</a>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Youth Center Morning Reminder Bot Card -->
+        <div class="card" style="border: 2px solid #2e4a3b; background: #f4f9f5;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h3 style="margin: 0 0 6px 0; color: #1f3529;">🤖 בוט תזכורות בוקר למרכז הנוער (${escapeHtml(DAILY_REMINDER_TIME_IST)} שעון הודו)</h3>
+              <p style="font-size: 13px; color: #3b5f4c; margin: 0 0 8px 0;">
+                שולח אוטומטית בכל בוקר של אירוע בשעה <strong>09:30 (IST)</strong> תזכורת מעוצבת עם <strong>התמונה הרלוונטית של האירוע</strong>, פרטי האירוע וקישור ישיר להרשמה.
+              </p>
+              <div style="background: #fff8eb; border: 1px solid #f0d8a8; border-radius: 8px; padding: 8px 12px; font-size: 12px; color: #8a5300; display: inline-block;">
+                🔒 <strong>מצב בדיקה בטוח פעיל:</strong> הקבוצה <code>${escapeHtml(YOUTH_REMINDER_GROUP_NAME)}</code> <strong>נעולה ולא תקבל שום הודעה</strong> עד לאישורך! כל ההודעות נשלחות אך ורק למספר האישי שלך: <code>${escapeHtml(SAFE_TEST_RECIPIENT_PHONE)}</code>.
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+              <a href="/send-sample-youth-reminder" class="btn btn-accent" style="font-size: 14px; padding: 10px 18px;">
+                📲 שלח עכשיו הודעה לדוגמא (עם תמונה) ל-${escapeHtml(SAFE_TEST_RECIPIENT_PHONE)}
+              </a>
+              <span style="font-size: 11px; color: #555;">
+                שולח מיד את האירוע הקרוב של מרכז הנוער לווטסאפ ${escapeHtml(SAFE_TEST_RECIPIENT_PHONE)}
+              </span>
             </div>
           </div>
         </div>

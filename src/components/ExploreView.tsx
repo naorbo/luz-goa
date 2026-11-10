@@ -16,6 +16,7 @@ import {
   Share2,
   CheckCircle2,
   UserCheck,
+  ExternalLink,
 } from 'lucide-react';
 import {
   LuzEntity,
@@ -45,6 +46,7 @@ interface ExploreViewProps {
   onGoToProvider: () => void;
   onGoToBusinesses: () => void;
   onNavigateToYouthEvent?: (eventId: string) => void;
+  onNavigateToBeitBinaEvent?: (eventId: string) => void;
   onTrackClick?: (
     event: Omit<ClickAnalyticsEvent, 'id' | 'sessionId' | 'timestamp' | 'environment'>
   ) => void;
@@ -65,6 +67,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   onGoToProvider,
   onGoToBusinesses,
   onNavigateToYouthEvent,
+  onNavigateToBeitBinaEvent,
   onTrackClick,
 }) => {
   const isHe = lang === 'he';
@@ -100,6 +103,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   };
 
   const handleEntityClick = (item: LuzEntity) => {
+    if (item.isBeitBina || item.id.startsWith('bina-')) {
+      onNavigateToBeitBinaEvent?.(item.id);
+      return;
+    }
     if (item.isYouthCenter || item.id.startsWith('yc-')) {
       onNavigateToYouthEvent?.(item.id);
       return;
@@ -547,6 +554,11 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                     >
                                       {badge.label}
                                     </span>
+                                    {(ev.isBeitBina || ev.id.startsWith('bina-')) && (
+                                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#4A1942] text-white">
+                                        {isHe ? 'בית בינ"ה בגואה' : 'Beit BINA Goa'}
+                                      </span>
+                                    )}
                                     {!ev.isYouthCenter && (
                                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink-2">
                                         <MapPin className="w-3 h-3 text-accent" />
@@ -605,17 +617,30 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                                     <CalendarPlus className="w-4 h-4 text-accent shrink-0" />
                                     <span className="truncate">{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
                                   </a>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEntityClick(ev);
-                                    }}
-                                    className="flex-1 min-w-0 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
-                                  >
-                                    <UserCheck className="w-4 h-4 shrink-0" />
-                                    <span className="truncate">{isHe ? 'פרטים והרשמה' : 'Book'}</span>
-                                  </button>
+                                  {ev.externalRegistrationUrl ? (
+                                    <a
+                                      href={ev.externalRegistrationUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="flex-1 min-w-0 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#4A1942] hover:bg-[#3A1233] text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
+                                    >
+                                      <ExternalLink className="w-4 h-4 shrink-0" />
+                                      <span className="truncate">{isHe ? 'הרשמה ותשלום' : 'Register & Pay'}</span>
+                                    </a>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEntityClick(ev);
+                                      }}
+                                      className="flex-1 min-w-0 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
+                                    >
+                                      <UserCheck className="w-4 h-4 shrink-0" />
+                                      <span className="truncate">{isHe ? 'פרטים והרשמה' : 'Book'}</span>
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -682,11 +707,18 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
                           <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${badge.classes}`}
-                            >
-                              {badge.label}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${badge.classes}`}
+                              >
+                                {badge.label}
+                              </span>
+                              {(item.isBeitBina || item.id.startsWith('bina-')) && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#4A1942] text-white shadow-sm">
+                                  {isHe ? 'בית בינ"ה' : 'Beit BINA'}
+                                </span>
+                              )}
+                            </div>
                             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1">
                               <MapPin className="w-3 h-3 text-accent" />
                               {areaLabel(item.area)}
@@ -770,17 +802,30 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                         >
                           <Share2 className="w-4 h-4 shrink-0" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEntityClick(item);
-                          }}
-                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
-                        >
-                          <UserCheck className="w-4 h-4 shrink-0" />
-                          <span>{isHe ? 'פרטים והרשמה' : 'Details & Book'}</span>
-                        </button>
+                        {item.externalRegistrationUrl ? (
+                          <a
+                            href={item.externalRegistrationUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#4A1942] hover:bg-[#3A1233] text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
+                          >
+                            <ExternalLink className="w-4 h-4 shrink-0" />
+                            <span>{isHe ? 'הרשמה ותשלום' : 'Register & Pay'}</span>
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEntityClick(item);
+                            }}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
+                          >
+                            <UserCheck className="w-4 h-4 shrink-0" />
+                            <span>{isHe ? 'פרטים והרשמה' : 'Details & Book'}</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </article>

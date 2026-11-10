@@ -29,8 +29,16 @@ export interface ShareResult {
 /**
  * Builds the canonical shareable URL for a given event entity.
  */
-export function buildEventShareUrl(entityId: string, isYouthCenter?: boolean): string {
-  const tabQuery = isYouthCenter ? '&tab=youth_center' : '';
+export function buildEventShareUrl(
+  entityId: string,
+  isYouthCenter?: boolean,
+  isBeitBina?: boolean
+): string {
+  const tabQuery = isBeitBina
+    ? '&tab=beit_bina'
+    : isYouthCenter
+    ? '&tab=youth_center'
+    : '';
   if (typeof window === 'undefined') {
     return `https://my-luz-dc028.web.app/?event=${encodeURIComponent(entityId)}${tabQuery}`;
   }
@@ -48,7 +56,8 @@ export function buildEventShareContent(
   const isHe = options?.isHe ?? true;
   const title = isHe ? entity.titleHe : entity.titleEn;
   const isYC = Boolean(entity.isYouthCenter || entity.id.startsWith('yc-'));
-  const url = buildEventShareUrl(entity.id, isYC);
+  const isBina = Boolean(entity.isBeitBina || entity.id.startsWith('bina-'));
+  const url = buildEventShareUrl(entity.id, isYC, isBina);
 
   let schedule = options?.customSchedule || '';
   if (!schedule) {
