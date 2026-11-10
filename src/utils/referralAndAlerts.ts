@@ -90,6 +90,10 @@ export function getActionTypeLabel(action: ReferralActionType, lang: Language): 
       he: 'רישום משפחה למרכז הנוער גואה',
       en: 'Youth Center Family Registration',
     },
+    beit_bina_signup: {
+      he: 'הרשמה לאירוע בבית בינ"ה בגואה',
+      en: 'Beit BINA Goa Event Registration',
+    },
   };
   return lang === 'he' ? map[action].he : map[action].en;
 }

@@ -136,6 +136,7 @@ function mergeWithSeedById<T extends { id: string }>(saved: T[], seed: T[]): T[]
       websiteUrl: (item as any).websiteUrl ?? (seedItem as any).websiteUrl,
       whatsappGroupUrl: (item as any).whatsappGroupUrl ?? (seedItem as any).whatsappGroupUrl,
       mapUrl: (item as any).mapUrl ?? (seedItem as any).mapUrl,
+      volunteers: (item as any).volunteers ?? (seedItem as any).volunteers,
     };
   });
   const savedIds = new Set(saved.map((item) => item.id));

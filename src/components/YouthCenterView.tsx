@@ -38,12 +38,14 @@ import {
   AlertCircle,
   Lock,
   Unlock,
+  Heart,
 } from 'lucide-react';
 import {
   YouthCenterFamily,
   LuzEntity,
   BookingRecord,
   Language,
+  EventVolunteer,
 } from '../types/luz';
 import {
   buildGoogleCalendarUrl,
@@ -93,6 +95,7 @@ const YC_REGISTRATIONS_STORAGE_KEY = 'luz_yc_event_registrations_nov26';
 const YC_SHEET_WEBHOOK_STORAGE_KEY = 'luz_yc_google_sheet_webhook_v1';
 const YC_DEDICATED_SHEET_URL_STORAGE_KEY = 'luz_yc_dedicated_spreadsheet_url_v1';
 const YC_EVENT_OVERRIDES_STORAGE_KEY = 'luz_yc_event_custom_overrides_v2';
+const YC_VOLUNTEERS_STORAGE_KEY = 'luz_yc_event_volunteers_v1';
 const GATE_UNLOCKED_STORAGE_KEY = 'luz_yc_gate_unlocked_v1';
 export const GATE_MASTER_PASSCODE = 'Matnas2026';
 
@@ -224,6 +227,45 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       // ignore
     }
   }, [eventOverrides]);
+
+  // Persistent Volunteer Parents per Event (synced to both localStorage and Cloud Firestore via onUpdateEntity)
+  const [eventVolunteers, setEventVolunteers] = useState<Record<string, EventVolunteer[]>>(() => {
+    try {
+      const saved = localStorage.getItem(YC_VOLUNTEERS_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(YC_VOLUNTEERS_STORAGE_KEY, JSON.stringify(eventVolunteers));
+    } catch {
+      // ignore
+    }
+  }, [eventVolunteers]);
+
+  // Volunteer Parent Signup Modal State
+  const [selectedEventForVolunteer, setSelectedEventForVolunteer] = useState<LuzEntity | null>(null);
+  const [volParentName, setVolParentName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('luz_yc_volunteer_name') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [volParentPhone, setVolParentPhone] = useState<string>(() => {
+    try {
+      return localStorage.getItem('luz_yc_volunteer_phone') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [volRole, setVolRole] = useState<string>('הורה תורן בשער ונוכחות');
+  const [volSubmitted, setVolSubmitted] = useState<boolean>(false);
+  const [volSyncing, setVolSyncing] = useState<boolean>(false);
 
   // Client-side image upload & resize helper (keeps photos lightweight, max 1200px width/height)
   const handleProcessImageFile = (
@@ -426,7 +468,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     }
   }, [ycSheetWebhookUrl]);
 
-  // Combine core Youth Center events with any Youth/Kids events from entities + custom overrides
+  // Combine core Youth Center events with any Youth/Kids events from entities + custom overrides + volunteers
   const youthEvents = useMemo(() => {
     const customYouthEntities = entities.filter(
       (e) => e.isYouthCenter && e.id !== 'prod-wks-yc-colomb'
@@ -434,8 +476,32 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 
     const map = new Map<string, LuzEntity>();
     CORE_YOUTH_CENTER_EVENTS.forEach((ev) => map.set(ev.id, ev));
-    customYouthEntities.forEach((ev) => map.set(ev.id, ev));
-    Object.values(eventOverrides).forEach((ov) => map.set(ov.id, ov));
+    customYouthEntities.forEach((ev) => {
+      const existing = map.get(ev.id);
+      map.set(ev.id, existing ? { ...existing, ...ev } : ev);
+    });
+    Object.values(eventOverrides).forEach((ov) => {
+      const existing = map.get(ov.id);
+      if (!existing) {
+        map.set(ov.id, ov);
+        return;
+      }
+      const existingTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      const ovTime = ov.updatedAt ? new Date(ov.updatedAt).getTime() : 0;
+      if (ovTime >= existingTime) {
+        map.set(ov.id, { ...existing, ...ov, volunteers: ov.volunteers ?? existing.volunteers });
+      } else {
+        map.set(ov.id, { ...ov, ...existing, volunteers: existing.volunteers ?? ov.volunteers });
+      }
+    });
+
+    Array.from(map.keys()).forEach((id) => {
+      const item = map.get(id)!;
+      const localVols = eventVolunteers[id];
+      if (localVols && (!item.volunteers || item.volunteers.length === 0)) {
+        map.set(id, { ...item, volunteers: localVols });
+      }
+    });
 
     const getSortKey = (item: LuzEntity) => {
       if (item.date) return `${item.date}_${item.startTime || '16:00'}`;
@@ -449,7 +515,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     return Array.from(map.values()).sort((a, b) =>
       getSortKey(a).localeCompare(getSortKey(b))
     );
-  }, [entities, eventOverrides]);
+  }, [entities, eventOverrides, eventVolunteers]);
 
   // Deep-linking: auto-open registration modal or gate when an event is targeted via URL
   useEffect(() => {
@@ -600,6 +666,154 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     setSelectedEventForReg(ev);
     setIsSubscriber(true);
     setRegSubmitted(false);
+  };
+
+  const getEventVolunteers = (ev: LuzEntity): EventVolunteer[] => {
+    return ev.volunteers || eventVolunteers[ev.id] || [];
+  };
+
+  const handleOpenVolunteerModal = (ev: LuzEntity) => {
+    const latestEv = youthEvents.find((item) => item.id === ev.id) || ev;
+    setSelectedEventForVolunteer(latestEv);
+    setVolSubmitted(false);
+  };
+
+  const handleSubmitVolunteerSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEventForVolunteer || !volParentName.trim()) return;
+
+    const cleanName = volParentName.trim();
+    const cleanPhone = volParentPhone.trim() || '—';
+    const cleanRole = volRole.trim() || (isHe ? 'הורה מתנדב/ת' : 'Volunteer Parent');
+
+    try {
+      localStorage.setItem('luz_yc_volunteer_name', cleanName);
+      if (cleanPhone && cleanPhone !== '—') {
+        localStorage.setItem('luz_yc_volunteer_phone', cleanPhone);
+      }
+    } catch {
+      // ignore
+    }
+    setVolunteerName(cleanName);
+
+    const newVolunteer: EventVolunteer = {
+      id: `vol-${Date.now()}`,
+      name: cleanName,
+      phone: cleanPhone,
+      role: cleanRole,
+      createdAt: new Date().toISOString(),
+    };
+
+    const currentEv =
+      youthEvents.find((ev) => ev.id === selectedEventForVolunteer.id) ||
+      selectedEventForVolunteer;
+    const existingVols = getEventVolunteers(currentEv);
+    const filteredExisting = existingVols.filter(
+      (v) => v.name.trim().toLowerCase() !== cleanName.toLowerCase()
+    );
+    const nextVolunteers = [...filteredExisting, newVolunteer];
+
+    const updatedEvent: LuzEntity = {
+      ...currentEv,
+      volunteers: nextVolunteers,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setEventVolunteers((prev) => ({
+      ...prev,
+      [currentEv.id]: nextVolunteers,
+    }));
+
+    setEventOverrides((prev) => ({
+      ...prev,
+      [currentEv.id]: updatedEvent,
+    }));
+
+    setSelectedEventForVolunteer(updatedEvent);
+
+    if (onUpdateEntity) {
+      onUpdateEntity(updatedEvent);
+    }
+
+    const targetUrl = (ycSheetWebhookUrl || DEFAULT_YC_WEBHOOK_URL).trim();
+    if (targetUrl.startsWith('https://')) {
+      setVolSyncing(true);
+      try {
+        const scheduleLabelEn = formatEventScheduleEn(currentEv);
+        const payload = {
+          event: 'luz.youth_center_event_rsvp',
+          dedicatedSheetName: 'LUZ Goa — Youth Center Registrations',
+          sheetTabName: 'Youth_Center_Events',
+          referralCode: `YC-VOL-${Date.now().toString().slice(-4)}`,
+          environment: 'prod',
+          actionType: 'youth_center_volunteer_signup',
+          actionLabelEn: 'Volunteer Parent Shift Signup',
+          actionLabelHe: 'שיבוץ הורה מתנדב לאירוע במרכז הנוער',
+          youthCenterEvent: {
+            eventId: currentEv.id,
+            titleEn: currentEv.titleEn,
+            titleHe: currentEv.titleHe,
+            schedule: scheduleLabelEn,
+            location: currentEv.locationDetailsEn || 'Colomb Youth Center',
+            participantName: `[VOLUNTEER PARENT] ${cleanName}`,
+            isSubscriber: 'Volunteer Parent on Duty',
+            parentName: cleanName,
+            parentPhone: cleanPhone,
+            notes: `Role: ${cleanRole}`,
+            registeredAt: newVolunteer.createdAt,
+          },
+        };
+        await fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+          mode: 'no-cors',
+        });
+      } catch {
+        // Saved locally & in Firestore even if offline
+      } finally {
+        setVolSyncing(false);
+      }
+    }
+
+    setVolSubmitted(true);
+    setShareToast(
+      isHe
+        ? `🤝 תודה ${cleanName}! שובצת כהורה מתנדב/ת באירוע`
+        : `🤝 Thank you ${cleanName}! Signed up as volunteer parent`
+    );
+    setTimeout(() => setShareToast(null), 3500);
+  };
+
+  const handleRemoveVolunteer = (ev: LuzEntity, volId: string) => {
+    const existingVols = getEventVolunteers(ev);
+    const nextVolunteers = existingVols.filter((v) => v.id !== volId);
+    const updatedEvent: LuzEntity = {
+      ...ev,
+      volunteers: nextVolunteers,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setEventVolunteers((prev) => ({
+      ...prev,
+      [ev.id]: nextVolunteers,
+    }));
+
+    setEventOverrides((prev) => ({
+      ...prev,
+      [ev.id]: updatedEvent,
+    }));
+
+    if (selectedEventForVolunteer?.id === ev.id) {
+      setSelectedEventForVolunteer(updatedEvent);
+    }
+
+    if (onUpdateEntity) {
+      onUpdateEntity(updatedEvent);
+    }
+
+    setShareToast(isHe ? 'השיבוץ הוסר מהאירוע' : 'Volunteer removed from event');
+    setTimeout(() => setShareToast(null), 2500);
   };
 
   const handleSubmitEventRegistration = async (e: React.FormEvent) => {
@@ -1357,9 +1571,19 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-muted mb-1">
-                  {isHe ? 'שם ההורה המתנדב/ת במשמרת:' : 'Volunteer Parent on Duty:'}
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="block text-xs font-semibold text-muted">
+                    {isHe ? 'שם ההורה המתנדב/ת במשמרת:' : 'Volunteer Parent on Duty:'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenVolunteerModal(activeGateEvent)}
+                    className="text-[11px] font-bold text-accent hover:underline inline-flex items-center gap-1"
+                  >
+                    <Heart className="w-3 h-3" />
+                    <span>{isHe ? 'שיבוץ מתנדבים לאירוע' : 'Manage Event Volunteers'}</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <UserCheck className="w-4 h-4 text-accent absolute top-3 start-3.5" />
                   <input
@@ -1370,6 +1594,27 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                     className="w-full ps-10 pe-3.5 py-2 rounded-xl bg-paper border border-rule font-medium text-ink text-sm focus:outline-none focus:border-accent"
                   />
                 </div>
+                {getEventVolunteers(activeGateEvent).length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <span className="text-[11px] text-muted">
+                      {isHe ? 'רשומים כמתנדבים:' : 'Signed up:'}
+                    </span>
+                    {getEventVolunteers(activeGateEvent).map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setVolunteerName(v.name)}
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-bold border transition-colors ${
+                          volunteerName === v.name
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 border-emerald-500/30 hover:bg-emerald-500/20'
+                        }`}
+                      >
+                        🤝 {v.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1813,6 +2058,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                     <div className="divide-y divide-rule">
                       {dayGroup.events.map((ev) => {
                         const regCount = getEventRegistrationsCount(ev.id);
+                        const eventVols = getEventVolunteers(ev);
                         const title = isHe ? ev.titleHe : ev.titleEn;
                         const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
                         const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
@@ -1898,6 +2144,31 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                       {regCount} {isHe ? 'נרשמו' : 'registered'}
                                     </span>
                                   </span>
+
+                                  {/* Volunteer Parent Badge on Calendar Row */}
+                                  {eventVols.length > 0 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenVolunteerModal(ev)}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-bold text-emerald-900 dark:text-emerald-200 transition-colors"
+                                      title={isHe ? 'לחצו לצפייה או הצטרפות כהורה מתנדב' : 'Click to view or join as volunteer parent'}
+                                    >
+                                      <Heart className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                      <span>
+                                        {isHe ? 'הורה מתנדב/ת:' : 'Volunteer:'} {eventVols.map((v) => v.name).join(', ')}
+                                      </span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenVolunteerModal(ev)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-dashed border-amber-600/50 text-xs font-semibold text-amber-900 dark:text-amber-300 transition-colors"
+                                      title={isHe ? 'לחצו לרישום עצמי כהורה מתנדב באירוע' : 'Click to sign up as volunteer parent'}
+                                    >
+                                      <UserPlus className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                      <span>{isHe ? 'דרוש הורה מתנדב — לחצו לשיבוץ' : 'Volunteer Needed — Sign Up'}</span>
+                                    </button>
+                                  )}
                                 </div>
 
                                 <h4
@@ -1932,8 +2203,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                               </div>
                             </div>
 
-                            {/* Right/End: Quick Actions (Crafted Responsive 3-Button Bar) */}
-                            <div className="w-full md:w-auto flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-rule">
+                            {/* Right/End: Quick Actions */}
+                            <div className="w-full md:w-auto flex flex-wrap items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-rule">
                               {isAdmin && (
                                 <button
                                   type="button"
@@ -1958,11 +2229,32 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                                 href={gcalLink}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink hover:border-ink/30 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
+                                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink hover:border-ink/30 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
                               >
                                 <CalendarPlus className="w-4 h-4 text-accent shrink-0" />
-                                <span className="truncate">{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
+                                <span className="hidden lg:inline truncate">{isHe ? 'ליומן גוגל' : '+ Google Cal'}</span>
                               </a>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenVolunteerModal(ev)}
+                                className={`inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px] ${
+                                  eventVols.length > 0
+                                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-500/20'
+                                    : 'border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20'
+                                }`}
+                                title={isHe ? 'רישום עצמי כהורה מתנדב לאירוע' : 'Sign up as volunteer parent'}
+                              >
+                                <Heart className="w-4 h-4 shrink-0 text-accent" />
+                                <span>
+                                  {eventVols.length > 0
+                                    ? isHe
+                                      ? `מתנדב: ${eventVols[0].name.split(' ')[0]}`
+                                      : `Vol: ${eventVols[0].name.split(' ')[0]}`
+                                    : isHe
+                                    ? 'התנדבות הורה'
+                                    : 'Volunteer'}
+                                </span>
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => handleOpenGateForEvent(ev.id)}
@@ -1993,11 +2285,12 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         </section>
       ) : (
         /* =====================================================================
-           CARDS VIEW: CLEAN MODERN CARDS (ONLY REGISTRATION COUNT SHOWN)
+           CARDS VIEW: CLEAN MODERN CARDS (REGISTRATION COUNT + VOLUNTEER PARENT)
            ===================================================================== */
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {youthEvents.map((ev) => {
             const regCount = getEventRegistrationsCount(ev.id);
+            const eventVols = getEventVolunteers(ev);
             const title = isHe ? ev.titleHe : ev.titleEn;
             const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
             const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
@@ -2040,6 +2333,16 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         </span>
                       </span>
                     </div>
+
+                    {/* Volunteer badge on image bottom-left if assigned */}
+                    {eventVols.length > 0 && (
+                      <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full text-xs font-bold bg-emerald-900/85 text-emerald-100 backdrop-blur-xs border border-emerald-400/30 shadow-sm inline-flex items-center gap-1.5 max-w-[70%] truncate">
+                        <Heart className="w-3 h-3 text-emerald-300 shrink-0" />
+                        <span className="truncate">
+                          {isHe ? 'מתנדב/ת:' : 'Volunteer:'} {eventVols.map((v) => v.name).join(', ')}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Price Badge on Image bottom right */}
                     {ev.priceAmount && ev.priceAmount > 0 && (
@@ -2091,6 +2394,56 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         <MapPin className="w-4 h-4 text-accent shrink-0" />
                         <span>{loc}</span>
                       </div>
+                    </div>
+
+                    {/* Volunteer Parent Status & Self-Signup Box on Card */}
+                    <div
+                      className={`p-3 rounded-2xl border flex items-center justify-between gap-2 transition-colors ${
+                        eventVols.length > 0
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-200'
+                          : 'bg-amber-500/10 border-dashed border-amber-500/40 text-amber-950 dark:text-amber-200'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wide opacity-80 flex items-center gap-1">
+                          <Heart className="w-3 h-3 text-accent shrink-0" />
+                          <span>
+                            {eventVols.length > 0
+                              ? isHe
+                                ? 'הורה מתנדב/ת באירוע:'
+                                : 'Volunteer Parent on Duty:'
+                              : isHe
+                              ? 'תורנות הורה מתנדב:'
+                              : 'Volunteer Parent Shift:'}
+                          </span>
+                        </div>
+                        {eventVols.length > 0 ? (
+                          <div className="text-xs sm:text-sm font-bold text-ink truncate mt-0.5">
+                            {eventVols.map((v) => v.name).join(' · ')}
+                          </div>
+                        ) : (
+                          <div className="text-xs font-medium text-muted mt-0.5">
+                            {isHe ? 'עדיין לא שובץ הורה מתנדב' : 'No volunteer parent assigned yet'}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenVolunteerModal(ev)}
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-[0.97] ${
+                          eventVols.length > 0
+                            ? 'bg-paper hover:bg-paper-2 text-ink border border-rule shadow-2xs'
+                            : 'bg-ink text-paper hover:opacity-90 shadow-xs'
+                        }`}
+                      >
+                        {eventVols.length > 0
+                          ? isHe
+                            ? '+ הצטרפות / עדכון'
+                            : '+ Join / Edit'
+                          : isHe
+                          ? 'אני רוצה להתנדב 🙋'
+                          : 'Volunteer 🙋'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2551,6 +2904,48 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Volunteer Parent Status & Quick Switch to Volunteer Signup */}
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs sm:text-sm">
+                <Heart className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  {getEventVolunteers(selectedEventForReg).length > 0 ? (
+                    <span className="text-ink font-semibold">
+                      {isHe ? 'הורה מתנדב/ת במפגש:' : 'Volunteer Parent:'}{' '}
+                      <strong className="text-emerald-800 dark:text-emerald-300">
+                        {getEventVolunteers(selectedEventForReg)
+                          .map((v) => v.name)
+                          .join(', ')}
+                      </strong>
+                    </span>
+                  ) : (
+                    <span className="text-ink font-medium">
+                      {isHe
+                        ? 'רוצה לעזור כהורה מתנדב/ת במפגש הזה?'
+                        : 'Want to help as a volunteer parent at this session?'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = selectedEventForReg;
+                  setSelectedEventForReg(null);
+                  handleOpenVolunteerModal(target);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-paper hover:bg-paper-2 border border-rule text-xs font-bold text-accent transition-all active:scale-[0.97]"
+              >
+                {getEventVolunteers(selectedEventForReg).length > 0
+                  ? isHe
+                    ? '+ הצטרפות / עדכון מתנדב'
+                    : '+ Join / Edit Volunteer'
+                  : isHe
+                  ? '🙋 הרשמה כהורה מתנדב'
+                  : '🙋 Sign up as Volunteer'}
+              </button>
+            </div>
 
             {regSubmitted ? (
               <div className="py-6 text-center space-y-5">
@@ -3444,6 +3839,213 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          VOLUNTEER PARENT SIGNUP MODAL (Visible on Calendar & Cards)
+         ===================================================================== */}
+      {selectedEventForVolunteer && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={() => setSelectedEventForVolunteer(null)}
+        >
+          <div
+            className="hallmark-plate max-w-lg w-full p-5 sm:p-7 space-y-5 my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-rule pb-4">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <Heart className="w-3.5 h-3.5" />
+                  <span>{isHe ? 'התנדבות הורים · מרכז הנוער גואה' : 'Parent Volunteering · Youth Center'}</span>
+                </span>
+                <h3 className="font-display text-xl sm:text-2xl font-bold text-ink leading-tight">
+                  {isHe ? selectedEventForVolunteer.titleHe : selectedEventForVolunteer.titleEn}
+                </h3>
+                <p className="text-xs text-muted flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-accent" />
+                  <span>{formatEventSchedule(selectedEventForVolunteer)}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedEventForVolunteer(null)}
+                className="p-2 rounded-xl bg-paper-2 text-ink hover:bg-paper-3 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Current Volunteers List for this Event */}
+            {getEventVolunteers(selectedEventForVolunteer).length > 0 && (
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-2.5">
+                <div className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    {isHe
+                      ? 'הורים מתנדבים הרשומים כעת למפגש זה:'
+                      : 'Volunteer parents currently signed up for this session:'}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {getEventVolunteers(selectedEventForVolunteer).map((vol) => (
+                    <div
+                      key={vol.id}
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-paper border border-rule text-xs sm:text-sm"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-bold text-ink flex items-center gap-2 flex-wrap">
+                          <span>🤝 {vol.name}</span>
+                          {vol.role && (
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-paper-2 text-ink-2 border border-rule">
+                              {vol.role}
+                            </span>
+                          )}
+                        </div>
+                        {isAdmin && vol.phone && vol.phone !== '—' && (
+                          <div className="text-[11px] text-muted font-mono mt-0.5" dir="ltr">
+                            {vol.phone}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveVolunteer(selectedEventForVolunteer, vol.id)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-muted hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shrink-0"
+                        title={isHe ? 'ביטול שיבוץ מתנדב' : 'Remove volunteer'}
+                      >
+                        {isHe ? 'ביטול שיבוץ' : 'Remove'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {volSubmitted ? (
+              <div className="py-5 text-center space-y-5">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center mx-auto ring-8 ring-emerald-500/5">
+                  <Heart className="w-8 h-8" />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-display text-2xl font-bold text-ink">
+                    {isHe ? 'תודה רבה! שובצת כהורה מתנדב/ת 🌿' : 'Thank You! You are signed up 🌿'}
+                  </h4>
+                  <p className="text-xs sm:text-sm text-muted max-w-sm mx-auto leading-relaxed">
+                    {isHe
+                      ? 'השם שלך מופיע כעת בלוח השנה ובכרטיסיית האירוע כהורה מתנדב. ביום האירוע תוכל/י להיכנס ל״שער נוכחות״ עם הסיסמה Matnas2026 ולסמן מי הגיע.'
+                      : 'Your name is now displayed on the calendar and event card. On the day of the event, open the Volunteer Gate with passcode Matnas2026.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetId = selectedEventForVolunteer.id;
+                      setSelectedEventForVolunteer(null);
+                      handleOpenGateForEvent(targetId);
+                    }}
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all"
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    <span>{isHe ? 'מעבר לשער הנוכחות של האירוע' : 'Open Event Gate'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEventForVolunteer(null)}
+                    className="px-6 py-3 rounded-2xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink font-semibold text-xs sm:text-sm transition-all"
+                  >
+                    {isHe ? 'סגירה' : 'Done'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitVolunteerSignup} className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule text-xs text-ink-2 leading-relaxed">
+                  {isHe
+                    ? 'מרכז הנוער פועל בזכות מעורבות ההורים בקהילה. רישום כהורה מתנדב מציג את שמך בלוח הפעילויות ובכרטיס האירוע כדי שכולם ידעו שיש הורה תורן במפגש.'
+                    : 'The Youth Center thrives thanks to community parents. Signing up displays your name on the schedule and event card so everyone knows a volunteer parent is on duty.'}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-ink mb-1">
+                    {isHe ? 'שם ההורה המתנדב/ת (יוצג בלוח ובכרטיס האירוע) *' : 'Volunteer Parent Name (Shown on Calendar & Card) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={volParentName}
+                    onChange={(e) => setVolParentName(e.target.value)}
+                    placeholder={isHe ? 'לדוגמה: יעל כהן' : 'e.g. Yael Cohen'}
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm font-medium text-ink focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-ink mb-1">
+                    {isHe ? 'טלפון וואטסאפ (לתיאום בלבד — לא מוצג באתר) *' : 'WhatsApp Phone (For coordination only — kept private) *'}
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    dir="ltr"
+                    value={volParentPhone}
+                    onChange={(e) => setVolParentPhone(e.target.value)}
+                    placeholder="+972-52-..."
+                    className="w-full rounded-xl border border-rule-strong bg-paper px-3.5 py-2.5 text-sm font-mono text-ink focus:outline-none focus:border-accent text-start"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-ink mb-1.5">
+                    {isHe ? 'תפקיד במשמרת:' : 'Shift Role:'}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      isHe ? 'הורה תורן בשער ונוכחות' : 'Gate & Check-in Parent',
+                      isHe ? 'ליווי ועזרה בפעילות' : 'Activity Helper',
+                      isHe ? 'עזרה בלוגיסטיקה וכיבוד' : 'Logistics & Refreshments',
+                    ].map((roleOption) => (
+                      <button
+                        key={roleOption}
+                        type="button"
+                        onClick={() => setVolRole(roleOption)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                          volRole === roleOption
+                            ? 'bg-ink text-paper border-ink shadow-xs'
+                            : 'bg-paper text-ink-2 border-rule hover:bg-paper-2'
+                        }`}
+                      >
+                        {roleOption}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={volSyncing || !volParentName.trim()}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-accent hover:bg-accent/90 text-white font-bold text-sm shadow-md active:scale-[0.97] disabled:opacity-50 transition-all"
+                  >
+                    <Heart className="w-4 h-4 shrink-0" />
+                    <span>
+                      {volSyncing
+                        ? isHe
+                          ? 'שומר שיבוץ...'
+                          : 'Saving...'
+                        : isHe
+                        ? 'אישור רישום כהורה מתנדב/ת'
+                        : 'Confirm Volunteer Signup'}
+                    </span>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

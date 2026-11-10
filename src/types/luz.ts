@@ -120,10 +120,12 @@ export interface LuzEntity {
   startTime?: string; // HH:mm
   endTime?: string;   // HH:mm
 
-  // 2. Recurring Workshop / Youth Center Class ('workshop')
+  // 2. Recurring Workshop / Youth Center Class / Beit BINA ('workshop' | 'event')
   dayOfWeek?: number; // 0 (Sun) to 6 (Sat)
   weekCycle?: 'all' | 'week_a' | 'week_b';
   isYouthCenter?: boolean;
+  isBeitBina?: boolean;
+  externalRegistrationUrl?: string;
 
   // 3. Hourly Service / Community Space / Medical ('service')
   serviceSubtype?: ServiceSubtype;
@@ -147,6 +149,17 @@ export interface LuzEntity {
 
   // 5. Custom Dynamic Fields ('customFields')
   customFields?: CustomFieldItem[];
+
+  // 6. Volunteer Parents signed up for this event ('volunteers')
+  volunteers?: EventVolunteer[];
+}
+
+export interface EventVolunteer {
+  id: string;
+  name: string;
+  phone: string;
+  role?: string;
+  createdAt: string;
 }
 
 export interface CustomFieldItem {
@@ -186,7 +199,8 @@ export type ReferralActionType =
   | 'website_click'
   | 'whatsapp_group_click'
   | 'instagram_click'
-  | 'youth_center_signup';
+  | 'youth_center_signup'
+  | 'beit_bina_signup';
 
 export interface LeadReferralEvent {
   id: string;
@@ -239,6 +253,7 @@ export type AnalyticsEventType =
   | 'search_performed'
   | 'hero_cta_click'
   | 'youth_center_click'
+  | 'beit_bina_click'
   | 'tab_switch'
   | string;
 
@@ -248,7 +263,7 @@ export interface ClickAnalyticsEvent {
   timestamp: string;
   environment: AppEnvironment;
   eventType: AnalyticsEventType;
-  targetType?: 'event' | 'business' | 'youth' | 'general';
+  targetType?: 'event' | 'business' | 'youth' | 'beit_bina' | 'general';
   targetId?: string;
   targetTitleHe?: string;
   targetTitleEn?: string;
