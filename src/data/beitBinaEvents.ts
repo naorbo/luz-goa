@@ -4,6 +4,8 @@ export const BEIT_BINA_PAYMENT_URL = 'https://bit.ly/47elZLv';
 export const BEIT_BINA_WEEKLY_POSTER_URL = '/images/events/beit-bina-weekly-nov8-14.jpg';
 export const BEIT_BINA_SPREADSHEET_ID = '1BYBN6bJIAFR0wN8_aX1LlsoiQ8jlevExlrCbn-lr5Pg';
 export const BEIT_BINA_SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1BYBN6bJIAFR0wN8_aX1LlsoiQ8jlevExlrCbn-lr5Pg/edit?gid=0#gid=0';
+export const DEFAULT_BEIT_BINA_WEBHOOK_URL =
+  'https://script.google.com/macros/s/AKfycbxzn3MjuFAX1CETxkzcvWV1S1c762y2WV5KMEczM_uaLsAvV1X2IQhO5anpWcMPCww_4Q/exec';
 
 export const CORE_BEIT_BINA_EVENTS: LuzEntity[] = [
   // 1. יום ראשון 8.11 | 10:30 — טורניר שחמט + הזמנת ג'חנון מראש (הרשמה ותשלום בקישור חיצוני)

@@ -46,8 +46,8 @@ import {
   BEIT_BINA_WEEKLY_POSTER_URL,
   BEIT_BINA_SPREADSHEET_URL,
   BEIT_BINA_SPREADSHEET_ID,
+  DEFAULT_BEIT_BINA_WEBHOOK_URL,
 } from '../data/beitBinaEvents';
-import { DEFAULT_YC_WEBHOOK_URL } from './YouthCenterView';
 
 export interface BeitBinaRegistration {
   id: string;
@@ -282,9 +282,16 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
   const [binaWebhookUrl, setBinaWebhookUrl] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(BINA_SHEET_WEBHOOK_STORAGE_KEY);
-      return saved && saved.trim() ? saved.trim() : DEFAULT_YC_WEBHOOK_URL;
+      if (
+        saved &&
+        saved.trim() &&
+        !saved.includes('AKfycbxOvJbRgHTIgN-Fp2iCMpC-Qq0ORKy4bLUWXeqhr-7bvRIXIAWH_Umu1ost7CyQ2VV2HA')
+      ) {
+        return saved.trim();
+      }
+      return DEFAULT_BEIT_BINA_WEBHOOK_URL;
     } catch {
-      return DEFAULT_YC_WEBHOOK_URL;
+      return DEFAULT_BEIT_BINA_WEBHOOK_URL;
     }
   });
 
@@ -573,7 +580,7 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
       });
     }
 
-    const targetUrl = (binaWebhookUrl || DEFAULT_YC_WEBHOOK_URL).trim();
+    const targetUrl = (binaWebhookUrl || DEFAULT_BEIT_BINA_WEBHOOK_URL).trim();
     if (targetUrl.startsWith('https://')) {
       setSyncingSheet(true);
       try {
@@ -640,7 +647,7 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
     );
 
     // Sync attendance status in real time to Google Sheets (Master Tab + Event Tab)
-    const targetUrl = (binaWebhookUrl || DEFAULT_YC_WEBHOOK_URL).trim();
+    const targetUrl = (binaWebhookUrl || DEFAULT_BEIT_BINA_WEBHOOK_URL).trim();
     if (targetUrl.startsWith('https://')) {
       const payload = {
         event: 'luz.beit_bina_attendance_update',
@@ -705,7 +712,7 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
 
     setRegistrations((prev) => [newWalkIn, ...prev]);
 
-    const targetUrl = (binaWebhookUrl || DEFAULT_YC_WEBHOOK_URL).trim();
+    const targetUrl = (binaWebhookUrl || DEFAULT_BEIT_BINA_WEBHOOK_URL).trim();
     if (targetUrl.startsWith('https://')) {
       try {
         const payload = {
@@ -953,7 +960,7 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
 
   // Auto-create dedicated Beit BINA Google Sheet via Apps Script GET endpoint
   const handleAutoCreateBeitBinaSheet = async () => {
-    const targetUrl = (binaWebhookUrl || DEFAULT_YC_WEBHOOK_URL).trim();
+    const targetUrl = (binaWebhookUrl || DEFAULT_BEIT_BINA_WEBHOOK_URL).trim();
     if (!targetUrl.startsWith('https://')) {
       showToast('נא להזין כתובת Webhook תקנית של Google Apps Script');
       return;
