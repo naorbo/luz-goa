@@ -15,8 +15,137 @@ const https = require('node:https');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const sharp = require('C:\\podkids\\node_modules\\sharp');
-const { connectAndRun, isLinked } = require('C:\\podkids\\scripts\\lib\\whatsapp.js');
+const zlib = require('node:zlib');
+
+let sharp;
+try {
+  sharp = require('sharp');
+} catch {
+  sharp = require('C:\\podkids\\node_modules\\sharp');
+}
+
+const LOCAL_PODKIDS_SESSION = 'C:\\podkids\\.wa-session';
+const CLOUD_SESSION_DIR = path.resolve(process.cwd(), '.wa-session-cloud');
+
+function resolveSessionDir() {
+  if (process.env.WA_SESSION_DIR) {
+    return path.resolve(process.env.WA_SESSION_DIR);
+  }
+  if (process.env.WA_SESSION_GZ_B64) {
+    fs.mkdirSync(CLOUD_SESSION_DIR, { recursive: true });
+    const rawJson = zlib
+      .gunzipSync(Buffer.from(process.env.WA_SESSION_GZ_B64.trim(), 'base64'))
+      .toString('utf8');
+    const filesMap = JSON.parse(rawJson);
+    for (const [fileName, content] of Object.entries(filesMap)) {
+      const targetPath = path.join(CLOUD_SESSION_DIR, fileName);
+      if (!fs.existsSync(targetPath)) {
+        fs.writeFileSync(targetPath, content, 'utf8');
+      }
+    }
+    return CLOUD_SESSION_DIR;
+  }
+  if (fs.existsSync(path.join(CLOUD_SESSION_DIR, 'creds.json'))) {
+    return CLOUD_SESSION_DIR;
+  }
+  return LOCAL_PODKIDS_SESSION;
+}
+
+function isLinked() {
+  try {
+    const dir = resolveSessionDir();
+    return fs.existsSync(path.join(dir, 'creds.json'));
+  } catch {
+    return false;
+  }
+}
+
+async function connectAndRun(fn) {
+  const sessionDir = resolveSessionDir();
+  if (sessionDir === LOCAL_PODKIDS_SESSION && fs.existsSync('C:\\podkids\\scripts\\lib\\whatsapp.js')) {
+    const podkidsWa = require('C:\\podkids\\scripts\\lib\\whatsapp.js');
+    return podkidsWa.connectAndRun(fn);
+  }
+
+  let baileys;
+  try {
+    baileys = require('@whiskeysockets/baileys');
+  } catch {
+    baileys = require('C:\\podkids\\node_modules\\@whiskeysockets\\baileys');
+  }
+
+  const makeWASocket = baileys.default || baileys;
+  const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = baileys;
+  const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+
+  let version;
+  try {
+    ({ version } = await fetchLatestBaileysVersion());
+  } catch {}
+
+  const SILENT = {
+    level: 'silent',
+    child: () => SILENT,
+    trace() {},
+    debug() {},
+    info() {},
+    warn() {},
+    error() {},
+    fatal() {},
+  };
+
+  const MAX_RESTARTS = 5;
+  let restarts = 0;
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (err, val) => {
+      if (settled) return;
+      settled = true;
+      err ? reject(err) : resolve(val);
+    };
+
+    function start() {
+      const sock = makeWASocket({
+        version,
+        auth: state,
+        logger: SILENT,
+        browser: Browsers.ubuntu('Chrome'),
+      });
+      sock.ev.on('creds.update', saveCreds);
+
+      sock.ev.on('connection.update', async (u) => {
+        const { connection, lastDisconnect } = u;
+        if (connection === 'open') {
+          try {
+            const r = await fn(sock);
+            finish(null, r);
+          } catch (e) {
+            finish(e);
+          } finally {
+            setTimeout(() => {
+              try {
+                sock.end();
+              } catch {}
+            }, 1500);
+          }
+        } else if (connection === 'close') {
+          const code = lastDisconnect?.error?.output?.statusCode;
+          if (code === DisconnectReason.loggedOut) {
+            finish(new Error('WhatsApp session logged out — please refresh WA_SESSION_GZ_B64 secret'));
+          } else if (!settled && restarts < MAX_RESTARTS) {
+            restarts++;
+            setTimeout(start, 1000);
+          } else {
+            finish(new Error('WhatsApp connection closed (code ' + code + ')'));
+          }
+        }
+      });
+    }
+
+    start();
+  });
+}
 
 const CANONICAL_SITE_URL = 'https://my-luz-dc028.web.app';
 const SAFE_TEST_RECIPIENT_PHONE = '972508878902';
@@ -418,10 +547,41 @@ function buildEnglishCaption(ev) {
   );
 }
 
+function fetchVolunteerFromFirestore(eventId) {
+  return new Promise((resolve) => {
+    const url = `https://firestore.googleapis.com/v1/projects/my-luz-dc028/databases/(default)/documents/youth_center_events/${encodeURIComponent(
+      eventId
+    )}`;
+    const req = https.get(url, { timeout: 4000 }, (res) => {
+      if (res.statusCode !== 200) return resolve(null);
+      let raw = '';
+      res.on('data', (c) => (raw += c));
+      res.on('end', () => {
+        try {
+          const doc = JSON.parse(raw);
+          const v = doc?.fields?.volunteerParent?.stringValue;
+          resolve(v && v.trim() ? v.trim() : null);
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
+  });
+}
+
 async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
   if (!isLinked()) {
     throw new Error('PodKids WhatsApp session is not linked');
   }
+
+  // Enrich with live volunteer parent from Firestore if available
+  const liveVolunteer = await fetchVolunteerFromFirestore(ev.id);
+  const enrichedEv = liveVolunteer ? { ...ev, volunteerParent: liveVolunteer } : ev;
 
   // Strict safety check: never send to group while REMINDER_MODE !== 'live_group' or forceTestDm is true
   const recipientJid =
@@ -430,16 +590,16 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
       : YOUTH_CENTER_GROUP_JID;
 
   let finalImageBuffer = null;
-  if (ev.imageUrl && ev.imageUrl.startsWith('http')) {
+  if (enrichedEv.imageUrl && enrichedEv.imageUrl.startsWith('http')) {
     try {
-      const rawBuffer = await fetchImageBuffer(ev.imageUrl);
-      finalImageBuffer = await renderEnglishPosterOverlay(rawBuffer, ev);
+      const rawBuffer = await fetchImageBuffer(enrichedEv.imageUrl);
+      finalImageBuffer = await renderEnglishPosterOverlay(rawBuffer, enrichedEv);
     } catch (err) {
       console.warn('⚠️ Could not process image overlay:', err.message);
     }
   }
 
-  const caption = buildEnglishCaption(ev);
+  const caption = buildEnglishCaption(enrichedEv);
 
   await connectAndRun(async (sock) => {
     if (finalImageBuffer) {
@@ -456,8 +616,8 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
 
   return {
     ok: true,
-    eventId: ev.id,
-    titleEn: ev.titleEn || ev.titleHe,
+    eventId: enrichedEv.id,
+    titleEn: enrichedEv.titleEn || enrichedEv.titleHe,
     recipientJid,
     mode: REMINDER_MODE,
     groupBlocked: recipientJid === SAFE_TEST_RECIPIENT_JID,
@@ -467,16 +627,52 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
 // Mode 1: Immediate sample send (`node send-youth-reminder-via-podkids.cjs --sample`)
 if (process.argv.includes('--sample')) {
   const sampleEv = getNextUpcomingEvent();
-  console.log(`🎨 Generating English poster overlay & sending sample for: "${sampleEv.titleEn}" (${sampleEv.dayEn} · ${sampleEv.startTime}–${sampleEv.endTime})...`);
+  console.log(
+    `🎨 Generating English poster overlay & sending sample for: "${sampleEv.titleEn}" (${sampleEv.dayEn} · ${sampleEv.startTime}–${sampleEv.endTime})...`
+  );
   sendReminderViaPodkids(sampleEv, { forceTestDm: true })
     .then((res) => {
-      console.log(`✅ Sent English sample reminder (with overlaid image & ${CANONICAL_SITE_URL} link) to ${res.recipientJid}`);
+      console.log(
+        `✅ Sent English sample reminder (with overlaid image & ${CANONICAL_SITE_URL} link) to ${res.recipientJid}`
+      );
       process.exit(0);
     })
     .catch((err) => {
       console.error('❌ Error:', err.message);
       process.exit(1);
     });
+} else if (process.argv.includes('--cron-once')) {
+  // Mode 2: Cloud Scheduled Run (GitHub Actions 09:30 IST — runs even when local PC is turned off)
+  (async () => {
+    try {
+      const { dateStr, timeStr } = getIstNow();
+      const targetDate = (process.env.TARGET_DATE_IST || '').trim() || dateStr;
+      console.log(`☁️ [Cloud Cron Check] Current IST: ${dateStr} ${timeStr} | Checking events for date: ${targetDate}`);
+      const todaysEvents = YOUTH_CENTER_EVENTS.filter((e) => e.date === targetDate);
+      if (todaysEvents.length === 0) {
+        console.log(`ℹ️ No Youth Center event scheduled for ${targetDate}. Exiting cleanly.`);
+        process.exit(0);
+      }
+
+      const sentLog = loadSentLog();
+      for (const ev of todaysEvents) {
+        const key = `${targetDate}_${ev.id}`;
+        if (sentLog[key] && !process.env.FORCE_RESEND) {
+          console.log(`⏭️ Already sent reminder for ${key} at ${sentLog[key]}. Skipping.`);
+          continue;
+        }
+        console.log(`⏰ Sending 09:30 IST English morning reminder for "${ev.titleEn}" (${targetDate})...`);
+        const res = await sendReminderViaPodkids(ev);
+        sentLog[key] = new Date().toISOString();
+        saveSentLog(sentLog);
+        console.log(`✅ Sent reminder for "${ev.titleEn}" to ${res.recipientJid} (mode: ${res.mode})`);
+      }
+      process.exit(0);
+    } catch (err) {
+      console.error('❌ [Cloud Cron Error]:', err.message);
+      process.exit(1);
+    }
+  })();
 } else if (process.argv.includes('--daemon')) {
   // Mode 2: Lightweight HTTP + 09:30 IST Cron Daemon using PodKids on-demand connectAndRun
   const PORT = process.env.PORT || 8080;

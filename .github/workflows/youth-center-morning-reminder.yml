@@ -1,0 +1,75 @@
+name: Youth Center 09:30 IST Morning WhatsApp Reminder
+
+on:
+  schedule:
+    # 04:00 UTC is 09:30 AM IST (Asia/Kolkata, UTC+5:30 year-round)
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Execution mode (cron-once checks today in IST; sample sends next upcoming event)'
+        required: true
+        default: 'cron-once'
+        type: choice
+        options:
+          - cron-once
+          - sample
+      target_date_ist:
+        description: 'Optional override date (YYYY-MM-DD) for cron-once mode'
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: youth-center-whatsapp-reminder
+  cancel-in-progress: false
+
+jobs:
+  send-morning-reminder:
+    name: Send 09:30 IST WhatsApp Reminder (Cloud)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Restore persisted WhatsApp cloud session & sent log
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .wa-session-cloud
+            scripts/.youth-reminders-sent.json
+          key: wa-session-cloud-${{ github.run_id }}
+          restore-keys: |
+            wa-session-cloud-
+
+      - name: Install Baileys & Sharp for WhatsApp + Poster Overlay
+        run: |
+          npm install --no-save --no-audit --no-fund @whiskeysockets/baileys@7.0.0-rc14 sharp@0.33.5
+
+      - name: Run Youth Center WhatsApp Reminder
+        env:
+          WA_SESSION_GZ_B64: ${{ secrets.WA_SESSION_GZ_B64 }}
+          TARGET_DATE_IST: ${{ inputs.target_date_ist }}
+        run: |
+          MODE="${{ inputs.mode || 'cron-once' }}"
+          if [ "$MODE" = "sample" ]; then
+            node scripts/send-youth-reminder-via-podkids.cjs --sample
+          else
+            node scripts/send-youth-reminder-via-podkids.cjs --cron-once
+          fi
+
+      - name: Save updated WhatsApp cloud session & sent log
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .wa-session-cloud
+            scripts/.youth-reminders-sent.json
+          key: wa-session-cloud-${{ github.run_id }}
