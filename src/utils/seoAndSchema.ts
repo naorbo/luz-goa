@@ -90,7 +90,7 @@ export function syncSeoAndStructuredData(params: {
 
       graph.push({
         '@type': 'Event',
-        '@id': `https://naorbo.github.io/luz-goa/#entity-${ev.id}`,
+        '@id': `https://my-luz-dc028.web.app/#entity-${ev.id}`,
         name: isHe ? ev.titleHe : ev.titleEn,
         description: isHe ? ev.descriptionHe : ev.descriptionEn,
         startDate,
@@ -137,7 +137,7 @@ export function syncSeoAndStructuredData(params: {
       const coords = AREA_COORDS[rental.area] || AREA_COORDS.Colomb;
       graph.push({
         '@type': 'Accommodation',
-        '@id': `https://naorbo.github.io/luz-goa/#rental-${rental.id}`,
+        '@id': `https://my-luz-dc028.web.app/#rental-${rental.id}`,
         name: isHe ? rental.titleHe : rental.titleEn,
         description: isHe ? rental.descriptionHe : rental.descriptionEn,
         image: rental.imageUrl,
@@ -161,7 +161,7 @@ export function syncSeoAndStructuredData(params: {
     const coords = AREA_COORDS[biz.area] || AREA_COORDS.Colomb;
     graph.push({
       '@type': 'LocalBusiness',
-      '@id': `https://naorbo.github.io/luz-goa/#biz-${biz.id}`,
+      '@id': `https://my-luz-dc028.web.app/#biz-${biz.id}`,
       name: isHe ? biz.businessNameHe : biz.businessNameEn,
       description: isHe ? biz.bioHe : biz.bioEn,
       image: biz.imageUrl,

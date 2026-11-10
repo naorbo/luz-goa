@@ -44,6 +44,8 @@ import {
   CORE_BEIT_BINA_EVENTS,
   BEIT_BINA_PAYMENT_URL,
   BEIT_BINA_WEEKLY_POSTER_URL,
+  BEIT_BINA_SPREADSHEET_URL,
+  BEIT_BINA_SPREADSHEET_ID,
 } from '../data/beitBinaEvents';
 import { DEFAULT_YC_WEBHOOK_URL } from './YouthCenterView';
 
@@ -288,9 +290,10 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
 
   const [binaSpreadsheetUrl, setBinaSpreadsheetUrl] = useState<string>(() => {
     try {
-      return localStorage.getItem(BINA_DEDICATED_SHEET_URL_STORAGE_KEY) || '';
+      const saved = localStorage.getItem(BINA_DEDICATED_SHEET_URL_STORAGE_KEY);
+      return saved && saved.trim() ? saved.trim() : BEIT_BINA_SPREADSHEET_URL;
     } catch {
-      return '';
+      return BEIT_BINA_SPREADSHEET_URL;
     }
   });
   const [creatingSheet, setCreatingSheet] = useState<boolean>(false);
@@ -794,9 +797,7 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
 
   // Share the entire Weekly Schedule formatted for WhatsApp groups
   const handleShareWeeklyScheduleWhatsApp = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://naorbo.github.io';
-    const path = typeof window !== 'undefined' ? window.location.pathname : '/luz-goa/';
-    const binaLink = `${origin}${path}?tab=beit_bina`;
+    const binaLink = 'https://my-luz-dc028.web.app/?tab=beit_bina';
 
     const message = [
       `✨ *לו"ז שבועי בבית בינ"ה בגואה | 8.11 - 14.11* ✨`,
@@ -1779,6 +1780,17 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
                   <Plus className="w-4 h-4 text-[#0095DA]" />
                   <span>הדבקת רשימת שמות מהירה</span>
                 </button>
+
+                <a
+                  href={binaSpreadsheetUrl || BEIT_BINA_SPREADSHEET_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-emerald-600/30 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 font-semibold text-xs sm:text-sm transition-all"
+                  title="פתיחת גיליון Google Sheets של בית בינ״ה"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                  <span>Google Sheets של בינ"ה ↗</span>
+                </a>
               </div>
 
               <button
@@ -1979,19 +1991,15 @@ export const BeitBinaView: React.FC<BeitBinaViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button
-                type="button"
-                disabled={creatingSheet}
-                onClick={handleAutoCreateBeitBinaSheet}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm transition-all disabled:opacity-50"
+              <a
+                href={binaSpreadsheetUrl || BEIT_BINA_SPREADSHEET_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm transition-all"
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                <span>
-                  {creatingSheet
-                    ? 'יוצר גיליון ייעודי לבית בינ"ה...'
-                    : 'יצירה ופתיחה אוטומטית של גיליון בית בינ"ה'}
-                </span>
-              </button>
+                <span>פתיחת הגיליון הייעודי ב-Google Sheets ↗</span>
+              </a>
 
               <button
                 type="button"

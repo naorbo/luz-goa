@@ -15,4 +15,4 @@ Allow: /
 User-agent: Twitterbot
 Allow: /
 
-Sitemap: https://naorbo.github.io/luz-goa/sitemap.xml
+Sitemap: https://my-luz-dc028.web.app/sitemap.xml

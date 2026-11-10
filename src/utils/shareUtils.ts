@@ -26,8 +26,11 @@ export interface ShareResult {
   shareText: string;
 }
 
+export const CANONICAL_SITE_URL = 'https://my-luz-dc028.web.app';
+
 /**
  * Builds the canonical shareable URL for a given event entity.
+ * Strictly uses https://my-luz-dc028.web.app/ across the entire project.
  */
 export function buildEventShareUrl(
   entityId: string,
@@ -39,11 +42,7 @@ export function buildEventShareUrl(
     : isYouthCenter
     ? '&tab=youth_center'
     : '';
-  if (typeof window === 'undefined') {
-    return `https://my-luz-dc028.web.app/?event=${encodeURIComponent(entityId)}${tabQuery}`;
-  }
-  const baseUrl = `${window.location.origin}${window.location.pathname}`.replace(/\/+$/, '');
-  return `${baseUrl}?event=${encodeURIComponent(entityId)}${tabQuery}`;
+  return `${CANONICAL_SITE_URL}/?event=${encodeURIComponent(entityId)}${tabQuery}`;
 }
 
 /**

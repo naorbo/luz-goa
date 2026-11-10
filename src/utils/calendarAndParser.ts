@@ -523,8 +523,12 @@ export function buildChronologicalDateGroups(
     }
   });
 
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 
   const sortedDateKeys = Array.from(dateMap.keys()).sort();
 

@@ -33,7 +33,7 @@ const YOUTH_REMINDER_GROUP_NAME = 'Youth center parents';
 const SAFE_TEST_RECIPIENT_PHONE = '972508878902';
 const SAFE_TEST_RECIPIENT_JID = `${SAFE_TEST_RECIPIENT_PHONE}@s.whatsapp.net`;
 const DAILY_REMINDER_TIME_IST = '09:30'; // 09:30 AM India Standard Time
-const SITE_PUBLIC_URL = 'https://naorbo.github.io/luz-goa';
+const SITE_PUBLIC_URL = 'https://my-luz-dc028.web.app';
 
 // STRICT SAFETY LOCK: 'test_dm_only' sends ONLY to 972508878902 and NEVER to the group
 // until the user explicitly approves switching to 'group_live'.

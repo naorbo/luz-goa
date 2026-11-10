@@ -40,7 +40,7 @@ const CONFIG = {
   YOUTH_CENTER_TAB_NAME: 'Youth_Center_Events',
 
   // 3. Dedicated Google Sheet strictly for Beit BINA Goa (Auto-Tab per Event + Live Check-In)
-  BEIT_BINA_SPREADSHEET_ID: '',
+  BEIT_BINA_SPREADSHEET_ID: '1BYBN6bJIAFR0wN8_aX1LlsoiQ8jlevExlrCbn-lr5Pg',
   BEIT_BINA_SHEET_TITLE: 'LUZ Goa — בית בינ"ה בגואה (הרשמות ונוכחות)',
   BEIT_BINA_MASTER_TAB_NAME: 'כל_ההרשמות',
 
@@ -53,6 +53,10 @@ const CONFIG = {
 };
 
 function setupAndTestBeitBinaSheet() {
+  const props = PropertiesService.getScriptProperties();
+  if (CONFIG.BEIT_BINA_SPREADSHEET_ID) {
+    props.setProperty('LUZ_BEIT_BINA_SPREADSHEET_ID', CONFIG.BEIT_BINA_SPREADSHEET_ID);
+  }
   const { spreadsheet, masterSheet } = getOrCreateBeitBinaSheet_();
   processBeitBinaRegistration_(
     {

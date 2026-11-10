@@ -3,17 +3,17 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <!-- Main Production Hub (South Goa Community OS) -->
   <url>
-    <loc>https://naorbo.github.io/luz-goa/</loc>
+    <loc>https://my-luz-dc028.web.app/</loc>
     <lastmod>2026-11-02</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="https://naorbo.github.io/luz-goa/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="he" href="https://naorbo.github.io/luz-goa/?lang=he"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://my-luz-dc028.web.app/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://my-luz-dc028.web.app/?lang=he"/>
   </url>
 
   <!-- Community Business Directory -->
   <url>
-    <loc>https://naorbo.github.io/luz-goa/?tab=businesses</loc>
+    <loc>https://my-luz-dc028.web.app/?tab=businesses</loc>
     <lastmod>2026-11-02</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
@@ -21,7 +21,7 @@
 
   <!-- Colomb Youth Center (Ages 11-15) -->
   <url>
-    <loc>https://naorbo.github.io/luz-goa/?tab=youth_center</loc>
+    <loc>https://my-luz-dc028.web.app/?tab=youth_center</loc>
     <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
@@ -29,7 +29,7 @@
 
   <!-- Ben AI Community Assistant -->
   <url>
-    <loc>https://naorbo.github.io/luz-goa/?tab=ben</loc>
+    <loc>https://my-luz-dc028.web.app/?tab=ben</loc>
     <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -37,7 +37,7 @@
 
   <!-- Provider Studio (Publish Event / Home / Service) -->
   <url>
-    <loc>https://naorbo.github.io/luz-goa/?tab=provider</loc>
+    <loc>https://my-luz-dc028.web.app/?tab=provider</loc>
     <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

@@ -9,7 +9,7 @@ import {
 } from '../types/luz';
 import { isGoogleAppsScriptUrl } from './appsScriptTemplate';
 
-const PLATFORM_SHORT_URL = 'naorbo.github.io/luz-goa';
+const PLATFORM_SHORT_URL = 'my-luz-dc028.web.app';
 
 /**
  * Deterministically generates a short, human-readable LUZ referral code

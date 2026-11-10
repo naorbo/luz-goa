@@ -169,15 +169,30 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     return [1];
   };
 
+  const [showPastDates, setShowPastDates] = useState(false);
+
   // Group all non-rental events chronologically by exact date
   const chronologicalDayGroups = useMemo(() => {
     return buildChronologicalDateGroups(filteredEntities);
   }, [filteredEntities]);
 
+  const pastDayGroupsCount = useMemo(
+    () => chronologicalDayGroups.filter((g) => g.isPast).length,
+    [chronologicalDayGroups]
+  );
+
+  const visibleStripDayGroups = useMemo(() => {
+    if (showPastDates) return chronologicalDayGroups;
+    const upcoming = chronologicalDayGroups.filter((g) => !g.isPast);
+    return upcoming.length > 0 ? upcoming : chronologicalDayGroups;
+  }, [chronologicalDayGroups, showPastDates]);
+
   const displayDayGroups = useMemo(() => {
-    if (selectedDate === 'all') return chronologicalDayGroups;
-    return chronologicalDayGroups.filter((g) => g.dateStr === selectedDate);
-  }, [chronologicalDayGroups, selectedDate]);
+    if (selectedDate !== 'all') {
+      return chronologicalDayGroups.filter((g) => g.dateStr === selectedDate);
+    }
+    return visibleStripDayGroups;
+  }, [chronologicalDayGroups, visibleStripDayGroups, selectedDate]);
 
   const entityBadge = (type: EntityType) => {
     switch (type) {
