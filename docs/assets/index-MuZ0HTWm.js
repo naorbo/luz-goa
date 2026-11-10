@@ -731,7 +731,21 @@ function getOrCreateBeitBinaSheet_(overrideSpreadsheetId) {
   const savedId = String(props.getProperty('LUZ_BEIT_BINA_SPREADSHEET_ID') || '').trim();
   const targetId = configuredId || savedId;
 
+  // 1. If script is container-bound to the Beit BINA Google Sheet itself:
+  try {
+    const activeSs = SpreadsheetApp.getActiveSpreadsheet();
+    if (
+      activeSs &&
+      activeSs.getId() !== CONFIG.LEADS_SPREADSHEET_ID &&
+      activeSs.getId() !== CONFIG.YOUTH_CENTER_SPREADSHEET_ID
+    ) {
+      ss = activeSs;
+    }
+  } catch (e) {}
+
+  // 2. Open by configured or requested spreadsheet ID:
   if (
+    !ss &&
     targetId &&
     targetId !== CONFIG.LEADS_SPREADSHEET_ID &&
     targetId !== CONFIG.YOUTH_CENTER_SPREADSHEET_ID
@@ -743,6 +757,7 @@ function getOrCreateBeitBinaSheet_(overrideSpreadsheetId) {
     }
   }
 
+  // 3. Fallback: create new sheet in drive if none found
   if (!ss) {
     ss = SpreadsheetApp.create(CONFIG.BEIT_BINA_SHEET_TITLE);
     props.setProperty('LUZ_BEIT_BINA_SPREADSHEET_ID', ss.getId());
