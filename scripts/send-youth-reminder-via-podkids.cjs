@@ -2,21 +2,23 @@
  * Youth Center Goa — Morning WhatsApp Reminder Bot (09:30 IST)
  * Powered by the existing PodKids WhatsApp connection (C:\podkids\.wa-session).
  *
- * Uses on-demand `connectAndRun` so it never holds a competing socket open
- * and never disconnects PodKids.
- *
- * SAFETY LOCK:
- * - Target Group discovered: "Youth center parents" (120363430775078450@g.us)
- * - Current Mode: 'test_dm_only' -> Sends STRICTLY & ONLY to 972508878902@s.whatsapp.net
- *   until Naor explicitly approves enabling group sending.
+ * Project Rules Enforced:
+ * 1. Canonical URL is strictly https://my-luz-dc028.web.app/ (never github.io).
+ * 2. All WhatsApp reminder text is 100% in English.
+ * 3. Renders an English Poster Overlay (Event Title, Date & Time, Location)
+ *    directly onto the event image using `sharp` before sending to WhatsApp.
+ * 4. SAFETY LOCK: Sends ONLY to 972508878902@s.whatsapp.net until user approves
+ *    enabling the "Youth center parents" group (120363430775078450@g.us).
  */
 
 const https = require('node:https');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const sharp = require('C:\\podkids\\node_modules\\sharp');
 const { connectAndRun, isLinked } = require('C:\\podkids\\scripts\\lib\\whatsapp.js');
 
+const CANONICAL_SITE_URL = 'https://my-luz-dc028.web.app';
 const SAFE_TEST_RECIPIENT_PHONE = '972508878902';
 const SAFE_TEST_RECIPIENT_JID = '972508878902@s.whatsapp.net';
 const YOUTH_CENTER_GROUP_NAME = 'Youth center parents';
@@ -29,103 +31,196 @@ const SENT_LOG_PATH = path.join(__dirname, '.youth-reminders-sent.json');
 
 const YOUTH_CENTER_EVENTS = [
   {
-    id: 'yc-2026-11-05-grand-opening',
-    date: '2026-11-05',
-    dayHe: 'יום חמישי, 5 בנובמבר',
-    startTime: '16:30',
-    endTime: '19:00',
-    titleHe: 'פתיחה חגיגית של מרכז הנוער גואה!',
-    descriptionHe:
-      'פתיחה חגיגית של מרכז הנוער בקולום! משחקי היכרות וגיבוש, מוזיקה טובה, פינות צ׳יל במבוק, נשנושים והצגת תוכנית החוגים והאירועים לנוער בגילאי 8–15.',
-    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=900',
-  },
-  {
-    id: 'yc-2026-11-06-pottery',
+    id: 'yc-2026-11-06-odt-opening',
     date: '2026-11-06',
-    dayHe: 'יום שישי, 6 בנובמבר',
-    startTime: '16:30',
-    endTime: '18:30',
-    titleHe: 'סדנת קדרות וחימר מקומי + קבלת שבת רגועה',
-    descriptionHe:
-      'יצירה בחימר טבעי ואובניים במרחב הבמבוק של מרכז הנוער, בליווי מוזיקה נעימה וכיבוד קל לקבלת שבת.',
-    imageUrl: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?auto=format&fit=crop&q=80&w=900',
+    dayEn: 'Friday, Nov 6',
+    startTime: '10:00',
+    endTime: '13:00',
+    titleEn: 'Grand Opening — Goa Teens House | The Ball Game with Ilan',
+    descriptionEn:
+      'Kick-off get-together at Goa Teens House! The Ball Game with Ilan, choosing a name for our space, ping pong, board games, fresh fruits & ice-cold lemonade.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
   },
   {
-    id: 'yc-2026-11-08-skate-surf',
+    id: 'yc-2026-11-07-movie',
+    date: '2026-11-07',
+    dayEn: 'Saturday, Nov 7',
+    startTime: '18:00',
+    endTime: '20:30',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionEn:
+      'Big-screen movie screening night with popcorn, cold drinks, and cozy youth hangout atmosphere.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-08-open-space',
     date: '2026-11-08',
-    dayHe: 'יום ראשון, 8 בנובמבר',
+    dayEn: 'Sunday, Nov 8',
     startTime: '16:30',
-    endTime: '18:30',
-    titleHe: 'אימון סקייטבורד, שיווי משקל וגלישה יבשה',
-    descriptionHe:
-      'מפגש אקסטרים ובטיחות על סקייטבורד ולוחות שיווי משקל (אינדו-בורד) להכנה לגלישת גלים ולחיזוק היציבה.',
-    imageUrl: 'https://images.unsplash.com/photo-1547447134-cd3f5c716030?auto=format&fit=crop&q=80&w=900',
+    endTime: '19:30',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionEn:
+      'Open youth space to connect, relax, play games, listen to music, and spend time together in Colomb.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
   },
   {
-    id: 'yc-2026-11-10-open-space',
-    date: '2026-11-10',
-    dayHe: 'יום שלישי, 10 בנובמבר',
-    startTime: '16:30',
-    endTime: '19:00',
-    titleHe: 'מרחב פתוח + פינג פונג ומוזיקה במרכז הנוער',
-    descriptionHe:
-      'מפגש אחר הצהריים פתוח לנוער בגילאי 8–15 במרכז הנוער קולום! שולחן פינג פונג, משחקי קופסה, מוזיקה, יצירה ופינות צ׳יל במבוק.',
-    imageUrl: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&q=80&w=900',
+    id: 'yc-2026-11-09-jam',
+    date: '2026-11-09',
+    dayEn: 'Monday, Nov 9',
+    startTime: '17:00',
+    endTime: '19:30',
+    titleEn: 'Sunset Music Jam Session',
+    descriptionEn:
+      'Open sunset music jam: guitars, drums, percussion, vocals, and spontaneous live improvisation.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
   },
   {
-    id: 'yc-2026-11-12-jam-night',
+    id: 'yc-2026-11-12-board-games',
     date: '2026-11-12',
-    dayHe: 'יום חמישי, 12 בנובמבר',
-    startTime: '17:00',
-    endTime: '19:30',
-    titleHe: 'ג׳אם סשן אקוסטי וערב כישרונות צעירים',
-    descriptionHe:
-      'מביאים גיטרות, יוקלילי, כלי הקשה ומיקרופון פתוח! ערב מוזיקה, שירה ויצירה חופשית במרכז הנוער.',
-    imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=900',
-  },
-  {
-    id: 'yc-2026-11-13-pizza-movie',
-    date: '2026-11-13',
-    dayHe: 'יום שישי, 13 בנובמבר',
-    startTime: '17:00',
-    endTime: '19:30',
-    titleHe: 'סדנת פיצות בטאבון + הקרנת סרט על מסך ענק',
-    descriptionHe:
-      'מכינים יחד בצק פיצות עם תוספות שוות, אופים במקום ומתיישבים להקרנת סרט קהילתית על פופים ומחצלות.',
-    imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=900',
-  },
-  {
-    id: 'yc-2026-11-15-street-art',
-    date: '2026-11-15',
-    dayHe: 'יום ראשון, 15 בנובמבר',
-    startTime: '16:30',
-    endTime: '18:30',
-    titleHe: 'סדנת גרפיטי, ציור על עץ ואמנות רחוב',
-    descriptionHe:
-      'עיצוב שלטים אישיים, שבלונות וצבעי אקריליק/ספריי ידידותיים לסביבה לקישוט מרחב הנוער.',
-    imageUrl: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&q=80&w=900',
-  },
-  {
-    id: 'yc-2026-11-17-board-games',
-    date: '2026-11-17',
-    dayHe: 'יום שלישי, 17 בנובמבר',
+    dayEn: 'Thursday, Nov 12',
     startTime: '16:30',
     endTime: '19:00',
-    titleHe: 'אליפות קטאן, שחמט וטורניר פינג פונג',
-    descriptionHe:
-      'טורניר נושא פרסים של משחקי אסטרטגיה, קטאן, שחמט ושולחן פינג פונג במרכז הנוער.',
-    imageUrl: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=900',
+    titleEn: 'Strategy Board Games & Tournaments',
+    descriptionEn:
+      'Afternoon of board games, Catan, chess, strategy tabletop games, and friendly team competitions.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=1000',
   },
   {
-    id: 'yc-2026-11-19-bonfire',
+    id: 'yc-2026-11-14-movie',
+    date: '2026-11-14',
+    dayEn: 'Saturday, Nov 14',
+    startTime: '18:00',
+    endTime: '20:30',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionEn:
+      'Feature youth film screening on big screen with fresh popcorn and post-film discussion.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-15-open-space',
+    date: '2026-11-15',
+    dayEn: 'Sunday, Nov 15',
+    startTime: '16:30',
+    endTime: '19:30',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionEn:
+      'Open community space for teens: social time, personal projects, board games, and chill vibe.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-16-guest-talk',
+    date: '2026-11-16',
+    dayEn: 'Monday, Nov 16',
+    startTime: '17:00',
+    endTime: '18:45',
+    titleEn: 'Guest Speaker & Inspiring Stories',
+    descriptionEn:
+      'Inspiring guest speaker session and friendly youth discussion on life journeys and creative exploration.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-19-art',
     date: '2026-11-19',
-    dayHe: 'יום חמישי, 19 בנובמבר',
-    startTime: '17:30',
-    endTime: '20:00',
-    titleHe: 'ערב מדורה, מרשמלו, צ׳אי וסיפורים תחת הכוכבים',
-    descriptionHe:
-      'מפגש ערב מיוחד בחצר מרכז הנוער עם מדורה קטנה ובטוחה, מרשמלו על האש, צ׳אי מסאלה וגיטרה.',
-    imageUrl: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&q=80&w=900',
+    dayEn: 'Thursday, Nov 19',
+    startTime: '16:30',
+    endTime: '19:00',
+    titleEn: 'Youth Art & Creative Studio',
+    descriptionEn:
+      'Hands-on creative art studio: painting, sculpture with natural materials, and self-expression.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-21-movie',
+    date: '2026-11-21',
+    dayEn: 'Saturday, Nov 21',
+    startTime: '18:00',
+    endTime: '20:30',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionEn:
+      'Cinema movie night and popcorn for youth in the bamboo pavilion.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-22-open-space',
+    date: '2026-11-22',
+    dayEn: 'Sunday, Nov 22',
+    startTime: '16:30',
+    endTime: '19:30',
+    titleEn: 'Open Youth Space & Hangout',
+    descriptionEn:
+      'Open space for hanging out, open conversations, board games, and relaxing with friends.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-23-jam',
+    date: '2026-11-23',
+    dayEn: 'Monday, Nov 23',
+    startTime: '17:00',
+    endTime: '19:30',
+    titleEn: 'Acoustic Jam Session',
+    descriptionEn:
+      'Open youth music jam: bring instruments or join in with vocals, rhythm, and acoustic melodies.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-26-board-games',
+    date: '2026-11-26',
+    dayEn: 'Thursday, Nov 26',
+    startTime: '16:30',
+    endTime: '19:00',
+    titleEn: 'Strategy Board Games & Challenges',
+    descriptionEn:
+      'Strategy board games, chess, Catan, card games, and fun team challenges.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-28-movie',
+    date: '2026-11-28',
+    dayEn: 'Saturday, Nov 28',
+    startTime: '18:00',
+    endTime: '20:30',
+    titleEn: 'Youth Movie Night Screening',
+    descriptionEn:
+      'Weekend big screen movie night with warm popcorn and cinema treats.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-29-open-space',
+    date: '2026-11-29',
+    dayEn: 'Sunday, Nov 29',
+    startTime: '16:30',
+    endTime: '19:30',
+    titleEn: 'Open Youth Space & Chill',
+    descriptionEn:
+      'Open youth space: free time, creative corner, music, and socializing.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=1000',
+  },
+  {
+    id: 'yc-2026-11-30-guest-talk',
+    date: '2026-11-30',
+    dayEn: 'Monday, Nov 30',
+    startTime: '17:00',
+    endTime: '18:45',
+    titleEn: 'Guest Speaker & Youth Dialogue',
+    descriptionEn:
+      'Fascinating guest speaker session touching upon science, creativity, and inspiring life stories.',
+    locationEn: 'Colomb Youth Center (near Shailish)',
+    imageUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=1000',
   },
 ];
 
@@ -147,6 +242,15 @@ function getIstNow() {
     dateStr: `${map.year}-${map.month}-${map.day}`,
     timeStr: `${map.hour}:${map.minute}`,
   };
+}
+
+function getNextUpcomingEvent() {
+  const { dateStr } = getIstNow();
+  return (
+    YOUTH_CENTER_EVENTS.find((e) => e.date >= dateStr) ||
+    YOUTH_CENTER_EVENTS[4] ||
+    YOUTH_CENTER_EVENTS[0]
+  );
 }
 
 function loadSentLog() {
@@ -183,23 +287,133 @@ function fetchImageBuffer(url) {
   });
 }
 
-function buildCaption(ev) {
-  const eventUrl = `https://naorbo.github.io/luz-goa/?tab=youth_center&event=${encodeURIComponent(ev.id)}`;
-  const scheduleLabel = ev.dayHe
-    ? `${ev.dayHe} · ${ev.startTime || '16:30'}${ev.endTime ? ` – ${ev.endTime}` : ''}`
-    : `${ev.date || ''} · ${ev.startTime || '16:30'}${ev.endTime ? ` – ${ev.endTime}` : ''}`;
+function escapeXml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function wrapTextLines(text, maxCharsPerLine = 30) {
+  const words = String(text || '').trim().split(/\s+/);
+  const lines = [];
+  let current = '';
+  for (const word of words) {
+    if (!current) {
+      current = word;
+    } else if ((current + ' ' + word).length <= maxCharsPerLine) {
+      current += ' ' + word;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.slice(0, 2);
+}
+
+/**
+ * Renders a crisp English Event Title, Date & Time, and Venue badge directly onto the image buffer.
+ */
+async function renderEnglishPosterOverlay(rawImageBuffer, ev) {
+  const width = 1000;
+  const height = 680;
+
+  const titleEn = ev.titleEn || ev.titleHe || 'Youth Center Session';
+  const titleLines = wrapTextLines(titleEn, 28);
+  const timeRange = `${ev.startTime || '16:30'}${ev.endTime ? ` - ${ev.endTime}` : ''}`;
+  const dayLabel = (ev.dayEn || ev.date || 'Today').toUpperCase();
+  const scheduleBanner = `${dayLabel}  •  ${timeRange}`;
+  const locationText = ev.locationEn || 'Colomb Youth Center (near Shailish)  •  Ages 8-15';
+
+  const titleSvgLines =
+    titleLines.length === 1
+      ? `<text x="52" y="545" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="bold" fill="#FFFFFF">${escapeXml(
+          titleLines[0]
+        )}</text>`
+      : `<text x="52" y="502" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="bold" fill="#FFFFFF">${escapeXml(
+          titleLines[0]
+        )}</text>
+         <text x="52" y="554" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="bold" fill="#FFFFFF">${escapeXml(
+          titleLines[1]
+        )}</text>`;
+
+  const svgOverlay = Buffer.from(`
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="darkGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000000" stop-opacity="0.45" />
+          <stop offset="35%" stop-color="#000000" stop-opacity="0.15" />
+          <stop offset="62%" stop-color="#0b1711" stop-opacity="0.78" />
+          <stop offset="100%" stop-color="#07110c" stop-opacity="0.96" />
+        </linearGradient>
+      </defs>
+
+      <!-- Gradient Scrim -->
+      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#darkGrad)" />
+
+      <!-- Top-Left Brand Pill -->
+      <rect x="44" y="38" width="380" height="46" rx="23" fill="#15803d" />
+      <text x="234" y="68" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#FFFFFF" letter-spacing="1.2">
+        GOA TEENS HOUSE • YOUTH CENTER
+      </text>
+
+      <!-- Top-Right Time Pill -->
+      <rect x="700" y="38" width="256" height="46" rx="23" fill="#f59e0b" />
+      <text x="828" y="68" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#111827">
+        ⏰ ${escapeXml(timeRange)}
+      </text>
+
+      <!-- Accent Bar -->
+      <rect x="52" y="418" width="84" height="6" rx="3" fill="#fbbf24" />
+
+      <!-- Date & Time Line -->
+      <text x="52" y="454" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="bold" fill="#fbbf24" letter-spacing="1">
+        📅 ${escapeXml(scheduleBanner)}
+      </text>
+
+      <!-- Main Event Title (1-2 lines) -->
+      ${titleSvgLines}
+
+      <!-- Footer Location & URL Bar -->
+      <text x="52" y="612" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#d1fae5">
+        📍 ${escapeXml(locationText)}
+      </text>
+      <text x="52" y="644" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#9ca3af">
+        Register &amp; Volunteer: my-luz-dc028.web.app
+      </text>
+    </svg>
+  `);
+
+  return sharp(rawImageBuffer)
+    .resize(width, height, { fit: 'cover', position: 'center' })
+    .composite([{ input: svgOverlay, top: 0, left: 0 }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+function buildEnglishCaption(ev) {
+  const eventUrl = `${CANONICAL_SITE_URL}/?tab=youth_center&event=${encodeURIComponent(ev.id)}`;
+  const titleEn = ev.titleEn || ev.titleHe || 'Youth Center Session';
+  const descEn = ev.descriptionEn || ev.descriptionHe || titleEn;
+  const locEn = ev.locationEn || 'Colomb Youth Center (near Shailish)';
+  const timeStr = `${ev.startTime || '16:30'}${ev.endTime ? ` – ${ev.endTime}` : ''}`;
+  const dateLabel = ev.dayEn || ev.date || 'Today';
+
   const volunteerLine = ev.volunteerParent
-    ? `🤝 *הורה מתנדב/ת במפגש:* ${ev.volunteerParent}\n`
-    : `🙋 *הורה מתנדב/ת:* נשמח להורה תורן שירשום את עצמו בקישור!\n`;
+    ? `🤝 *Volunteer Parent on Duty:* ${ev.volunteerParent}\n`
+    : `🙋 *Volunteer Parent:* We need a volunteer parent on duty for this session — sign up via the link below!\n`;
 
   return (
-    `☀️ *בוקר טוב הורים יקרים! תזכורת לאירוע היום במרכז הנוער גואה (Goa Teens House)* 🌿\n\n` +
-    `🎯 *${ev.titleHe}*\n` +
-    `📅 *מתי:* היום (${scheduleLabel})\n` +
-    `📍 *מיקום:* מרכז הנוער קולום (ליד שייליש)\n` +
+    `☀️ *Good morning dear parents! Goa Teens House (Youth Center) Reminder* 🌿\n\n` +
+    `🎯 *${titleEn}*\n` +
+    `📅 *When:* ${dateLabel} · ${timeStr}\n` +
+    `📍 *Location:* ${locEn}\n` +
     volunteerLine +
-    `\n📝 *על הפעילות:*\n${ev.descriptionHe || ev.titleHe}\n\n` +
-    `👇 *להרשמה מהירה לאירוע ולשיבוץ הורה מתנדב:*\n` +
+    `\n📝 *About the session:*\n${descEn}\n\n` +
+    `👇 *Register your teen & sign up as volunteer parent:*\n` +
     `${eventUrl}`
   );
 }
@@ -215,21 +429,22 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
       ? SAFE_TEST_RECIPIENT_JID
       : YOUTH_CENTER_GROUP_JID;
 
-  let imgBuffer = null;
-  if (ev.imageUrl) {
+  let finalImageBuffer = null;
+  if (ev.imageUrl && ev.imageUrl.startsWith('http')) {
     try {
-      imgBuffer = await fetchImageBuffer(ev.imageUrl);
+      const rawBuffer = await fetchImageBuffer(ev.imageUrl);
+      finalImageBuffer = await renderEnglishPosterOverlay(rawBuffer, ev);
     } catch (err) {
-      console.warn('⚠️ Could not download image, sending text only:', err.message);
+      console.warn('⚠️ Could not process image overlay:', err.message);
     }
   }
 
-  const caption = buildCaption(ev);
+  const caption = buildEnglishCaption(ev);
 
   await connectAndRun(async (sock) => {
-    if (imgBuffer) {
+    if (finalImageBuffer) {
       await sock.sendMessage(recipientJid, {
-        image: imgBuffer,
+        image: finalImageBuffer,
         caption,
       });
     } else {
@@ -242,7 +457,7 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
   return {
     ok: true,
     eventId: ev.id,
-    titleHe: ev.titleHe,
+    titleEn: ev.titleEn || ev.titleHe,
     recipientJid,
     mode: REMINDER_MODE,
     groupBlocked: recipientJid === SAFE_TEST_RECIPIENT_JID,
@@ -251,14 +466,15 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
 
 // Mode 1: Immediate sample send (`node send-youth-reminder-via-podkids.cjs --sample`)
 if (process.argv.includes('--sample')) {
-  const sampleEv = YOUTH_CENTER_EVENTS[3] || YOUTH_CENTER_EVENTS[0];
+  const sampleEv = getNextUpcomingEvent();
+  console.log(`🎨 Generating English poster overlay & sending sample for: "${sampleEv.titleEn}" (${sampleEv.dayEn} · ${sampleEv.startTime}–${sampleEv.endTime})...`);
   sendReminderViaPodkids(sampleEv, { forceTestDm: true })
     .then((res) => {
-      console.log(`✅ נשלחה הודעה לדוגמא (עם תמונה וקישור) אל ${res.recipientJid}`);
+      console.log(`✅ Sent English sample reminder (with overlaid image & ${CANONICAL_SITE_URL} link) to ${res.recipientJid}`);
       process.exit(0);
     })
     .catch((err) => {
-      console.error('❌ שגיאה:', err.message);
+      console.error('❌ Error:', err.message);
       process.exit(1);
     });
 } else if (process.argv.includes('--daemon')) {
@@ -282,6 +498,9 @@ if (process.argv.includes('--sample')) {
         JSON.stringify({
           status: 'ok',
           connectionSource: 'PodKids (.wa-session)',
+          canonicalSiteUrl: CANONICAL_SITE_URL,
+          language: 'en',
+          imageOverlay: true,
           isLinked: isLinked(),
           reminderMode: REMINDER_MODE,
           safeTestRecipient: SAFE_TEST_RECIPIENT_PHONE,
@@ -303,8 +522,7 @@ if (process.argv.includes('--sample')) {
           const ev =
             parsed.event ||
             YOUTH_CENTER_EVENTS.find((e) => e.id === parsed.eventId) ||
-            YOUTH_CENTER_EVENTS[3] ||
-            YOUTH_CENTER_EVENTS[0];
+            getNextUpcomingEvent();
           const result = await sendReminderViaPodkids(ev, { forceTestDm: true });
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify(result));
@@ -318,7 +536,7 @@ if (process.argv.includes('--sample')) {
 
     if (req.url.startsWith('/send-sample-youth-reminder')) {
       try {
-        const sampleEv = YOUTH_CENTER_EVENTS[3] || YOUTH_CENTER_EVENTS[0];
+        const sampleEv = getNextUpcomingEvent();
         const result = await sendReminderViaPodkids(sampleEv, { forceTestDm: true });
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(result));
@@ -330,12 +548,13 @@ if (process.argv.includes('--sample')) {
     }
 
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Youth Center Morning Reminder Bot (PodKids WhatsApp Connection) is running.');
+    res.end('Youth Center Morning Reminder Bot (PodKids WhatsApp Connection - English + Image Overlay) is running.');
   });
 
   server.listen(PORT, () => {
     console.log(`🚀 Youth Center Reminder Bot (PodKids WhatsApp) listening on http://localhost:${PORT}`);
     console.log(`🔒 Mode: ${REMINDER_MODE} -> Sending ONLY to ${SAFE_TEST_RECIPIENT_PHONE} (Group "${YOUTH_CENTER_GROUP_NAME}" is locked)`);
+    console.log(`🌐 Canonical URL: ${CANONICAL_SITE_URL}`);
     console.log(`⏰ Daily schedule: ${DAILY_REMINDER_TIME_IST} IST (Asia/Kolkata)`);
   });
 
@@ -354,7 +573,7 @@ if (process.argv.includes('--sample')) {
         if (sentLog[key]) continue;
         sentLog[key] = new Date().toISOString();
         saveSentLog(sentLog);
-        console.log(`⏰ [09:30 IST] Sending morning reminder for ${ev.titleHe}...`);
+        console.log(`⏰ [09:30 IST] Sending English morning reminder for ${ev.titleEn}...`);
         await sendReminderViaPodkids(ev);
       }
     } catch (err) {

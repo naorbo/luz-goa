@@ -395,22 +395,22 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   const [botStatusMessage, setBotStatusMessage] = useState<string | null>(null);
 
   const buildYouthMorningReminderText = (ev: LuzEntity) => {
-    const schedule = formatEventSchedule(ev);
-    const eventUrl = `https://naorbo.github.io/luz-goa/?tab=youth_center&event=${encodeURIComponent(ev.id)}`;
+    const scheduleEn = formatEventScheduleEn(ev);
+    const eventUrl = `https://my-luz-dc028.web.app/?tab=youth_center&event=${encodeURIComponent(ev.id)}`;
     const vols = ev.volunteers || eventVolunteers[ev.id] || [];
     const volunteerLine =
       vols.length > 0
-        ? `🤝 *הורה מתנדב/ת במפגש:* ${vols.map((v) => v.name).join(', ')}\n`
-        : `🙋 *הורה מתנדב/ת:* נשמח להורה תורן שירשום את עצמו בקישור!\n`;
+        ? `🤝 *Volunteer Parent on Duty:* ${vols.map((v) => v.name).join(', ')}\n`
+        : `🙋 *Volunteer Parent:* We need a volunteer parent on duty today — sign up via the link below!\n`;
 
     return (
-      `☀️ *בוקר טוב הורים יקרים! תזכורת לאירוע היום במרכז הנוער גואה (Goa Teens House)* 🌿\n\n` +
-      `🎯 *${ev.titleHe}*\n` +
-      `📅 *מתי:* היום (${schedule})\n` +
-      `📍 *מיקום:* ${ev.locationDetailsHe || 'מרכז הנוער קולום (ליד שייליש)'}\n` +
+      `☀️ *Good morning dear parents! Today's Youth Center Reminder (Goa Teens House)* 🌿\n\n` +
+      `🎯 *${ev.titleEn || ev.titleHe}*\n` +
+      `📅 *When:* Today (${scheduleEn})\n` +
+      `📍 *Location:* ${ev.locationDetailsEn || 'Colomb Youth Center (near Shailish)'}\n` +
       volunteerLine +
-      `\n📝 *על הפעילות:*\n${ev.descriptionHe || ev.titleHe}\n\n` +
-      `👇 *להרשמה מהירה לאירוע ולשיבוץ הורה מתנדב:*\n` +
+      `\n📝 *About today's session:*\n${ev.descriptionEn || ev.descriptionHe || ev.titleEn}\n\n` +
+      `👇 *Register your teen & sign up as volunteer parent:*\n` +
       `${eventUrl}`
     );
   };
@@ -431,7 +431,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
           const file = new File([blob], 'youth-center-event.jpg', { type: blob.type || 'image/jpeg' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: ev.titleHe,
+              title: ev.titleEn || ev.titleHe,
               text,
               files: [file],
             });
@@ -439,7 +439,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
             return;
           }
         }
-        await navigator.share({ title: ev.titleHe, text });
+        await navigator.share({ title: ev.titleEn || ev.titleHe, text });
         setSendingBotReminder(false);
         return;
       } catch {
@@ -458,12 +458,14 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
             eventId: ev.id,
             event: {
               id: ev.id,
-              date: ev.date || '2026-11-05',
+              date: ev.date || '2026-11-12',
+              dayEn: ev.date ? formatDateFull(ev.date, false) : 'Today',
               startTime: ev.startTime || '16:30',
-              endTime: ev.endTime || '18:30',
+              endTime: ev.endTime || '19:00',
+              titleEn: ev.titleEn || ev.titleHe,
               titleHe: ev.titleHe,
-              titleEn: ev.titleEn,
-              descriptionHe: ev.descriptionHe,
+              descriptionEn: ev.descriptionEn || ev.descriptionHe,
+              locationEn: ev.locationDetailsEn || 'Colomb Youth Center (near Shailish)',
               imageUrl: ev.imageUrl,
               volunteerParent: vols.map((v) => v.name).join(', '),
             },
@@ -472,13 +474,13 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         const data = await res.json();
         if (data && data.ok) {
           setBotStatusMessage(
-            `✅ נשלח בהצלחה מהבוט (עם תמונה + טקסט) אל ${SAFE_TEST_PHONE}! (קבוצת "${TARGET_GROUP_NAME_FUTURE}" נעולה ולא קיבלה הודעה)`
+            `✅ נשלח בהצלחה מהבוט של פודקידס (תמונה עם כותרת ושעה באנגלית + טקסט באנגלית + קישור my-luz-dc028.web.app) אל ${SAFE_TEST_PHONE}!`
           );
           setSendingBotReminder(false);
           return;
         }
       } catch {
-        // Fallback to direct WhatsApp link to 972508878902 if local bot needs QR scan
+        // Fallback to direct WhatsApp link to 972508878902
       }
       setSendingBotReminder(false);
     }
@@ -487,7 +489,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     const waUrl = `https://wa.me/${SAFE_TEST_PHONE}?text=${encodeURIComponent(text)}`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');
     setBotStatusMessage(
-      `📲 נפתחה שליחה ישירה בוואטסאפ אל ${SAFE_TEST_PHONE} בלבד! (לשליחה אוטומטית עם תמונה ב-09:30 ניתן גם לחבר את הבוט ב-localhost:8080/qr)`
+      `📲 נפתחה שליחה ישירה בוואטסאפ אל ${SAFE_TEST_PHONE} בלבד!`
     );
   };
 
@@ -666,14 +668,38 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     }
   }, [volunteerName]);
 
-  // Active event in Gate check-in view
+  const todayIstDateStr = useMemo(() => {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  }, []);
+
+  const [showPastEvents, setShowPastEvents] = useState<boolean>(false);
+
+  const upcomingYouthEvents = useMemo(() => {
+    const list = youthEvents.filter((ev) => !ev.date || ev.date >= todayIstDateStr);
+    return list.length > 0 ? list : youthEvents;
+  }, [youthEvents, todayIstDateStr]);
+
+  const pastYouthEvents = useMemo(() => {
+    return youthEvents.filter((ev) => Boolean(ev.date && ev.date < todayIstDateStr));
+  }, [youthEvents, todayIstDateStr]);
+
+  const displayedCardEvents = useMemo(() => {
+    return showPastEvents ? youthEvents : upcomingYouthEvents;
+  }, [showPastEvents, youthEvents, upcomingYouthEvents]);
+
+  // Active event in Gate check-in view (defaults to today's or next upcoming event)
   const activeGateEvent = useMemo(() => {
     if (gateEventId) {
       const match = youthEvents.find((e) => e.id === gateEventId);
       if (match) return match;
     }
-    return youthEvents[0] || CORE_YOUTH_CENTER_EVENTS[0];
-  }, [gateEventId, youthEvents]);
+    return upcomingYouthEvents[0] || youthEvents[0] || CORE_YOUTH_CENTER_EVENTS[0];
+  }, [gateEventId, youthEvents, upcomingYouthEvents]);
 
   // Gate live metrics (Pre-registered vs Walk-in vs Expected)
   const gateMetrics = useMemo(() => {
@@ -733,10 +759,23 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     return buildChronologicalDateGroups(youthEvents);
   }, [youthEvents]);
 
+  const pastDayGroupsCount = useMemo(
+    () => chronologicalDayGroups.filter((g) => g.isPast).length,
+    [chronologicalDayGroups]
+  );
+
+  const visibleStripDayGroups = useMemo(() => {
+    if (showPastEvents) return chronologicalDayGroups;
+    const upcoming = chronologicalDayGroups.filter((g) => !g.isPast);
+    return upcoming.length > 0 ? upcoming : chronologicalDayGroups;
+  }, [chronologicalDayGroups, showPastEvents]);
+
   const displayDayGroups = useMemo(() => {
-    if (selectedDate === 'all') return chronologicalDayGroups;
-    return chronologicalDayGroups.filter((g) => g.dateStr === selectedDate);
-  }, [chronologicalDayGroups, selectedDate]);
+    if (selectedDate !== 'all') {
+      return chronologicalDayGroups.filter((g) => g.dateStr === selectedDate);
+    }
+    return visibleStripDayGroups;
+  }, [chronologicalDayGroups, visibleStripDayGroups, selectedDate]);
 
   const formatEventSchedule = (ev: LuzEntity) => {
     let dayStr = '';
@@ -1272,9 +1311,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
   };
 
   const handleCopyGateLink = (eventId: string) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const path = typeof window !== 'undefined' ? window.location.pathname : '';
-    const url = `${origin}${path}?tab=youth_center&gate=${eventId}`;
+    const url = `https://my-luz-dc028.web.app/?tab=youth_center&gate=${encodeURIComponent(eventId)}`;
 
     if (navigator.clipboard) {
       navigator.clipboard
@@ -1523,8 +1560,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               type="button"
               onClick={() => {
                 setViewMode('gate');
-                if (!gateEventId && youthEvents.length > 0) {
-                  setGateEventId(youthEvents[0].id);
+                if (!gateEventId && upcomingYouthEvents.length > 0) {
+                  setGateEventId(upcomingYouthEvents[0].id);
                 }
               }}
               className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
@@ -1542,7 +1579,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
             type="button"
             onClick={() => {
               setBotStatusMessage(null);
-              setReminderPreviewEvent(youthEvents[0] || CORE_YOUTH_CENTER_EVENTS[0]);
+              setReminderPreviewEvent(upcomingYouthEvents[0] || youthEvents[0] || CORE_YOUTH_CENTER_EVENTS[0]);
             }}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-emerald-600/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-bold transition-all active:scale-[0.98]"
             title={isHe ? 'תצוגה ושליחת הודעת תזכורת בוקר (09:30) לדוגמא אל 972508878902' : 'Preview & Send 09:30 Morning Reminder Sample'}
@@ -2072,27 +2109,55 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 </h2>
                 <p className="text-xs sm:text-sm text-muted">
                   {isHe
-                    ? 'כל מפגשי מרכז הנוער מסודרים לפי תאריכים ושעות לאורך החודש. לחצו על תאריך לסינון ממוקד או על מפגש להרשמה.'
-                    : 'All Youth Center sessions ordered chronologically date by date throughout the month.'}
+                    ? 'מוצגים מפגשים קרובים החל מהיום והלאה. לחצו על תאריך לסינון ממוקד או על מפגש להרשמה.'
+                    : 'Showing upcoming Youth Center sessions starting from today onwards.'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedDate('all')}
-                className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                  selectedDate === 'all'
-                    ? 'bg-ink text-paper'
-                    : 'bg-paper-2 text-ink hover:bg-paper-3'
-                }`}
-              >
-                {isHe ? 'הצג את כל החודש' : 'Show Full Month'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {pastDayGroupsCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPastEvents((prev) => !prev);
+                      setSelectedDate('all');
+                    }}
+                    className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-colors ${
+                      showPastEvents
+                        ? 'bg-amber-500/15 text-amber-900 dark:text-amber-200 border-amber-500/40'
+                        : 'bg-paper text-muted hover:text-ink border-rule'
+                    }`}
+                  >
+                    {showPastEvents
+                      ? isHe
+                        ? 'הסתר אירועי עבר'
+                        : 'Hide Past Events'
+                      : isHe
+                      ? `🕓 הצג אירועי עבר (${pastDayGroupsCount})`
+                      : `🕓 Show Past Events (${pastDayGroupsCount})`}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate('all');
+                    setShowPastEvents(false);
+                  }}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                    selectedDate === 'all' && !showPastEvents
+                      ? 'bg-ink text-paper'
+                      : 'bg-paper-2 text-ink hover:bg-paper-3'
+                  }`}
+                >
+                  {isHe ? 'מפגשים קרובים (מהיום)' : 'Upcoming Sessions'}
+                </button>
+              </div>
             </div>
 
             {/* Chronological Date Cards Strip */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 w-full max-w-full min-w-0">
-              {chronologicalDayGroups.map((dayGroup) => {
+              {visibleStripDayGroups.map((dayGroup, idx) => {
                 const isSelected = selectedDate === dayGroup.dateStr;
+                const isNextUp = !dayGroup.isPast && idx === 0 && !showPastEvents;
                 return (
                   <button
                     key={dayGroup.dateStr}
@@ -2100,9 +2165,13 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                     onClick={() =>
                       setSelectedDate(selectedDate === dayGroup.dateStr ? 'all' : dayGroup.dateStr)
                     }
-                    className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-w-[76px] sm:min-w-0 ${
+                    className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-w-[76px] sm:min-w-0 relative ${
                       isSelected
                         ? 'bg-accent text-white border-accent shadow-sm'
+                        : dayGroup.isPast
+                        ? 'bg-paper-2/60 opacity-60 hover:opacity-100 border-rule text-muted'
+                        : isNextUp
+                        ? 'bg-paper border-2 border-accent text-ink shadow-xs'
                         : 'bg-paper hover:bg-paper-2 border-rule text-ink'
                     }`}
                   >
@@ -2116,6 +2185,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                         isSelected
                           ? 'bg-white/20 text-white'
+                          : dayGroup.isPast
+                          ? 'bg-paper-2 text-muted'
                           : 'bg-paper-2 text-accent'
                       }`}
                     >
@@ -2129,11 +2200,17 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 
           {/* Chronological Day-by-Day Timeline */}
           <div className="space-y-6">
-            {displayDayGroups.map((dayGroup) => {
+            {displayDayGroups.map((dayGroup, idx) => {
               if (dayGroup.events.length === 0 && selectedDate === 'all') return null;
+              const isNextUpcomingDay = !dayGroup.isPast && idx === 0 && !showPastEvents;
 
               return (
-                <div key={dayGroup.dateStr} className="hallmark-plate overflow-hidden">
+                <div
+                  key={dayGroup.dateStr}
+                  className={`hallmark-plate overflow-hidden ${
+                    dayGroup.isPast ? 'opacity-75' : ''
+                  }`}
+                >
                   {/* Day Banner */}
                   <div className="px-5 py-4 bg-paper-2 border-b border-rule flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -2146,15 +2223,23 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         </span>
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-display text-lg sm:text-xl font-bold text-ink">
                             {isHe ? dayGroup.formattedDateHe : dayGroup.formattedDateEn}
                           </h3>
-                          {dayGroup.isToday && (
+                          {dayGroup.isToday ? (
                             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent text-white shadow-xs">
-                              {isHe ? 'היום' : 'Today'}
+                              {isHe ? 'היום!' : 'Today!'}
                             </span>
-                          )}
+                          ) : isNextUpcomingDay ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-xs">
+                              {isHe ? '✨ המפגש הקרוב' : '✨ Next Upcoming'}
+                            </span>
+                          ) : dayGroup.isPast ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-paper text-muted border border-rule">
+                              {isHe ? 'הסתיים' : 'Past'}
+                            </span>
+                          ) : null}
                         </div>
                         <p className="text-xs text-muted mt-0.5">
                           {dayGroup.events.length} {isHe ? 'מפגשים מתוכננים בתאריך זה' : 'sessions scheduled for this date'}
@@ -2404,21 +2489,53 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         </section>
       ) : (
         /* =====================================================================
-           CARDS VIEW: CLEAN MODERN CARDS (REGISTRATION COUNT + VOLUNTEER PARENT)
+           CARDS VIEW: CLEAN MODERN CARDS (UPCOMING FIRST + OPTIONAL PAST TOGGLE)
            ===================================================================== */
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {youthEvents.map((ev) => {
-            const regCount = getEventRegistrationsCount(ev.id);
-            const eventVols = getEventVolunteers(ev);
-            const title = isHe ? ev.titleHe : ev.titleEn;
-            const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
-            const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
-
-            return (
-              <article
-                key={ev.id}
-                className="hallmark-plate overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all group"
+        <div className="space-y-5">
+          {pastYouthEvents.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-paper-2 border border-rule">
+              <div className="text-xs sm:text-sm font-semibold text-ink-2">
+                {showPastEvents
+                  ? isHe
+                    ? `מציג את כל ${youthEvents.length} מפגשי החודש (כולל אירועי עבר)`
+                    : `Showing all ${youthEvents.length} monthly sessions (including past events)`
+                  : isHe
+                  ? `מציג ${upcomingYouthEvents.length} מפגשים קרובים החל מהיום והלאה`
+                  : `Showing ${upcomingYouthEvents.length} upcoming sessions from today onwards`}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPastEvents((prev) => !prev)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                  showPastEvents
+                    ? 'bg-amber-500/15 text-amber-900 dark:text-amber-200 border-amber-500/40'
+                    : 'bg-paper text-muted hover:text-ink border-rule'
+                }`}
               >
+                {showPastEvents
+                  ? isHe
+                    ? 'הסתר אירועי עבר'
+                    : 'Hide Past Events'
+                  : isHe
+                  ? `🕓 הצג גם אירועי עבר (${pastYouthEvents.length})`
+                  : `🕓 Show Past Events (${pastYouthEvents.length})`}
+              </button>
+            </div>
+          )}
+
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {displayedCardEvents.map((ev) => {
+              const regCount = getEventRegistrationsCount(ev.id);
+              const eventVols = getEventVolunteers(ev);
+              const title = isHe ? ev.titleHe : ev.titleEn;
+              const desc = isHe ? ev.descriptionHe : ev.descriptionEn;
+              const loc = isHe ? ev.locationDetailsHe : ev.locationDetailsEn;
+
+              return (
+                <article
+                  key={ev.id}
+                  className="hallmark-plate overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all group"
+                >
                 <div>
                   {/* Image Header */}
                   <div
@@ -2614,7 +2731,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               </article>
             );
           })}
-        </section>
+          </section>
+        </div>
       )}
 
       {/* =====================================================================
@@ -4241,29 +4359,56 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               >
                 {youthEvents.map((ev) => (
                   <option key={ev.id} value={ev.id}>
-                    {isHe ? ev.titleHe : ev.titleEn} ({formatEventSchedule(ev)})
+                    {ev.titleEn || ev.titleHe} ({formatEventScheduleEn(ev)})
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* WhatsApp Bubble Preview (Image + Formatted Text) */}
+            {/* WhatsApp Bubble Preview (Image with English Title/Time Overlay + All-English Text) */}
             <div className="rounded-2xl border border-emerald-600/30 bg-[#e5ddd5] dark:bg-stone-900 p-3.5 shadow-inner space-y-2">
               <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 flex items-center justify-between">
-                <span>📱 תצוגה מקדימה של ההודעה בוואטסאפ (תמונה + טקסט + קישור):</span>
+                <span>📱 תצוגה מקדימה בוואטסאפ (תמונה עם כותרת ושעה באנגלית + טקסט באנגלית):</span>
                 <span dir="ltr" className="font-mono">09:30 IST → {SAFE_TEST_PHONE}</span>
               </div>
-              <div className="rounded-xl bg-white dark:bg-stone-800 p-2.5 shadow-xs space-y-2.5 border border-black/5">
+              <div className="rounded-xl bg-white dark:bg-stone-800 p-2.5 shadow-xs space-y-2.5 border border-black/5" dir="ltr">
                 {reminderPreviewEvent.imageUrl && (
-                  <div className="rounded-lg overflow-hidden max-h-48 bg-stone-100 flex items-center justify-center">
+                  <div className="relative rounded-lg overflow-hidden h-56 bg-stone-900 flex items-center justify-center">
                     <img
                       src={reminderPreviewEvent.imageUrl}
-                      alt={reminderPreviewEvent.titleHe}
-                      className="w-full max-h-48 object-cover"
+                      alt={reminderPreviewEvent.titleEn || reminderPreviewEvent.titleHe}
+                      className="w-full h-full object-cover"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/30 flex flex-col justify-between p-4 text-left">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+                          Goa Teens House · Youth Center
+                        </span>
+                        <span className="px-2.5 py-1 rounded-full bg-amber-500 text-stone-950 text-[10px] font-extrabold uppercase tracking-wide shadow-sm">
+                          Today · {reminderPreviewEvent.startTime || '16:30'}
+                          {reminderPreviewEvent.endTime ? ` – ${reminderPreviewEvent.endTime}` : ''}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-amber-300 text-xs font-extrabold uppercase tracking-wider">
+                          {reminderPreviewEvent.date
+                            ? formatDateFull(reminderPreviewEvent.date, false)
+                            : 'Today at Colomb Youth Center'}
+                          {' · '}
+                          {reminderPreviewEvent.startTime || '16:30'}
+                          {reminderPreviewEvent.endTime ? ` – ${reminderPreviewEvent.endTime}` : ''}
+                        </div>
+                        <div className="text-white font-display text-lg sm:text-xl font-extrabold leading-tight drop-shadow">
+                          {reminderPreviewEvent.titleEn || reminderPreviewEvent.titleHe}
+                        </div>
+                        <div className="text-white/80 text-[11px] font-medium">
+                          📍 {reminderPreviewEvent.locationDetailsEn || 'Colomb Youth Center (near Shailish)'} · my-luz-dc028.web.app
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
-                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-stone-900 dark:text-stone-100 leading-relaxed overflow-x-auto">
+                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-stone-900 dark:text-stone-100 leading-relaxed overflow-x-auto text-left">
                   {buildYouthMorningReminderText(reminderPreviewEvent)}
                 </pre>
               </div>

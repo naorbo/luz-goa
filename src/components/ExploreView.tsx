@@ -428,22 +428,49 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                     : 'Events and sessions ordered chronologically date by date throughout the month.'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedDate('all')}
-                className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                  selectedDate === 'all'
-                    ? 'bg-ink text-paper'
-                    : 'bg-paper-2 text-ink hover:bg-paper-3'
-                }`}
-              >
-                {isHe ? 'הצג את כל החודש' : 'Show Full Month'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {pastDayGroupsCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPastDates((prev) => !prev);
+                      setSelectedDate('all');
+                    }}
+                    className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-colors ${
+                      showPastDates
+                        ? 'bg-amber-500/15 text-amber-900 dark:text-amber-200 border-amber-500/40'
+                        : 'bg-paper text-muted hover:text-ink border-rule'
+                    }`}
+                  >
+                    {showPastDates
+                      ? isHe
+                        ? 'הסתר תאריכים שעברו'
+                        : 'Hide Past Dates'
+                      : isHe
+                      ? `🕓 הצג אירועי עבר (${pastDayGroupsCount})`
+                      : `🕓 Show Past Dates (${pastDayGroupsCount})`}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate('all');
+                    setShowPastDates(false);
+                  }}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                    selectedDate === 'all' && !showPastDates
+                      ? 'bg-ink text-paper'
+                      : 'bg-paper-2 text-ink hover:bg-paper-3'
+                  }`}
+                >
+                  {isHe ? 'אירועים קרובים (מהיום)' : 'Upcoming (From Today)'}
+                </button>
+              </div>
             </div>
 
             {/* Chronological Date Cards Strip */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar sm:grid sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 w-full max-w-full min-w-0">
-              {chronologicalDayGroups.map((dayGroup) => {
+              {visibleStripDayGroups.map((dayGroup) => {
                 const isSelected = selectedDate === dayGroup.dateStr;
                 return (
                   <button
@@ -455,6 +482,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
                     className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-w-[76px] sm:min-w-0 ${
                       isSelected
                         ? 'bg-accent text-white border-accent shadow-sm'
+                        : dayGroup.isPast
+                        ? 'bg-paper-2/60 opacity-65 hover:opacity-100 border-rule text-muted'
                         : 'bg-paper hover:bg-paper-2 border-rule text-ink'
                     }`}
                   >
