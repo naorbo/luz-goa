@@ -263,7 +263,6 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       return '';
     }
   });
-  const [volRole, setVolRole] = useState<string>('הורה תורן בשער ונוכחות');
   const [volSubmitted, setVolSubmitted] = useState<boolean>(false);
   const [volSyncing, setVolSyncing] = useState<boolean>(false);
 
@@ -383,114 +382,6 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       setShareToast(isHe ? 'האירוע שותף!' : 'Event shared!');
       setTimeout(() => setShareToast(null), 2500);
     }
-  };
-
-  // =========================================================================
-  // YOUTH CENTER MORNING REMINDER BOT (09:30 IST) — SAFE TEST MODE (972508878902 ONLY)
-  // =========================================================================
-  const SAFE_TEST_PHONE = '972508878902';
-  const TARGET_GROUP_NAME_FUTURE = 'Youth center parents';
-  const [reminderPreviewEvent, setReminderPreviewEvent] = useState<LuzEntity | null>(null);
-  const [sendingBotReminder, setSendingBotReminder] = useState(false);
-  const [botStatusMessage, setBotStatusMessage] = useState<string | null>(null);
-
-  const buildYouthMorningReminderText = (ev: LuzEntity) => {
-    const scheduleEn = formatEventScheduleEn(ev);
-    const eventUrl = `https://my-luz-dc028.web.app/?tab=youth_center&event=${encodeURIComponent(ev.id)}`;
-    const vols = ev.volunteers || eventVolunteers[ev.id] || [];
-    const volunteerLine =
-      vols.length > 0
-        ? `🤝 *Volunteer Parent on Duty:* ${vols.map((v) => v.name).join(', ')}\n`
-        : `🙋 *Volunteer Parent:* We need a volunteer parent on duty today — sign up via the link below!\n`;
-
-    return (
-      `☀️ *Good morning dear parents! Today's Youth Center Reminder (Goa Teens House)* 🌿\n\n` +
-      `🎯 *${ev.titleEn || ev.titleHe}*\n` +
-      `📅 *When:* Today (${scheduleEn})\n` +
-      `📍 *Location:* ${ev.locationDetailsEn || 'Colomb Youth Center (near Shailish)'}\n` +
-      volunteerLine +
-      `\n📝 *About today's session:*\n${ev.descriptionEn || ev.descriptionHe || ev.titleEn}\n\n` +
-      `👇 *Register your teen & sign up as volunteer parent:*\n` +
-      `${eventUrl}`
-    );
-  };
-
-  const handleSendSampleReminderTo972508878902 = async (
-    ev: LuzEntity,
-    preferMode: 'auto' | 'direct_wa' | 'share_with_image' = 'auto'
-  ) => {
-    const text = buildYouthMorningReminderText(ev);
-    const vols = ev.volunteers || eventVolunteers[ev.id] || [];
-
-    if (preferMode === 'share_with_image' && typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        setSendingBotReminder(true);
-        if (ev.imageUrl) {
-          const response = await fetch(ev.imageUrl);
-          const blob = await response.blob();
-          const file = new File([blob], 'youth-center-event.jpg', { type: blob.type || 'image/jpeg' });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: ev.titleEn || ev.titleHe,
-              text,
-              files: [file],
-            });
-            setSendingBotReminder(false);
-            return;
-          }
-        }
-        await navigator.share({ title: ev.titleEn || ev.titleHe, text });
-        setSendingBotReminder(false);
-        return;
-      } catch {
-        setSendingBotReminder(false);
-      }
-    }
-
-    if (preferMode === 'auto') {
-      setSendingBotReminder(true);
-      setBotStatusMessage(null);
-      try {
-        const res = await fetch('http://localhost:8080/send-youth-reminder', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            eventId: ev.id,
-            event: {
-              id: ev.id,
-              date: ev.date || '2026-11-12',
-              dayEn: ev.date ? formatDateFull(ev.date, false) : 'Today',
-              startTime: ev.startTime || '16:30',
-              endTime: ev.endTime || '19:00',
-              titleEn: ev.titleEn || ev.titleHe,
-              titleHe: ev.titleHe,
-              descriptionEn: ev.descriptionEn || ev.descriptionHe,
-              locationEn: ev.locationDetailsEn || 'Colomb Youth Center (near Shailish)',
-              imageUrl: ev.imageUrl,
-              volunteerParent: vols.map((v) => v.name).join(', '),
-            },
-          }),
-        });
-        const data = await res.json();
-        if (data && data.ok) {
-          setBotStatusMessage(
-            `✅ נשלח בהצלחה מהבוט של פודקידס (תמונה עם כותרת ושעה באנגלית + טקסט באנגלית + קישור my-luz-dc028.web.app) אל ${SAFE_TEST_PHONE}!`
-          );
-          setSendingBotReminder(false);
-          return;
-        }
-      } catch {
-        // Fallback to direct WhatsApp link to 972508878902
-      }
-      setSendingBotReminder(false);
-    }
-
-    // Direct 1-click WhatsApp dispatch strictly to 972508878902
-    const waUrl = `https://wa.me/${SAFE_TEST_PHONE}?text=${encodeURIComponent(text)}`;
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
-    setBotStatusMessage(
-      `📲 נפתחה שליחה ישירה בוואטסאפ אל ${SAFE_TEST_PHONE} בלבד!`
-    );
   };
 
   // Add new Youth Center Event modal state (Admin Only)
@@ -829,7 +720,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 
     const cleanName = volParentName.trim();
     const cleanPhone = volParentPhone.trim() || '—';
-    const cleanRole = volRole.trim() || (isHe ? 'הורה מתנדב/ת' : 'Volunteer Parent');
+    const cleanRole = 'Volunteer Parent on Duty';
 
     try {
       localStorage.setItem('luz_yc_volunteer_name', cleanName);
@@ -1096,8 +987,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
     } else {
       setGatePasscodeError(
         isHe
-          ? 'קוד שגוי. הסיסמה היא: Matnas2026'
-          : 'Incorrect passcode. Passcode is: Matnas2026'
+          ? 'קוד גישה שגוי. השער מיועד להורים מתנדבים בלבד.'
+          : 'Incorrect passcode. Gate is restricted to volunteer parents.'
       );
     }
   };
@@ -1556,37 +1447,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               <CalendarDays className="w-4 h-4" />
               <span>{isHe ? 'לוח שבועי כרונולוגי' : 'Calendar View'}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('gate');
-                if (!gateEventId && upcomingYouthEvents.length > 0) {
-                  setGateEventId(upcomingYouthEvents[0].id);
-                }
-              }}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
-                viewMode === 'gate'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-ink-2 hover:text-ink'
-              }`}
-            >
-              <ClipboardCheck className="w-4 h-4" />
-              <span>{isHe ? 'שער נוכחות למתנדב' : 'Volunteer Gate'}</span>
-            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setBotStatusMessage(null);
-              setReminderPreviewEvent(upcomingYouthEvents[0] || youthEvents[0] || CORE_YOUTH_CENTER_EVENTS[0]);
-            }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-emerald-600/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-bold transition-all active:scale-[0.98]"
-            title={isHe ? 'תצוגה ושליחת הודעת תזכורת בוקר (09:30) לדוגמא אל 972508878902' : 'Preview & Send 09:30 Morning Reminder Sample'}
-          >
-            <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>{isHe ? '🤖 בוט תזכורת בוקר (09:30)' : '🤖 09:30 Reminder Bot'}</span>
-          </button>
 
           {isAdmin && (
             <button
@@ -1628,14 +1489,14 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                   {isHe ? 'קוד גישה למתנדבים' : 'Volunteer Passcode'}
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   autoComplete="off"
                   value={gatePasscodeInput}
                   onChange={(e) => {
                     setGatePasscodeInput(e.target.value);
                     if (gatePasscodeError) setGatePasscodeError('');
                   }}
-                  placeholder="Matnas2026"
+                  placeholder={isHe ? 'הזינו קוד מתנדב...' : 'Enter passcode...'}
                   className="w-full px-4 py-3 text-center rounded-xl bg-paper border border-rule font-mono font-bold text-lg text-ink focus:outline-none focus:border-accent tracking-wider shadow-inner"
                   autoFocus
                 />
@@ -2246,10 +2107,6 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         </p>
                       </div>
                     </div>
-
-                    <span className="text-xs font-semibold text-ink-2 bg-plate px-3 py-1.5 rounded-full border border-rule">
-                      {dayGroup.dateStr}
-                    </span>
                   </div>
 
                   {dayGroup.events.length === 0 ? (
@@ -2283,17 +2140,12 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                             {/* Left/Start: Time Box + Image + Event Details */}
                             <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
                               {/* Time Box */}
-                              <div className="w-20 sm:w-24 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2 sm:p-2.5 text-center">
-                                {ev.date && (
-                                  <div className="text-[11px] font-bold text-accent mb-0.5">
-                                    {formatDateShort(ev.date, isHe)}
-                                  </div>
-                                )}
+                              <div className="w-20 sm:w-24 shrink-0 rounded-2xl bg-paper-2 border border-rule p-2.5 sm:p-3 text-center flex flex-col items-center justify-center">
                                 <div className="hallmark-code text-sm sm:text-base font-bold text-ink">
                                   {ev.startTime || '16:30'}
                                 </div>
                                 {ev.endTime && (
-                                  <div className="hallmark-code text-[11px] text-muted">
+                                  <div className="hallmark-code text-[11px] text-muted mt-0.5">
                                     {isHe ? `עד ${ev.endTime}` : `to ${ev.endTime}`}
                                   </div>
                                 )}
@@ -2321,26 +2173,6 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
 
                               <div className="space-y-1.5 min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-700 text-white">
-                                    {isHe ? 'מרכז הנוער' : 'Youth Center'}
-                                  </span>
-                                  {ev.date && (
-                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent/15 text-accent">
-                                      {formatDateFull(ev.date, isHe)}
-                                    </span>
-                                  )}
-
-                                  {/* Price Badge */}
-                                  {ev.priceAmount && ev.priceAmount > 0 ? (
-                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-500/30">
-                                      ₹{ev.priceAmount.toLocaleString()} {isHe ? 'לחודש' : '/ month'}
-                                    </span>
-                                  ) : (
-                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
-                                      {isHe ? 'חינם' : 'Free'}
-                                    </span>
-                                  )}
-
                                   {/* Registration count only (NO NAMES) */}
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-paper-2 text-xs font-semibold text-ink">
                                     <Users className="w-3 h-3 text-accent" />
@@ -2461,15 +2293,6 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleOpenGateForEvent(ev.id)}
-                                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
-                                title={isHe ? 'שער כניסה וסימון נוכחות (להורה מתנדב)' : 'Volunteer Gate & Check-in'}
-                              >
-                                <ClipboardCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                                <span className="hidden sm:inline">{isHe ? 'שער נוכחות' : 'Gate'}</span>
-                              </button>
-                              <button
-                                type="button"
                                 onClick={() => handleOpenRegisterModal(ev)}
                                 className="flex-1 min-w-0 md:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm active:scale-[0.97] transition-all min-h-[44px]"
                               >
@@ -2549,18 +2372,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
-                    <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-accent text-white shadow-sm">
-                        {ev.date
-                          ? formatDateFull(ev.date, isHe)
-                          : typeof ev.dayOfWeek === 'number'
-                          ? isHe
-                            ? DAY_NAMES_HE[ev.dayOfWeek]
-                            : DAY_NAMES_EN[ev.dayOfWeek]
-                          : isHe
-                          ? 'אירוע נוער'
-                          : 'Youth Event'}
-                      </span>
+                    <div className="absolute top-3 inset-x-3 flex items-center justify-end gap-2">
                       {/* ONLY COUNT IS DISPLAYED */}
                       <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-ink shadow-sm inline-flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-accent" />
@@ -2577,13 +2389,6 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         <span className="truncate">
                           {isHe ? 'מתנדב/ת:' : 'Volunteer:'} {eventVols.map((v) => v.name).join(', ')}
                         </span>
-                      </div>
-                    )}
-
-                    {/* Price Badge on Image bottom right */}
-                    {ev.priceAmount && ev.priceAmount > 0 && (
-                      <div className="absolute bottom-3 right-3 px-3 py-1 rounded-full text-xs font-bold bg-black/75 text-amber-300 backdrop-blur-xs border border-amber-400/30 shadow-sm">
-                        ₹{ev.priceAmount.toLocaleString()} {isHe ? 'לחודש' : '/ month'}
                       </div>
                     )}
                   </div>
@@ -2708,15 +2513,6 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       title={isHe ? 'שיתוף אירוע' : 'Share event'}
                     >
                       <Share2 className="w-4 h-4 shrink-0" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenGateForEvent(ev.id)}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs sm:text-sm font-semibold active:scale-[0.97] transition-all min-h-[44px]"
-                      title={isHe ? 'שער כניסה וסימון נוכחות (להורה מתנדב)' : 'Volunteer Gate & Check-in'}
-                    >
-                      <ClipboardCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                      <span>{isHe ? 'שער נוכחות' : 'Gate'}</span>
                     </button>
                     <button
                       type="button"
@@ -3112,15 +2908,6 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                 <Clock className="w-3.5 h-3.5 text-accent" />
                 <span>{formatEventSchedule(selectedEventForReg)}</span>
               </span>
-              {selectedEventForReg.priceAmount && selectedEventForReg.priceAmount > 0 ? (
-                <span className="px-3 py-1 rounded-full bg-amber-500/15 text-amber-900 dark:text-amber-300 font-bold border border-amber-500/30">
-                  ₹{selectedEventForReg.priceAmount.toLocaleString()} {isHe ? 'לחודש (תקופת ניסיון)' : '/ month (trial)'}
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-500/30">
-                  {isHe ? 'השתתפות חינם' : 'Free Entry'}
-                </span>
-              )}
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-paper-2 text-muted font-medium border border-rule">
                 <MapPin className="w-3.5 h-3.5 text-accent" />
                 <span>
@@ -3142,7 +2929,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
               </div>
             )}
 
-            {/* Volunteer Parent Status & Quick Switch to Volunteer Signup */}
+            {/* Volunteer Parent Status & Event Gate Access inside Event Page */}
             <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-xs sm:text-sm">
                 <Heart className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -3165,23 +2952,38 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const target = selectedEventForReg;
-                  setSelectedEventForReg(null);
-                  handleOpenVolunteerModal(target);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-paper hover:bg-paper-2 border border-rule text-xs font-bold text-accent transition-all active:scale-[0.97]"
-              >
-                {getEventVolunteers(selectedEventForReg).length > 0
-                  ? isHe
-                    ? '+ הצטרפות / עדכון מתנדב'
-                    : '+ Join / Edit Volunteer'
-                  : isHe
-                  ? '🙋 הרשמה כהורה מתנדב'
-                  : '🙋 Sign up as Volunteer'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedEventForReg;
+                    setSelectedEventForReg(null);
+                    handleOpenVolunteerModal(target);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-paper hover:bg-paper-2 border border-rule text-xs font-bold text-accent transition-all active:scale-[0.97]"
+                >
+                  {getEventVolunteers(selectedEventForReg).length > 0
+                    ? isHe
+                      ? '+ הצטרפות / עדכון מתנדב'
+                      : '+ Join / Edit Volunteer'
+                    : isHe
+                    ? '🙋 הרשמה כהורה מתנדב'
+                    : '🙋 Sign up as Volunteer'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetId = selectedEventForReg.id;
+                    setSelectedEventForReg(null);
+                    handleOpenGateForEvent(targetId);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-paper hover:bg-paper-2 border border-emerald-500/40 text-xs font-bold text-emerald-800 dark:text-emerald-300 transition-all active:scale-[0.97]"
+                  title={isHe ? 'כניסה לשער הנוכחות של האירוע (מוגן בסיסמה למתנדב)' : 'Open Volunteer Attendance Gate (Passcode protected)'}
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>{isHe ? 'שער נוכחות' : 'Volunteer Gate'}</span>
+                </button>
+              </div>
             </div>
 
             {regSubmitted ? (
@@ -4135,11 +3937,11 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                       <div className="min-w-0">
                         <div className="font-bold text-ink flex items-center gap-2 flex-wrap">
                           <span>🤝 {vol.name}</span>
-                          {vol.role && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-paper-2 text-ink-2 border border-rule">
-                              {vol.role}
-                            </span>
-                          )}
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-paper-2 text-ink-2 border border-rule">
+                            {vol.role && !/[\u0590-\u05FF]/.test(vol.role)
+                              ? vol.role
+                              : 'Volunteer Parent on Duty'}
+                          </span>
                         </div>
                         {isAdmin && vol.phone && vol.phone !== '—' && (
                           <div className="text-[11px] text-muted font-mono mt-0.5" dir="ltr">
@@ -4172,8 +3974,8 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                   </h4>
                   <p className="text-xs sm:text-sm text-muted max-w-sm mx-auto leading-relaxed">
                     {isHe
-                      ? 'השם שלך מופיע כעת בלוח השנה ובכרטיסיית האירוע כהורה מתנדב. ביום האירוע תוכל/י להיכנס ל״שער נוכחות״ עם הסיסמה Matnas2026 ולסמן מי הגיע.'
-                      : 'Your name is now displayed on the calendar and event card. On the day of the event, open the Volunteer Gate with passcode Matnas2026.'}
+                      ? 'השם שלך מופיע כעת בלוח השנה ובכרטיסיית האירוע כהורה מתנדב. ביום האירוע תוכל/י להיכנס לשער הנוכחות מתוך דף האירוע ולסמן מי הגיע.'
+                      : 'Your name is now displayed on the calendar and event card. On the day of the event, you can open the Volunteer Gate from the event page to check in participants.'}
                   </p>
                 </div>
 
@@ -4237,33 +4039,7 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5">
-                    {isHe ? 'תפקיד במשמרת:' : 'Shift Role:'}
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      isHe ? 'הורה תורן בשער ונוכחות' : 'Gate & Check-in Parent',
-                      isHe ? 'ליווי ועזרה בפעילות' : 'Activity Helper',
-                      isHe ? 'עזרה בלוגיסטיקה וכיבוד' : 'Logistics & Refreshments',
-                    ].map((roleOption) => (
-                      <button
-                        key={roleOption}
-                        type="button"
-                        onClick={() => setVolRole(roleOption)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                          volRole === roleOption
-                            ? 'bg-ink text-paper border-ink shadow-xs'
-                            : 'bg-paper text-ink-2 border-rule hover:bg-paper-2'
-                        }`}
-                      >
-                        {roleOption}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
                   <button
                     type="submit"
                     disabled={volSyncing || !volParentName.trim()}
@@ -4280,177 +4056,22 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
                         : 'Confirm Volunteer Signup'}
                     </span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetId = selectedEventForVolunteer.id;
+                      setSelectedEventForVolunteer(null);
+                      handleOpenGateForEvent(targetId);
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 font-bold text-xs sm:text-sm transition-all active:scale-[0.97]"
+                    title={isHe ? 'פתיחת שער הנוכחות של האירוע' : 'Open Volunteer Gate'}
+                  >
+                    <ClipboardCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>{isHe ? 'שער נוכחות' : 'Open Gate'}</span>
+                  </button>
                 </div>
               </form>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* =====================================================================
-          MODAL 6: MORNING REMINDER BOT (09:30 IST) PREVIEW & SAFE SAMPLE SENDER
-         ===================================================================== */}
-      {reminderPreviewEvent && (
-        <div
-          className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
-          onClick={() => setReminderPreviewEvent(null)}
-        >
-          <div
-            className="hallmark-plate max-w-xl w-full p-5 sm:p-7 space-y-5 my-auto max-h-[92vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-rule pb-4">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>
-                    {isHe
-                      ? 'בוט תזכורות בוקר למרכז הנוער · 09:30 שעון הודו'
-                      : 'Youth Center Morning Reminder Bot · 09:30 IST'}
-                  </span>
-                </div>
-                <h3 className="font-display text-xl sm:text-2xl font-bold text-ink leading-tight">
-                  {isHe
-                    ? 'תצוגת הודעת תזכורת ושליחה לדוגמא'
-                    : 'Morning Reminder Preview & Sample Dispatch'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReminderPreviewEvent(null)}
-                className="p-2 rounded-xl bg-paper-2 text-ink hover:bg-paper-3 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Strict Safety Lock Banner */}
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
-              <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  {isHe
-                    ? `מצב בדיקה בטוח פעיל: קבוצת "${TARGET_GROUP_NAME_FUTURE}" חסומה לשליחה עד לאישורך!`
-                    : `Safe Test Mode Active: "${TARGET_GROUP_NAME_FUTURE}" is locked until your approval!`}
-                </span>
-              </div>
-              <p className="text-ink-2 leading-relaxed">
-                {isHe
-                  ? `כל תזכורת בוקר (09:30 שעון הודו ביום האירוע) או הודעה לדוגמא נשלחת כרגע אך ורק למספר האישי שלך: ${SAFE_TEST_PHONE}. רק לאחר שתאשר שהתהליך תקין נעביר לשליחה בקבוצת "${TARGET_GROUP_NAME_FUTURE}".`
-                  : `All reminders and sample messages are strictly routed ONLY to your personal number (${SAFE_TEST_PHONE}) until you approve switching to "${TARGET_GROUP_NAME_FUTURE}".`}
-              </p>
-            </div>
-
-            {/* Event Selector for Sample Preview */}
-            <div>
-              <label className="block text-xs font-bold text-muted mb-1">
-                {isHe ? 'בחר אירוע של מרכז הנוער לתצוגה ושליחה לדוגמא:' : 'Select Youth Center Event for Sample:'}
-              </label>
-              <select
-                value={reminderPreviewEvent.id}
-                onChange={(e) => {
-                  const found = youthEvents.find((item) => item.id === e.target.value);
-                  if (found) {
-                    setReminderPreviewEvent(found);
-                    setBotStatusMessage(null);
-                  }
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-paper border border-rule font-bold text-ink text-xs sm:text-sm focus:outline-none focus:border-accent"
-              >
-                {youthEvents.map((ev) => (
-                  <option key={ev.id} value={ev.id}>
-                    {ev.titleEn || ev.titleHe} ({formatEventScheduleEn(ev)})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* WhatsApp Bubble Preview (Image with English Title/Time Overlay + All-English Text) */}
-            <div className="rounded-2xl border border-emerald-600/30 bg-[#e5ddd5] dark:bg-stone-900 p-3.5 shadow-inner space-y-2">
-              <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 flex items-center justify-between">
-                <span>📱 תצוגה מקדימה בוואטסאפ (תמונה עם כותרת ושעה באנגלית + טקסט באנגלית):</span>
-                <span dir="ltr" className="font-mono">09:30 IST → {SAFE_TEST_PHONE}</span>
-              </div>
-              <div className="rounded-xl bg-white dark:bg-stone-800 p-2.5 shadow-xs space-y-2.5 border border-black/5" dir="ltr">
-                {reminderPreviewEvent.imageUrl && (
-                  <div className="relative rounded-lg overflow-hidden h-56 bg-stone-900 flex items-center justify-center">
-                    <img
-                      src={reminderPreviewEvent.imageUrl}
-                      alt={reminderPreviewEvent.titleEn || reminderPreviewEvent.titleHe}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/30 flex flex-col justify-between p-4 text-left">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
-                          Goa Teens House · Youth Center
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full bg-amber-500 text-stone-950 text-[10px] font-extrabold uppercase tracking-wide shadow-sm">
-                          Today · {reminderPreviewEvent.startTime || '16:30'}
-                          {reminderPreviewEvent.endTime ? ` – ${reminderPreviewEvent.endTime}` : ''}
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="text-amber-300 text-xs font-extrabold uppercase tracking-wider">
-                          {reminderPreviewEvent.date
-                            ? formatDateFull(reminderPreviewEvent.date, false)
-                            : 'Today at Colomb Youth Center'}
-                          {' · '}
-                          {reminderPreviewEvent.startTime || '16:30'}
-                          {reminderPreviewEvent.endTime ? ` – ${reminderPreviewEvent.endTime}` : ''}
-                        </div>
-                        <div className="text-white font-display text-lg sm:text-xl font-extrabold leading-tight drop-shadow">
-                          {reminderPreviewEvent.titleEn || reminderPreviewEvent.titleHe}
-                        </div>
-                        <div className="text-white/80 text-[11px] font-medium">
-                          📍 {reminderPreviewEvent.locationDetailsEn || 'Colomb Youth Center (near Shailish)'} · my-luz-dc028.web.app
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-stone-900 dark:text-stone-100 leading-relaxed overflow-x-auto text-left">
-                  {buildYouthMorningReminderText(reminderPreviewEvent)}
-                </pre>
-              </div>
-            </div>
-
-            {botStatusMessage && (
-              <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs font-bold text-emerald-900 dark:text-emerald-200">
-                {botStatusMessage}
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-              <button
-                type="button"
-                disabled={sendingBotReminder}
-                onClick={() => handleSendSampleReminderTo972508878902(reminderPreviewEvent, 'auto')}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] disabled:opacity-50 transition-all"
-              >
-                <MessageCircle className="w-4 h-4 shrink-0" />
-                <span>
-                  {sendingBotReminder
-                    ? isHe
-                      ? 'שולח הודעה לדוגמא...'
-                      : 'Sending sample...'
-                    : isHe
-                    ? `📲 שלח הודעה לדוגמא אלי (${SAFE_TEST_PHONE})`
-                    : `📲 Send Sample to ${SAFE_TEST_PHONE}`}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                disabled={sendingBotReminder}
-                onClick={() => handleSendSampleReminderTo972508878902(reminderPreviewEvent, 'share_with_image')}
-                className="inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink font-semibold text-xs sm:text-sm active:scale-[0.98] transition-all"
-                title={isHe ? 'שיתוף התמונה והטקסט ישירות מהנייד לוואטסאפ' : 'Share image + text via mobile sheet'}
-              >
-                <Share2 className="w-4 h-4 text-accent shrink-0" />
-                <span>{isHe ? 'שיתוף עם קובץ התמונה' : 'Share with Image File'}</span>
-              </button>
-            </div>
           </div>
         </div>
       )}
