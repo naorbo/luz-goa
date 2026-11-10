@@ -4169,6 +4169,147 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
         </div>
       )}
 
+      {/* =====================================================================
+          MODAL 6: MORNING REMINDER BOT (09:30 IST) PREVIEW & SAFE SAMPLE SENDER
+         ===================================================================== */}
+      {reminderPreviewEvent && (
+        <div
+          className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={() => setReminderPreviewEvent(null)}
+        >
+          <div
+            className="hallmark-plate max-w-xl w-full p-5 sm:p-7 space-y-5 my-auto max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-rule pb-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>
+                    {isHe
+                      ? 'בוט תזכורות בוקר למרכז הנוער · 09:30 שעון הודו'
+                      : 'Youth Center Morning Reminder Bot · 09:30 IST'}
+                  </span>
+                </div>
+                <h3 className="font-display text-xl sm:text-2xl font-bold text-ink leading-tight">
+                  {isHe
+                    ? 'תצוגת הודעת תזכורת ושליחה לדוגמא'
+                    : 'Morning Reminder Preview & Sample Dispatch'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReminderPreviewEvent(null)}
+                className="p-2 rounded-xl bg-paper-2 text-ink hover:bg-paper-3 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Strict Safety Lock Banner */}
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
+              <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  {isHe
+                    ? `מצב בדיקה בטוח פעיל: קבוצת "${TARGET_GROUP_NAME_FUTURE}" חסומה לשליחה עד לאישורך!`
+                    : `Safe Test Mode Active: "${TARGET_GROUP_NAME_FUTURE}" is locked until your approval!`}
+                </span>
+              </div>
+              <p className="text-ink-2 leading-relaxed">
+                {isHe
+                  ? `כל תזכורת בוקר (09:30 שעון הודו ביום האירוע) או הודעה לדוגמא נשלחת כרגע אך ורק למספר האישי שלך: ${SAFE_TEST_PHONE}. רק לאחר שתאשר שהתהליך תקין נעביר לשליחה בקבוצת "${TARGET_GROUP_NAME_FUTURE}".`
+                  : `All reminders and sample messages are strictly routed ONLY to your personal number (${SAFE_TEST_PHONE}) until you approve switching to "${TARGET_GROUP_NAME_FUTURE}".`}
+              </p>
+            </div>
+
+            {/* Event Selector for Sample Preview */}
+            <div>
+              <label className="block text-xs font-bold text-muted mb-1">
+                {isHe ? 'בחר אירוע של מרכז הנוער לתצוגה ושליחה לדוגמא:' : 'Select Youth Center Event for Sample:'}
+              </label>
+              <select
+                value={reminderPreviewEvent.id}
+                onChange={(e) => {
+                  const found = youthEvents.find((item) => item.id === e.target.value);
+                  if (found) {
+                    setReminderPreviewEvent(found);
+                    setBotStatusMessage(null);
+                  }
+                }}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-paper border border-rule font-bold text-ink text-xs sm:text-sm focus:outline-none focus:border-accent"
+              >
+                {youthEvents.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {isHe ? ev.titleHe : ev.titleEn} ({formatEventSchedule(ev)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* WhatsApp Bubble Preview (Image + Formatted Text) */}
+            <div className="rounded-2xl border border-emerald-600/30 bg-[#e5ddd5] dark:bg-stone-900 p-3.5 shadow-inner space-y-2">
+              <div className="text-[11px] font-bold text-stone-600 dark:text-stone-400 flex items-center justify-between">
+                <span>📱 תצוגה מקדימה של ההודעה בוואטסאפ (תמונה + טקסט + קישור):</span>
+                <span dir="ltr" className="font-mono">09:30 IST → {SAFE_TEST_PHONE}</span>
+              </div>
+              <div className="rounded-xl bg-white dark:bg-stone-800 p-2.5 shadow-xs space-y-2.5 border border-black/5">
+                {reminderPreviewEvent.imageUrl && (
+                  <div className="rounded-lg overflow-hidden max-h-48 bg-stone-100 flex items-center justify-center">
+                    <img
+                      src={reminderPreviewEvent.imageUrl}
+                      alt={reminderPreviewEvent.titleHe}
+                      className="w-full max-h-48 object-cover"
+                    />
+                  </div>
+                )}
+                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-stone-900 dark:text-stone-100 leading-relaxed overflow-x-auto">
+                  {buildYouthMorningReminderText(reminderPreviewEvent)}
+                </pre>
+              </div>
+            </div>
+
+            {botStatusMessage && (
+              <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                {botStatusMessage}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <button
+                type="button"
+                disabled={sendingBotReminder}
+                onClick={() => handleSendSampleReminderTo972508878902(reminderPreviewEvent, 'auto')}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md active:scale-[0.98] disabled:opacity-50 transition-all"
+              >
+                <MessageCircle className="w-4 h-4 shrink-0" />
+                <span>
+                  {sendingBotReminder
+                    ? isHe
+                      ? 'שולח הודעה לדוגמא...'
+                      : 'Sending sample...'
+                    : isHe
+                    ? `📲 שלח הודעה לדוגמא אלי (${SAFE_TEST_PHONE})`
+                    : `📲 Send Sample to ${SAFE_TEST_PHONE}`}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                disabled={sendingBotReminder}
+                onClick={() => handleSendSampleReminderTo972508878902(reminderPreviewEvent, 'share_with_image')}
+                className="inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl border border-rule-strong bg-paper hover:bg-paper-2 text-ink font-semibold text-xs sm:text-sm active:scale-[0.98] transition-all"
+                title={isHe ? 'שיתוף התמונה והטקסט ישירות מהנייד לוואטסאפ' : 'Share image + text via mobile sheet'}
+              >
+                <Share2 className="w-4 h-4 text-accent shrink-0" />
+                <span>{isHe ? 'שיתוף עם קובץ התמונה' : 'Share with Image File'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating Gate Toast */}
       {gateToast && (
         <div className="fixed bottom-6 inset-x-4 max-w-sm mx-auto z-50 bg-ink text-paper px-4 py-3 rounded-2xl shadow-elevated flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold border border-white/10 text-center animate-reveal">
