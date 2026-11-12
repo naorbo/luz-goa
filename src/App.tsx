@@ -410,7 +410,9 @@ export function App() {
       setIsAdminAuthenticated(true);
       setAdminEmail(res.email || AUTHORIZED_ADMIN_EMAIL);
       setShowAdminLoginModal(false);
-      setActiveTab('admin');
+      if (activeTab !== 'youth_center') {
+        setActiveTab('admin');
+      }
     } else {
       setAdminAuthError((isHe ? res.errorHe : res.errorEn) || 'Sign-in failed');
     }

@@ -450,6 +450,11 @@ function saveSentLog(log) {
 }
 
 function fetchImageBuffer(url) {
+  if (typeof url === 'string' && url.startsWith('data:image/')) {
+    const commaIdx = url.indexOf(',');
+    if (commaIdx === -1) return Promise.reject(new Error('Invalid data URI image'));
+    return Promise.resolve(Buffer.from(url.slice(commaIdx + 1), 'base64'));
+  }
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
     client

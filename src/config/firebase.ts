@@ -17,6 +17,10 @@ import {
 } from 'firebase/auth';
 
 export const AUTHORIZED_ADMIN_EMAIL = 'luzschedu@gmail.com';
+export const AUTHORIZED_ADMIN_EMAILS: readonly string[] = [
+  'luzschedu@gmail.com',
+  'noy.lampelz@gmail.com',
+];
 
 export interface LuzFirebaseWebConfig {
   apiKey: string;
