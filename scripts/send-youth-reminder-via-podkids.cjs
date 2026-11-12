@@ -164,8 +164,8 @@ const SAFE_TEST_RECIPIENT_JID = '972508878902@s.whatsapp.net';
 const YOUTH_CENTER_GROUP_NAME = 'Youth center parents';
 const YOUTH_CENTER_GROUP_JID = '120363430775078450@g.us';
 
-// STRICT LOCK: Keep 'test_dm_only' until user explicitly approves!
-const REMINDER_MODE = 'test_dm_only'; // 'test_dm_only' | 'live_group'
+// Approved by user (2026-11-12): live reminders go to "Youth center parents" (120363430775078450@g.us)
+const REMINDER_MODE = 'live_group'; // 'test_dm_only' | 'live_group'
 const DAILY_REMINDER_TIME_IST = '09:30';
 const EVENING_REMINDER_TIME_IST = '20:00';
 const SENT_LOG_PATH = path.join(__dirname, '.youth-reminders-sent.json');
@@ -761,7 +761,7 @@ async function dispatchScheduledSlot({ timing, targetDateOverride = '', forceRes
   const sentLog = loadSentLog();
   let sentCount = 0;
   for (const ev of matchingEvents) {
-    const key = `${timing}_${targetDate}_${ev.id}`;
+    const key = `${REMINDER_MODE}_${timing}_${targetDate}_${ev.id}`;
     if (sentLog[key] && !forceResend) {
       console.log(`⏭️ Already sent ${timing} reminder for ${key} at ${sentLog[key]}. Skipping.`);
       continue;
@@ -890,7 +890,11 @@ if (process.argv.includes('--sample')) {
 
   server.listen(PORT, () => {
     console.log(`🚀 Youth Center Reminder Bot (PodKids WhatsApp) listening on http://localhost:${PORT}`);
-    console.log(`🔒 Mode: ${REMINDER_MODE} -> Sending ONLY to ${SAFE_TEST_RECIPIENT_PHONE} (Group "${YOUTH_CENTER_GROUP_NAME}" is locked)`);
+    const targetSummary =
+      REMINDER_MODE === 'live_group'
+        ? `LIVE GROUP "${YOUTH_CENTER_GROUP_NAME}" (${YOUTH_CENTER_GROUP_JID})`
+        : `ONLY ${SAFE_TEST_RECIPIENT_PHONE} (Group "${YOUTH_CENTER_GROUP_NAME}" is locked)`;
+    console.log(`🔒 Mode: ${REMINDER_MODE} -> Sending scheduled reminders to ${targetSummary}`);
     console.log(`🌐 Canonical URL: ${CANONICAL_SITE_URL}`);
     console.log(`⏰ Daily schedules (Asia/Kolkata): Morning ${DAILY_REMINDER_TIME_IST} IST & Evening-before ${EVENING_REMINDER_TIME_IST} IST`);
   });
