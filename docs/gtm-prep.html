@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="he">
+<html dir="ltr" lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>הכנה לפגישת GTM עם קרוטיקה — דרום גואה</title>
+  <title>GTM Session Playbook & Prep — Krutika (South Goa)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Frank+Ruhl+Libre:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
       --canopy-950: #111e17;
@@ -31,7 +31,7 @@
 
     body {
       margin: 0;
-      font-family: 'Assistant', 'Inter', system-ui, sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background-color: var(--sand-50);
       color: var(--ink);
       line-height: 1.6;
@@ -71,7 +71,7 @@
       gap: 6px;
       padding: 5px 14px;
       border-radius: 999px;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       background: rgba(234, 179, 84, 0.16);
       color: var(--ochre);
@@ -112,18 +112,8 @@
       background: rgba(255, 255, 255, 0.18);
     }
 
-    .btn-outline {
-      background: #fff;
-      color: var(--canopy-900);
-      border: 1px solid var(--sand-300);
-    }
-    .btn-outline:hover {
-      border-color: var(--terracotta);
-      color: var(--terracotta);
-    }
-
     h1 {
-      font-family: 'Frank Ruhl Libre', serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-size: clamp(26px, 4vw, 38px);
       margin: 0 0 10px;
       line-height: 1.2;
@@ -131,10 +121,10 @@
     }
 
     .hero-sub {
-      font-size: 16px;
+      font-size: 15.5px;
       color: var(--sand-200);
       margin: 0;
-      max-width: 720px;
+      max-width: 740px;
     }
 
     .hero-actions {
@@ -180,7 +170,7 @@
 
     /* Section & Cards */
     .section {
-      margin-bottom: 28px;
+      margin-bottom: 30px;
     }
 
     .section-header {
@@ -191,8 +181,8 @@
     }
 
     .section-title {
-      font-family: 'Frank Ruhl Libre', serif;
-      font-size: 24px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px;
       font-weight: 900;
       margin: 0;
       color: var(--canopy-900);
@@ -236,14 +226,14 @@
     }
 
     .stat-label {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       color: var(--ink-muted);
       margin-bottom: 4px;
     }
 
     .stat-value {
-      font-size: 26px;
+      font-size: 25px;
       font-weight: 800;
       color: var(--canopy-900);
     }
@@ -304,7 +294,7 @@
 
     .agenda-time {
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 700;
       padding: 2px 10px;
       border-radius: 999px;
       background: var(--sand-100);
@@ -314,14 +304,14 @@
     }
 
     .agenda-title {
-      font-size: 17px;
+      font-size: 16.5px;
       font-weight: 800;
       margin: 0 0 6px;
       color: var(--canopy-900);
     }
 
     .agenda-desc {
-      font-size: 14px;
+      font-size: 13.5px;
       color: var(--ink-muted);
       margin: 0;
     }
@@ -331,10 +321,7 @@
       background: var(--canopy-950);
       color: var(--sand-50);
       border-radius: 16px;
-      padding: 20px;
-      direction: ltr;
-      text-align: left;
-      font-family: 'Inter', system-ui, sans-serif;
+      padding: 22px;
       position: relative;
     }
 
@@ -378,7 +365,7 @@
     .objection-q {
       padding: 14px 18px;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 14.5px;
       background: var(--sand-50);
       display: flex;
       justify-content: space-between;
@@ -388,7 +375,7 @@
 
     .objection-a {
       padding: 14px 18px;
-      font-size: 14px;
+      font-size: 13.5px;
       border-top: 1px solid var(--sand-200);
       display: none;
     }
@@ -398,14 +385,11 @@
     }
 
     .en-quote {
-      direction: ltr;
-      text-align: left;
       background: #f3f7f4;
       border-left: 3px solid var(--canopy-700);
       padding: 10px 14px;
       border-radius: 6px;
       margin-top: 8px;
-      font-family: 'Inter', sans-serif;
       font-size: 13.5px;
       color: var(--canopy-900);
       font-weight: 500;
@@ -453,7 +437,7 @@
     }
     th, td {
       padding: 10px 12px;
-      text-align: right;
+      text-align: left;
       border-bottom: 1px solid var(--sand-200);
     }
     th {
@@ -472,28 +456,6 @@
     .st-active { background: #dcfce7; color: #166534; }
     .st-demo { background: #fef3c7; color: #92400e; }
     .st-lead { background: #e0f2fe; color: #075985; }
-
-    /* Tabs for Languages */
-    .lang-toggle {
-      display: inline-flex;
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 10px;
-      padding: 4px;
-    }
-    .lang-btn {
-      padding: 5px 12px;
-      border-radius: 7px;
-      border: none;
-      background: transparent;
-      color: var(--sand-200);
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .lang-btn.active {
-      background: #fff;
-      color: var(--canopy-950);
-    }
 
     .notes-area {
       width: 100%;
@@ -524,24 +486,24 @@
   <!-- HERO HEADER -->
   <header class="hero">
     <div class="hero-top">
-      <div class="pill">🌴 תדריך והכנה לפגישת GTM — שבת בבוקר</div>
+      <div class="pill">🌴 Saturday Morning GTM Kickoff Playbook</div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button onclick="window.print()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">🖨️ הדפסה / PDF</button>
-        <button onclick="resetChecklist()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">🔄 איפוס סימונים</button>
+        <button onclick="window.print()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">🖨️ Print / Save PDF</button>
+        <button onclick="resetChecklist()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">🔄 Reset Checks</button>
       </div>
     </div>
 
-    <h1>אסטרטגיית Go-To-Market & תוכנית עבודה עם קרוטיקה (Krutika)</h1>
+    <h1>Go-To-Market Strategy & Working Session with Krutika</h1>
     <p class="hero-sub">
-      מדריך עבודה אינטראקטיבי לפגישת ההנעה: הגדרת מסגרת חונכות ל-3 חודשים, יעדי KPI מדידים, סימולציות שטח, מודל הכנסות וכלים לניהול ביצוע בדרום גואה.
+      An interactive execution playbook for Saturday's kickoff: aligning on the 3-month mentorship & internship framework, clear KPIs, field onboarding pitch, revenue model, and weekly pipeline tracking in South Goa.
     </p>
 
     <div class="hero-actions">
       <a href="https://my-luz-dc028.web.app/?biz=the-mount-canacona" target="_blank" class="btn btn-primary">
-        🌿 פתח את דף הדוגמה של The Mount (להצגה בטלפון)
+        🌿 Open The Mount Demo Page (Mobile Showcase)
       </a>
       <a href="https://my-luz-dc028.web.app/" target="_blank" class="btn btn-secondary">
-        🌐 פתח את הפלטפורמה המלאה
+        🌐 Open Live Platform
       </a>
     </div>
   </header>
@@ -549,55 +511,55 @@
   <!-- STICKY MEETING PROGRESS BAR -->
   <div class="progress-bar-wrap">
     <div style="font-weight: 800; font-size: 14px; color: var(--canopy-900);">
-      התקדמות בפגישה: <span id="progress-text">0 מתוך 5 שלבים הושלמו</span>
+      Session Progress: <span id="progress-text">0 of 5 steps completed</span>
     </div>
     <div class="progress-track">
       <div class="progress-fill" id="progress-fill"></div>
     </div>
     <div style="font-size: 13px; color: var(--ink-muted); font-weight: 700;">
-      ⏱️ משך מתוכנן: 60 דקות
+      ⏱️ Duration: 60 Minutes
     </div>
   </div>
 
   <!-- SECTION 1: DEAL STRUCTURE & ALIGNMENT -->
   <section class="section">
     <div class="section-header">
-      <h2 class="section-title">🤝 1. מסגרת השותפות, החונכות והתגמול (הבסיס להסכמה)</h2>
+      <h2 class="section-title">🤝 1. Partnership, Mentorship & Compensation Framework</h2>
     </div>
     <div class="card">
       <div class="grid-4" style="margin-bottom: 18px;">
         <div class="stat-box">
-          <div class="stat-label">תקופת ניסיון וחונכות</div>
-          <div class="stat-value">3 חודשים</div>
-          <div class="stat-note">Internship & Mentorship</div>
+          <div class="stat-label">Trial & Mentorship Period</div>
+          <div class="stat-value">3 Months</div>
+          <div class="stat-note">Hands-on GTM & Sales Coaching</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">תגמול גיוס ספק פעיל</div>
+          <div class="stat-label">Active Provider Onboarding</div>
           <div class="stat-value">₹150</div>
-          <div class="stat-note">לכל עסק מאומת שעולה לאוויר</div>
+          <div class="stat-note">Per verified listing live on platform</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">עמלת צמיחה חוזרת</div>
+          <div class="stat-label">Recurring Revenue Share</div>
           <div class="stat-value">10%</div>
-          <div class="stat-note">מהכנסות משלמים למשך 3 שנים</div>
+          <div class="stat-note">Of monthly paid revenue (for 3 years)</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">מיקוד גיאוגרפי התחלתי</div>
-          <div class="stat-value">דרום גואה</div>
+          <div class="stat-label">Initial Geographic Focus</div>
+          <div class="stat-value">South Goa</div>
           <div class="stat-note">Canacona, Palolem, Patnem, Agonda</div>
         </div>
       </div>
 
       <div style="background: #fff8eb; border: 1px solid #fde68a; border-radius: 14px; padding: 16px;">
-        <h3 style="margin: 0 0 8px; font-size: 16px; color: #92400e;">⚠️ קריטי לסגירה בפגישה: מה נחשב "ספק פעיל" (המזכה ב-₹150)?</h3>
-        <p style="margin: 0 0 10px; font-size: 14px; color: #78350f;">
-          כדי למנוע אי-הבנות או העלאת עסקים "ריקים", חובה להגדיר לה שספק נספר כזכאי לתשלום רק כשהוא עומד ב-4 התנאים הבאים:
+        <h3 style="margin: 0 0 8px; font-size: 15.5px; color: #92400e;">⚠️ Align Upfront: What Qualifies as an "Active Provider" (₹150 Payout)?</h3>
+        <p style="margin: 0 0 10px; font-size: 13.5px; color: #78350f;">
+          To keep platform quality high and avoid empty placeholders, agree clearly that a listing counts toward the ₹150 payout when it meets all 4 criteria:
         </p>
-        <div class="grid-2" style="gap: 8px; font-size: 13.5px; color: #78350f;">
-          <div>✅ <strong>הסכמה מתועדת:</strong> בעל העסק אישר עלייה לאוויר (הודעת וואטסאפ קצרה או אישור מתועד).</div>
-          <div>✅ <strong>תוכן בסיסי מלא:</strong> שם, תיאור קצר, שעות פתיחה, מיקום, ומספר וואטסאפ פעיל ותקין.</div>
-          <div>✅ <strong>תמונות ותפריט:</strong> לפחות תמונה איכותית אחת של המקום/שירות + מינימום 2–3 מנות/שירותים עם מחיר.</div>
-          <div>✅ <strong>בדיקת איכות (QA):</strong> אתם מאשרים שהדף תקין ועלה לפלטפורמה.</div>
+        <div class="grid-2" style="gap: 8px; font-size: 13px; color: #78350f;">
+          <div>✅ <strong>Owner Approval:</strong> Business owner explicitly agreed to be listed (confirmed via WhatsApp or photo/intro).</div>
+          <div>✅ <strong>Complete Profile Info:</strong> Business name, clear bio, operating hours, exact location, and verified WhatsApp number.</div>
+          <div>✅ <strong>Visuals & Offerings:</strong> At least 1 high-quality photo + minimum 2–3 services/menu items with pricing.</div>
+          <div>✅ <strong>Live QA Check:</strong> Reviewed by the team and published live on the platform.</div>
         </div>
       </div>
     </div>
@@ -606,16 +568,16 @@
   <!-- SECTION 2: INTERACTIVE 60-MIN AGENDA -->
   <section class="section">
     <div class="section-header">
-      <h2 class="section-title">📋 2. סדר יום אינטראקטיבי לפגישה (סמן V בזמן אמת)</h2>
+      <h2 class="section-title">📋 2. Interactive 60-Minute GTM Session Agenda</h2>
     </div>
 
     <div class="agenda-item" onclick="toggleAgenda(0)" id="agenda-0">
       <div class="checkbox-custom">✓</div>
       <div>
-        <span class="agenda-time">00:00 – 00:10 (10 דק׳)</span>
-        <h3 class="agenda-title">שלב 1: תיאום ציפיות, גישת מנטורינג והגדרת "ספק פעיל"</h3>
+        <span class="agenda-time">00:00 – 00:10 (10 min)</span>
+        <h3 class="agenda-title">Step 1: Mentorship Framing, Mindset & "Active Provider" Rules</h3>
         <p class="agenda-desc">
-          לחזק אותה: אתם רואים בה שותפה לדרך. להסביר שתוך כדי עבודה היא תלמד מכירות שטח, ניהול לקוחות (CRM), קביעת KPIs וסקייל. להסביר לה את ההגיונות מאחורי הצ'ק-ליסט של ה-₹150 והחזון של ה-10% לטווח ארוך.
+          Set the tone: we view her as a growth partner learning real-world startup execution (door-opening, relationship building, KPI setting, revenue scaling). Walk through the 4 quality criteria for an Active Provider and confirm the payout process.
         </p>
       </div>
     </div>
@@ -623,10 +585,10 @@
     <div class="agenda-item" onclick="toggleAgenda(1)" id="agenda-1">
       <div class="checkbox-custom">✓</div>
       <div>
-        <span class="agenda-time">00:10 – 00:25 (15 דק׳)</span>
-        <h3 class="agenda-title">שלב 2: הצגת הדמו (The Mount) והגדרת יעדי 30-60-90 יום</h3>
+        <span class="agenda-time">00:10 – 00:25 (15 min)</span>
+        <h3 class="agenda-title">Step 2: Live Showcase (The Mount) & 30-60-90 Day KPIs</h3>
         <p class="agenda-desc">
-          לפתוח בטלפון את הדף של <strong>The Mount Canacona</strong>. להראות לה למה בעל עסק מקומי יגיד "כן" תוך 2 דקות. לעבור איתה על היעדים המספריים של החודש הראשון (30–40 עסקים + 10 מארגני אירועים) ועל פוטנציאל ההכנסה שלה.
+          Open <strong>The Mount Canacona</strong> demo page on your phone. Show how a local business gets a complete storefront in 5 minutes without a website. Align on Month 1 target (30–40 providers + 10 event organizers) and walk through the earnings simulator.
         </p>
       </div>
     </div>
@@ -634,10 +596,10 @@
     <div class="agenda-item" onclick="toggleAgenda(2)" id="agenda-2">
       <div class="checkbox-custom">✓</div>
       <div>
-        <span class="agenda-time">00:25 – 00:40 (15 דק׳)</span>
-        <h3 class="agenda-title">שלב 3: מפת הקטגוריות (The Big 4) ומיפוי היכרויות אישיות שלה</h3>
+        <span class="agenda-time">00:25 – 00:40 (15 min)</span>
+        <h3 class="agenda-title">Step 3: The "Big 4" Categories & Mapping Her Warm Network</h3>
         <p class="agenda-desc">
-          לעבור על 4 קטגוריות העוגן (קפה/אירוח, וולנס ויוגה, מוניות/קטנועים, מארגני אירועים). לשאול אותה במקום: <em>"את מי את כבר מכירה אישית בפאלולם, פטנם וקנקונה שנוכל לסגור כבר השבוע?"</em> — לרשום מיד את 10 השמות הראשונים.
+          Define our 4 anchor categories (Cafes & Eco-Resorts, Wellness & Yoga, Local Transport/Stays, Event Organizers). Ask her on the spot: <em>"Which 10 owners or teachers in Palolem, Patnem, or Canacona do you already know that we can approach first?"</em>
         </p>
       </div>
     </div>
@@ -645,10 +607,10 @@
     <div class="agenda-item" onclick="toggleAgenda(3)" id="agenda-3">
       <div class="checkbox-custom">✓</div>
       <div>
-        <span class="agenda-time">00:40 – 00:50 (10 דק׳)</span>
-        <h3 class="agenda-title">שלב 4: סימולציית מכירה (Role Play) והתגברות על התנגדויות</h3>
+        <span class="agenda-time">00:40 – 00:50 (10 min)</span>
+        <h3 class="agenda-title">Step 4: Live Sales Role-Play & Handling Local Objections</h3>
         <p class="agenda-desc">
-          אתה ונאור משחקים בעל סטודיו יוגה או מסעדה חשדן בגואה. קרוטיקה מתרגלת את נאום ה-30 שניות באנגלית ומראה את הטלפון. מתרגלים מענה ל"יש לי אינסטגרם" ול"זה עולה כסף?".
+          Practice the 30-second walk-in pitch. You play a busy or skeptical Goa cafe owner/yoga teacher; Krutika pitches using the demo on her phone and practices responding to <em>"I already use Instagram"</em> and <em>"How much does it cost?"</em>.
         </p>
       </div>
     </div>
@@ -656,10 +618,10 @@
     <div class="agenda-item" onclick="toggleAgenda(4)" id="agenda-4">
       <div class="checkbox-custom">✓</div>
       <div>
-        <span class="agenda-time">00:50 – 01:00 (10 דק׳)</span>
-        <h3 class="agenda-title">שלב 5: הקמת טבלת המעקב (Pipeline) וקביעת דופק עבודה שבועי</h3>
+        <span class="agenda-time">00:50 – 01:00 (10 min)</span>
+        <h3 class="agenda-title">Step 5: Pipeline Sheet Setup, Cadence & Week 1 Action Plan</h3>
         <p class="agenda-desc">
-          לפתוח עבורה טבלת Google Sheets פשוטה לתיעוד פגישות. לקבוע צ'ק-אין קצר של 15 דקות בכל יום שלישי (בדיקת חסמים), וסיכום שבועי כל שבת בבוקר. משימה ראשונה ליום א׳–ג׳: להביא את 5 העסקים הראשונים.
+          Set up a shared Google Sheet to track her outreach pipeline. Establish a twice-weekly sync cadence (15-min Tuesday check-in + Saturday weekly review). Agree on Week 1 milestone: onboard the first 5 live providers by Tuesday.
         </p>
       </div>
     </div>
@@ -668,55 +630,55 @@
   <!-- SECTION 3: 30-60-90 DAY ROADMAP & EARNINGS CALCULATOR -->
   <section class="section">
     <div class="section-header">
-      <h2 class="section-title">📈 3. תוכנית KPIs ל-3 חודשים + מחשבון תגמול להצגה בפגישה</h2>
+      <h2 class="section-title">📈 3. 30-60-90 Day KPI Roadmap & Compensation Simulator</h2>
     </div>
 
     <div class="grid-3" style="margin-bottom: 16px;">
       <div class="card">
-        <div class="badge-status st-lead" style="margin-bottom: 8px;">חודש 1: Supply First</div>
-        <h3 style="margin: 0 0 8px; font-size: 18px;">מילוי המדפים והעסקים</h3>
-        <ul style="margin: 0; padding-right: 18px; font-size: 13.5px; color: var(--ink-muted);">
-          <li><strong>30–40</strong> עסקים מקומיים פעילים</li>
-          <li><strong>10</strong> מארגני אירועים קבועים</li>
-          <li>מיקוד: קנקונה, פאלולם, פטנם, אגונדה</li>
-          <li>מטרה מרכזית: לימוד פתיחת דלתות</li>
+        <div class="badge-status st-lead" style="margin-bottom: 8px;">Month 1: Supply First</div>
+        <h3 style="margin: 0 0 8px; font-size: 17.5px;">Building Local Inventory</h3>
+        <ul style="margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-muted);">
+          <li>Onboard <strong>30–40</strong> active local providers</li>
+          <li>Onboard <strong>10</strong> recurring event organizers</li>
+          <li>Focus: Canacona, Palolem, Patnem, Agonda</li>
+          <li>Core skill: Door-opening & onboarding</li>
         </ul>
       </div>
 
       <div class="card">
-        <div class="badge-status st-demo" style="margin-bottom: 8px;">חודש 2: Traffic & QR</div>
-        <h3 style="margin: 0 0 8px; font-size: 18px;">יצירת טראפיק ולידים לעסקים</h3>
-        <ul style="margin: 0; padding-right: 18px; font-size: 13.5px; color: var(--ink-muted);">
-          <li>הצבת שלטי QR ב-<strong>20</strong> מוקדים חמים</li>
-          <li>עוד <strong>30</strong> עסקים מצטרפים (סה"כ ~70)</li>
-          <li>וידוא שבעלי העסקים מקבלים פניות וואטסאפ</li>
-          <li>מטרה מרכזית: שימור קשרים (Retention)</li>
+        <div class="badge-status st-demo" style="margin-bottom: 8px;">Month 2: Traffic & QR</div>
+        <h3 style="margin: 0 0 8px; font-size: 17.5px;">Driving Discovery & Leads</h3>
+        <ul style="margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-muted);">
+          <li>Place QR table cards in <strong>20</strong> hotspot venues</li>
+          <li>Add <strong>30+</strong> new providers (~70 total live)</li>
+          <li>Verify owners receive WhatsApp leads</li>
+          <li>Core skill: Account management & retention</li>
         </ul>
       </div>
 
       <div class="card">
-        <div class="badge-status st-active" style="margin-bottom: 8px;">חודש 3: Monetization</div>
-        <h3 style="margin: 0 0 8px; font-size: 18px;">המרה לעסקים משלמים</h3>
-        <ul style="margin: 0; padding-right: 18px; font-size: 13.5px; color: var(--ink-muted);">
-          <li>הצעת חבילות קידום / מנוי חודשי לעסקים</li>
-          <li>המרת <strong>10–15</strong> לקוחות מרוצים לתשלום</li>
-          <li>פתיחת זרם הכנסה של ה-<strong>10% ל-3 שנים</strong></li>
-          <li>החלטה משותפת על משרה קבועה</li>
+        <div class="badge-status st-active" style="margin-bottom: 8px;">Month 3: Monetization</div>
+        <h3 style="margin: 0 0 8px; font-size: 17.5px;">Scaling Paid Conversions</h3>
+        <ul style="margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-muted);">
+          <li>Pitch featured plans to happy providers</li>
+          <li>Convert <strong>10–15</strong> providers to paid tiers</li>
+          <li>Activate her <strong>10% rev-share (3-yr lock)</strong></li>
+          <li>Review for permanent team position</li>
         </ul>
       </div>
     </div>
 
     <!-- Interactive Compensation Simulator -->
     <div class="card">
-      <h3 style="margin: 0 0 6px; font-size: 18px;">💰 סימולטור תגמול לקרוטיקה (הראה לה את הפוטנציאל!)</h3>
+      <h3 style="margin: 0 0 6px; font-size: 17.5px;">💰 Krutika's Earnings Simulator (Interactive Modeling)</h3>
       <p style="margin: 0 0 16px; font-size: 13.5px; color: var(--ink-muted);">
-        שחקו עם המחוונים מולה בפגישה כדי להמחיש איך גיוס של ספקים היום מייצר לה הכנסה פסיבית קבועה ל-3 שנים:
+        Adjust these sliders together during the meeting to demonstrate how today's onboarding efforts compound into recurring revenue over 3 years:
       </p>
 
       <div class="calc-controls">
         <div class="range-wrap">
           <label>
-            <span>כמות עסקים שתגייס ב-3 חודשים:</span>
+            <span>Active Providers Onboarded (3 Mos):</span>
             <span id="val-providers" style="color: var(--terracotta);">60</span>
           </label>
           <input type="range" id="rng-providers" min="10" max="150" step="5" value="60" oninput="updateCalc()" />
@@ -724,7 +686,7 @@
 
         <div class="range-wrap">
           <label>
-            <span>כמה מהם יהפכו למשלמים:</span>
+            <span>Providers Converted to Paid Plans:</span>
             <span id="val-paid" style="color: var(--terracotta);">15</span>
           </label>
           <input type="range" id="rng-paid" min="0" max="60" step="1" value="15" oninput="updateCalc()" />
@@ -732,7 +694,7 @@
 
         <div class="range-wrap">
           <label>
-            <span>מנוי חודשי ממוצע לעסק (₹ INR):</span>
+            <span>Avg Monthly Plan per Business (₹ INR):</span>
             <span id="val-price" style="color: var(--terracotta);">₹1,500</span>
           </label>
           <input type="range" id="rng-price" min="500" max="4000" step="250" value="1500" oninput="updateCalc()" />
@@ -741,15 +703,15 @@
 
       <div class="calc-result">
         <div>
-          <div style="font-size: 12px; font-weight: 700; color: #065f46;">בונוס הקמה חד-פעמי (₹150 לספק)</div>
+          <div style="font-size: 12px; font-weight: 700; color: #065f46;">Onboarding Payout (₹150 / provider)</div>
           <div style="font-size: 24px; font-weight: 800; color: #064e3b;" id="res-onboarding">₹9,000</div>
         </div>
         <div>
-          <div style="font-size: 12px; font-weight: 700; color: #065f46;">הכנסה חודשית קבועה (10% Rev-Share)</div>
-          <div style="font-size: 24px; font-weight: 800; color: #064e3b;" id="res-monthly">₹2,250 / חודש</div>
+          <div style="font-size: 12px; font-weight: 700; color: #065f46;">Monthly Recurring (10% Rev-Share)</div>
+          <div style="font-size: 24px; font-weight: 800; color: #064e3b;" id="res-monthly">₹2,250 / mo</div>
         </div>
         <div>
-          <div style="font-size: 12px; font-weight: 700; color: #065f46;">פוטנציאל מצטבר ל-3 שנים (מהעסקים האלה בלבד)</div>
+          <div style="font-size: 12px; font-weight: 700; color: #065f46;">3-Year Cumulative Earnings (This Batch)</div>
           <div style="font-size: 24px; font-weight: 800; color: var(--terracotta);" id="res-3years">₹90,000</div>
         </div>
       </div>
@@ -759,16 +721,16 @@
   <!-- SECTION 4: FIELD SCRIPTS & OBJECTIONS -->
   <section class="section">
     <div class="section-header">
-      <h2 class="section-title">🎤 4. תסריטי שיחה ומענה להתנגדויות (לשטח באנגלית)</h2>
+      <h2 class="section-title">🎤 4. Field Sales Script & Objection Playbook</h2>
     </div>
 
     <div class="card" style="margin-bottom: 16px;">
-      <h3 style="margin: 0 0 10px; font-size: 17px;">תסריט הכניסה המהיר לבעל עסק (30 שניות + הצגת The Mount):</h3>
+      <h3 style="margin: 0 0 10px; font-size: 16.5px;">The 30-Second Walk-In Pitch (Using The Mount Demo):</h3>
       <div class="script-box">
         <button class="copy-btn" onclick="copyScript('walkin-script', this)">📋 Copy Script</button>
         <div id="walkin-script">
           <p>"Hi! I'm Krutika with our local South Goa Community Platform. We're building a single digital hub that connects tourists, digital nomads, and expats directly with trusted local places here in Canacona, Palolem, and Patnem."</p>
-          <p><strong>[Open The Mount Demo on Phone]</strong></p>
+          <p><strong>[Open The Mount Demo Page on Phone]</strong></p>
           <p>"Look at how The Mount looks here — they get a clean, fast digital storefront with their menu, rates, Google Maps pin, and events. Most importantly, every inquiry goes <strong>straight to their WhatsApp with zero commission</strong>."</p>
           <p>"Since we are launching right now, setting up your business page is 100% free. If you give me 3 minutes, I'll snap two quick photos, take your prices, and put your place live today!"</p>
         </div>
@@ -778,52 +740,52 @@
     <div class="grid-2">
       <div class="objection-card" onclick="this.classList.toggle('open')">
         <div class="objection-q">
-          <span>1. "כבר יש לי עמוד אינסטגרם / וואטסאפ"</span>
+          <span>1. "I already have Instagram and WhatsApp groups."</span>
           <span>🔽</span>
         </div>
         <div class="objection-a">
-          <div>אינסטגרם לא מאפשר חיפוש לפי שעה, מיקום או תקציב, ופוסטים בקבוצות וואטסאפ נעלמים תוך שעה.</div>
+          <div>Instagram isn't searchable by beach, open hours, or service price, and WhatsApp group messages disappear within an hour.</div>
           <div class="en-quote">
-            "Instagram is great for photos, but travelers can't search it by area, open hours, or service price. On our platform, someone looking for yoga or lunch in Palolem right now finds you in 5 seconds and clicks directly to your WhatsApp."
+            "Instagram is great for photos, but travelers can't filter it by area, open hours, or price. On our platform, someone looking for yoga or dinner in Palolem right now finds you in 5 seconds and messages your WhatsApp directly."
           </div>
         </div>
       </div>
 
       <div class="objection-card" onclick="this.classList.toggle('open')">
         <div class="objection-q">
-          <span>2. "כמה זה עולה לי? אתם לוקחים אחוזים?"</span>
+          <span>2. "How much does it cost? Do you take a cut?"</span>
           <span>🔽</span>
         </div>
         <div class="objection-a">
-          <div>כדי לבנות אמון בגואה — ההקמה חינמית, ואין שום עמלה על עסקאות/מזומן/UPI.</div>
+          <div>Trust comes first in Goa: setup is free and we never touch their cash or UPI transactions.</div>
           <div class="en-quote">
-            "Zero setup fee, zero commissions on your bookings or cash. Getting listed is 100% free right now. Later on, if you love the customers we send you, you can choose optional paid featured placement — no pressure at all."
+            "Zero setup fee, zero commissions on your bookings or cash. Getting listed is 100% free right now. Later on, if you love the customers we bring you, you can choose optional paid featured placement — no pressure at all."
           </div>
         </div>
       </div>
 
       <div class="objection-card" onclick="this.classList.toggle('open')">
         <div class="objection-q">
-          <span>3. "אין לי זמן או הבנה בטכנולוגיה"</span>
+          <span>3. "I'm too busy / not good with tech."</span>
           <span>🔽</span>
         </div>
         <div class="objection-a">
-          <div>קרוטיקה עושה את כל העבודה במקום ב-3 דקות.</div>
+          <div>Krutika removes all friction by collecting the info on the spot in 3 minutes.</div>
           <div class="en-quote">
-            "You don't need to touch any app or dashboard. I do everything for you right now in 3 minutes — I take the photos, write the details, and send you the live link on WhatsApp so you can check it."
+            "You don't need to touch any app or dashboard. I'll handle everything for you right now in 3 minutes — I'll snap two photos, take your price list, and send you the live link on WhatsApp to review."
           </div>
         </div>
       </div>
 
       <div class="objection-card" onclick="this.classList.toggle('open')">
         <div class="objection-q">
-          <span>4. "למי אתם פונים? רק תיירים זרים?"</span>
+          <span>4. "Who actually uses this platform?"</span>
           <span>🔽</span>
         </div>
         <div class="objection-a">
-          <div>לתיירים, למשפחות, לנוודים דיגיטליים וגם לקהילה המקומית בדרום גואה.</div>
+          <div>Active WhatsApp groups, digital nomads, expat families, and tourists across South Goa.</div>
           <div class="en-quote">
-            "We serve international travelers, long-stay families, digital nomads, and locals looking for quality places across Canacona, Patnem, Palolem, and Agonda."
+            "Our community ecosystem reaches international travelers, long-stay families, digital nomads, and locals actively looking for curated places across Canacona, Patnem, Palolem, and Agonda."
           </div>
         </div>
       </div>
@@ -833,32 +795,32 @@
   <!-- SECTION 5: MENTORSHIP & DISCOVERY QUESTIONS FOR KRUTIKA -->
   <section class="section">
     <div class="section-header">
-      <h2 class="section-title">🧠 5. שאלות שכדאי לשאול את קרוטיקה בפגישה (להערכת היכולת והחיבור)</h2>
+      <h2 class="section-title">🧠 5. Key Questions to Ask Krutika During the Session</h2>
     </div>
     <div class="card">
       <div class="grid-2" style="gap: 14px;">
         <div class="stat-box">
-          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">1. איפה ה-"Home Turf" שלה?</div>
+          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">1. Identifying Her "Home Turf"</div>
           <div style="font-size: 13.5px; color: var(--ink-muted);">
-            "אילו אזורים בקנקונה (פאלולם, פטנם, אגונדה, צ׳אודי) את מכירה הכי טוב ומרגישה הכי בנוח להיכנס אליהם?"
+            "Which beaches or neighborhoods in Canacona (Palolem, Patnem, Agonda, Chaudi) do you know best and feel most comfortable walking into?"
           </div>
         </div>
         <div class="stat-box">
-          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">2. רשימת ההיכרויות המיידית</div>
+          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">2. Her Immediate Warm List</div>
           <div style="font-size: 13.5px; color: var(--ink-muted);">
-            "אם נצא עכשיו לשטח, לאילו 5 בעלי עסקים או מורי יוגה את יכולה לשלוח הודעה או להיכנס עוד השבוע?"
+            "Who are the first 5 local business owners, cafe managers, or yoga teachers you already know personally that we can reach out to this week?"
           </div>
         </div>
         <div class="stat-box">
-          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">3. התמודדות עם "לא" (Grit)</div>
+          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">3. Handling "Susegad" & Follow-ups</div>
           <div style="font-size: 13.5px; color: var(--ink-muted);">
-            "בגואה הרבה אנשים אומרים 'נדבר מחר' או מתעלמים. מה תגידי לעסק כזה בביקור השני כדי לא להרגיש שנדחת אלא לפתוח דלת?"
+            "In Goa, owners often say 'come back tomorrow' or don't reply right away. How should we follow up politely without feeling pushy?"
           </div>
         </div>
         <div class="stat-box">
-          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">4. זמינות ושגרה</div>
+          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">4. Weekly Rhythm & Availability</div>
           <div style="font-size: 13.5px; color: var(--ink-muted);">
-            "כמה שעות בשבוע את יכולה להקדיש לסיורים בשטח, ואילו ימים הכי טובים מבחינתך לשיחות סנכרון?"
+            "How many hours per week can you dedicate to field visits, and which mornings work best for our quick Tuesday and Saturday check-ins?"
           </div>
         </div>
       </div>
@@ -868,46 +830,46 @@
   <!-- SECTION 6: PIPELINE TABLE PREVIEW & MEETING NOTES -->
   <section class="section">
     <div class="section-header">
-      <h2 class="section-title">📊 6. מבנה טבלת ניהול הספקים (Pipeline) + הערות שלך מהפגישה</h2>
+      <h2 class="section-title">📊 6. Weekly Outreach Pipeline Tracker + Session Notes</h2>
     </div>
     <div class="card" style="margin-bottom: 16px; overflow-x: auto;">
       <p style="margin: 0 0 12px; font-size: 13.5px; color: var(--ink-muted);">
-        דוגמה לטבלת המעקב שתפתחו לה ב-Google Sheets כדי למדוד ביצועים (KPIs):
+        Simple Google Sheet structure we will share with Krutika to monitor execution and track payouts transparently:
       </p>
       <table>
         <thead>
           <tr>
-            <th>שם העסק</th>
-            <th>אזור</th>
-            <th>קטגוריה</th>
-            <th>איש קשר</th>
-            <th>סטטוס</th>
-            <th>תשלום ₹150</th>
+            <th>Business Name</th>
+            <th>Area</th>
+            <th>Category</th>
+            <th>Contact / WhatsApp</th>
+            <th>Pipeline Status</th>
+            <th>₹150 Payout</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td><strong>The Mount Eco Resort</strong></td>
             <td>Palolem / Canacona</td>
-            <td>אירוח, קפה והופעות</td>
+            <td>Eco-Resort, Cafe & Music</td>
             <td>+91 832 264 3456</td>
-            <td><span class="badge-status st-active">פעיל באוויר ✅</span></td>
-            <td>דוגמה (נכס עוגן)</td>
+            <td><span class="badge-status st-active">Live & Active ✅</span></td>
+            <td>Showcase Anchor</td>
           </tr>
           <tr>
             <td><strong>Karma Cafe</strong></td>
             <td>Patnem / Colomb</td>
-            <td>קפה וקהילה</td>
+            <td>Cafe & Community Hub</td>
             <td>—</td>
-            <td><span class="badge-status st-demo">נשלח דמו ⏳</span></td>
-            <td>ממתין לאישור</td>
+            <td><span class="badge-status st-demo">Demo Sent ⏳</span></td>
+            <td>Pending QA</td>
           </tr>
           <tr>
-            <td><strong>דוגמה: סטודיו יוגה מקומי</strong></td>
+            <td><strong>Example: Yoga Shala</strong></td>
             <td>Agonda</td>
-            <td>וולנס ויוגה</td>
+            <td>Wellness & Yoga</td>
             <td>—</td>
-            <td><span class="badge-status st-lead">ליד חדש 📌</span></td>
+            <td><span class="badge-status st-lead">New Lead 📌</span></td>
             <td>—</td>
           </tr>
         </tbody>
@@ -915,16 +877,16 @@
     </div>
 
     <div class="card">
-      <h3 style="margin: 0 0 8px; font-size: 16px;">📝 סיכום ומשימות פתוחות מהפגישה (נשמר אוטומטית בדפדפן שלך)</h3>
-      <textarea id="meeting-notes" class="notes-area" placeholder="כתוב כאן הערות תוך כדי הפגישה עם קרוטיקה (שמות של ספקים שהזכירה, החלטות, יעדים לשבוע הבא)..."></textarea>
+      <h3 style="margin: 0 0 8px; font-size: 16px;">📝 Live Meeting Notes & Week 1 Commitments (Auto-saved in browser)</h3>
+      <textarea id="meeting-notes" class="notes-area" placeholder="Type key takeaways, business names she mentioned, and Week 1 action items here..."></textarea>
     </div>
   </section>
 </div>
 
 <script>
   // Persistent Agenda Checklist State
-  const STORAGE_KEY_AGENDA = 'luz_gtm_prep_agenda_v1';
-  const STORAGE_KEY_NOTES = 'luz_gtm_prep_notes_v1';
+  const STORAGE_KEY_AGENDA = 'luz_gtm_prep_agenda_en_v1';
+  const STORAGE_KEY_NOTES = 'luz_gtm_prep_notes_en_v1';
 
   let agendaState = [false, false, false, false, false];
   try {
@@ -947,7 +909,7 @@
     });
     const pct = (completed / agendaState.length) * 100;
     document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('progress-text').textContent = `${completed} מתוך ${agendaState.length} שלבים הושלמו`;
+    document.getElementById('progress-text').textContent = `${completed} of ${agendaState.length} steps completed`;
   }
 
   function toggleAgenda(idx) {
@@ -994,7 +956,7 @@
     const totalThreeYears = onboardingTotal + (monthlyRevShare * 36);
 
     document.getElementById('res-onboarding').textContent = '₹' + onboardingTotal.toLocaleString();
-    document.getElementById('res-monthly').textContent = '₹' + monthlyRevShare.toLocaleString() + ' / חודש';
+    document.getElementById('res-monthly').textContent = '₹' + monthlyRevShare.toLocaleString() + ' / mo';
     document.getElementById('res-3years').textContent = '₹' + totalThreeYears.toLocaleString();
   }
 
