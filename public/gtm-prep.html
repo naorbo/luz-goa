@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>הכנה לפגישת GTM עם קרוטיקה — דרום גואה</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Frank+Ruhl+Libre:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --canopy-950: #111e17;
+      --canopy-900: #1c2e24;
+      --canopy-800: #263d30;
+      --canopy-700: #355442;
+      --sand-50: #faf8f5;
+      --sand-100: #f4f0e8;
+      --sand-200: #e7dfd0;
+      --sand-300: #d5c9b3;
+      --terracotta: #d46b54;
+      --terracotta-dark: #b9533d;
+      --ochre: #eab354;
+      --emerald: #10b981;
+      --ink: #1c2e24;
+      --ink-muted: #52675a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Assistant', 'Inter', system-ui, sans-serif;
+      background-color: var(--sand-50);
+      color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1020px;
+      margin: 0 auto;
+      padding: 20px 16px 80px;
+    }
+
+    /* Header Hero */
+    .hero {
+      background: linear-gradient(135deg, var(--canopy-950) 0%, var(--canopy-800) 100%);
+      color: var(--sand-50);
+      border-radius: 24px;
+      padding: 32px 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 12px 32px rgba(17, 30, 23, 0.16);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(234, 179, 84, 0.16);
+      color: var(--ochre);
+      border: 1px solid rgba(234, 179, 84, 0.35);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--terracotta);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(212, 107, 84, 0.35);
+    }
+    .btn-primary:hover {
+      background: var(--terracotta-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--sand-50);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .btn-outline {
+      background: #fff;
+      color: var(--canopy-900);
+      border: 1px solid var(--sand-300);
+    }
+    .btn-outline:hover {
+      border-color: var(--terracotta);
+      color: var(--terracotta);
+    }
+
+    h1 {
+      font-family: 'Frank Ruhl Libre', serif;
+      font-size: clamp(26px, 4vw, 38px);
+      margin: 0 0 10px;
+      line-height: 1.2;
+      color: #fff;
+    }
+
+    .hero-sub {
+      font-size: 16px;
+      color: var(--sand-200);
+      margin: 0;
+      max-width: 720px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    /* Progress Bar */
+    .progress-bar-wrap {
+      background: #fff;
+      border: 1px solid var(--sand-200);
+      border-radius: 16px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      position: sticky;
+      top: 12px;
+      z-index: 30;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .progress-track {
+      flex: 1;
+      min-width: 200px;
+      height: 10px;
+      background: var(--sand-100);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--terracotta), var(--ochre));
+      transition: width 0.3s ease;
+    }
+
+    /* Section & Cards */
+    .section {
+      margin-bottom: 28px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-family: 'Frank Ruhl Libre', serif;
+      font-size: 24px;
+      font-weight: 900;
+      margin: 0;
+      color: var(--canopy-900);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--sand-200);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    /* Metric Boxes */
+    .stat-box {
+      background: var(--sand-50);
+      border: 1px solid var(--sand-200);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--canopy-900);
+    }
+
+    .stat-note {
+      font-size: 12px;
+      color: var(--terracotta);
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* Interactive Checklist */
+    .agenda-item {
+      display: flex;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--sand-200);
+      background: #fff;
+      margin-bottom: 10px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .agenda-item:hover {
+      border-color: var(--canopy-700);
+    }
+
+    .agenda-item.done {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    .agenda-item.done .agenda-title {
+      text-decoration: line-through;
+      color: #166534;
+    }
+
+    .checkbox-custom {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      border: 2px solid var(--sand-300);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+      font-weight: 800;
+      color: #fff;
+      background: #fff;
+    }
+
+    .agenda-item.done .checkbox-custom {
+      background: var(--emerald);
+      border-color: var(--emerald);
+    }
+
+    .agenda-time {
+      font-size: 12px;
+      font-weight: 800;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--sand-100);
+      color: var(--canopy-800);
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .agenda-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin: 0 0 6px;
+      color: var(--canopy-900);
+    }
+
+    .agenda-desc {
+      font-size: 14px;
+      color: var(--ink-muted);
+      margin: 0;
+    }
+
+    /* Script / Copyable Box */
+    .script-box {
+      background: var(--canopy-950);
+      color: var(--sand-50);
+      border-radius: 16px;
+      padding: 20px;
+      direction: ltr;
+      text-align: left;
+      font-family: 'Inter', system-ui, sans-serif;
+      position: relative;
+    }
+
+    .script-box p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: #e5e7eb;
+    }
+
+    .script-box p:last-child {
+      margin-bottom: 0;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background: var(--terracotta);
+      border-color: var(--terracotta);
+    }
+
+    /* Objections Accordion */
+    .objection-card {
+      border: 1px solid var(--sand-200);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .objection-q {
+      padding: 14px 18px;
+      font-weight: 700;
+      font-size: 15px;
+      background: var(--sand-50);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .objection-a {
+      padding: 14px 18px;
+      font-size: 14px;
+      border-top: 1px solid var(--sand-200);
+      display: none;
+    }
+
+    .objection-card.open .objection-a {
+      display: block;
+    }
+
+    .en-quote {
+      direction: ltr;
+      text-align: left;
+      background: #f3f7f4;
+      border-left: 3px solid var(--canopy-700);
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-top: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13.5px;
+      color: var(--canopy-900);
+      font-weight: 500;
+    }
+
+    /* Calculator */
+    .calc-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .range-wrap label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--terracotta);
+      cursor: pointer;
+    }
+
+    .calc-result {
+      background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+      border: 1px solid #a7f3d0;
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      gap: 16px;
+      text-align: center;
+    }
+
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: right;
+      border-bottom: 1px solid var(--sand-200);
+    }
+    th {
+      background: var(--sand-100);
+      color: var(--canopy-900);
+      font-weight: 800;
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .st-active { background: #dcfce7; color: #166534; }
+    .st-demo { background: #fef3c7; color: #92400e; }
+    .st-lead { background: #e0f2fe; color: #075985; }
+
+    /* Tabs for Languages */
+    .lang-toggle {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .lang-btn {
+      padding: 5px 12px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--sand-200);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .lang-btn.active {
+      background: #fff;
+      color: var(--canopy-950);
+    }
+
+    .notes-area {
+      width: 100%;
+      min-height: 110px;
+      border: 1px solid var(--sand-300);
+      border-radius: 12px;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+      background: var(--sand-50);
+    }
+    .notes-area:focus {
+      outline: 2px solid var(--terracotta);
+      background: #fff;
+    }
+
+    @media print {
+      .progress-bar-wrap, .hero-actions, .copy-btn { display: none !important; }
+      body { background: #fff; }
+      .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- HERO HEADER -->
+  <header class="hero">
+    <div class="hero-top">
+      <div class="pill">🌴 תדריך והכנה לפגישת GTM — שבת בבוקר</div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button onclick="window.print()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">🖨️ הדפסה / PDF</button>
+        <button onclick="resetChecklist()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">🔄 איפוס סימונים</button>
+      </div>
+    </div>
+
+    <h1>אסטרטגיית Go-To-Market & תוכנית עבודה עם קרוטיקה (Krutika)</h1>
+    <p class="hero-sub">
+      מדריך עבודה אינטראקטיבי לפגישת ההנעה: הגדרת מסגרת חונכות ל-3 חודשים, יעדי KPI מדידים, סימולציות שטח, מודל הכנסות וכלים לניהול ביצוע בדרום גואה.
+    </p>
+
+    <div class="hero-actions">
+      <a href="https://my-luz-dc028.web.app/?biz=the-mount-canacona" target="_blank" class="btn btn-primary">
+        🌿 פתח את דף הדוגמה של The Mount (להצגה בטלפון)
+      </a>
+      <a href="https://my-luz-dc028.web.app/" target="_blank" class="btn btn-secondary">
+        🌐 פתח את הפלטפורמה המלאה
+      </a>
+    </div>
+  </header>
+
+  <!-- STICKY MEETING PROGRESS BAR -->
+  <div class="progress-bar-wrap">
+    <div style="font-weight: 800; font-size: 14px; color: var(--canopy-900);">
+      התקדמות בפגישה: <span id="progress-text">0 מתוך 5 שלבים הושלמו</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div style="font-size: 13px; color: var(--ink-muted); font-weight: 700;">
+      ⏱️ משך מתוכנן: 60 דקות
+    </div>
+  </div>
+
+  <!-- SECTION 1: DEAL STRUCTURE & ALIGNMENT -->
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">🤝 1. מסגרת השותפות, החונכות והתגמול (הבסיס להסכמה)</h2>
+    </div>
+    <div class="card">
+      <div class="grid-4" style="margin-bottom: 18px;">
+        <div class="stat-box">
+          <div class="stat-label">תקופת ניסיון וחונכות</div>
+          <div class="stat-value">3 חודשים</div>
+          <div class="stat-note">Internship & Mentorship</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">תגמול גיוס ספק פעיל</div>
+          <div class="stat-value">₹150</div>
+          <div class="stat-note">לכל עסק מאומת שעולה לאוויר</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">עמלת צמיחה חוזרת</div>
+          <div class="stat-value">10%</div>
+          <div class="stat-note">מהכנסות משלמים למשך 3 שנים</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">מיקוד גיאוגרפי התחלתי</div>
+          <div class="stat-value">דרום גואה</div>
+          <div class="stat-note">Canacona, Palolem, Patnem, Agonda</div>
+        </div>
+      </div>
+
+      <div style="background: #fff8eb; border: 1px solid #fde68a; border-radius: 14px; padding: 16px;">
+        <h3 style="margin: 0 0 8px; font-size: 16px; color: #92400e;">⚠️ קריטי לסגירה בפגישה: מה נחשב "ספק פעיל" (המזכה ב-₹150)?</h3>
+        <p style="margin: 0 0 10px; font-size: 14px; color: #78350f;">
+          כדי למנוע אי-הבנות או העלאת עסקים "ריקים", חובה להגדיר לה שספק נספר כזכאי לתשלום רק כשהוא עומד ב-4 התנאים הבאים:
+        </p>
+        <div class="grid-2" style="gap: 8px; font-size: 13.5px; color: #78350f;">
+          <div>✅ <strong>הסכמה מתועדת:</strong> בעל העסק אישר עלייה לאוויר (הודעת וואטסאפ קצרה או אישור מתועד).</div>
+          <div>✅ <strong>תוכן בסיסי מלא:</strong> שם, תיאור קצר, שעות פתיחה, מיקום, ומספר וואטסאפ פעיל ותקין.</div>
+          <div>✅ <strong>תמונות ותפריט:</strong> לפחות תמונה איכותית אחת של המקום/שירות + מינימום 2–3 מנות/שירותים עם מחיר.</div>
+          <div>✅ <strong>בדיקת איכות (QA):</strong> אתם מאשרים שהדף תקין ועלה לפלטפורמה.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 2: INTERACTIVE 60-MIN AGENDA -->
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">📋 2. סדר יום אינטראקטיבי לפגישה (סמן V בזמן אמת)</h2>
+    </div>
+
+    <div class="agenda-item" onclick="toggleAgenda(0)" id="agenda-0">
+      <div class="checkbox-custom">✓</div>
+      <div>
+        <span class="agenda-time">00:00 – 00:10 (10 דק׳)</span>
+        <h3 class="agenda-title">שלב 1: תיאום ציפיות, גישת מנטורינג והגדרת "ספק פעיל"</h3>
+        <p class="agenda-desc">
+          לחזק אותה: אתם רואים בה שותפה לדרך. להסביר שתוך כדי עבודה היא תלמד מכירות שטח, ניהול לקוחות (CRM), קביעת KPIs וסקייל. להסביר לה את ההגיונות מאחורי הצ'ק-ליסט של ה-₹150 והחזון של ה-10% לטווח ארוך.
+        </p>
+      </div>
+    </div>
+
+    <div class="agenda-item" onclick="toggleAgenda(1)" id="agenda-1">
+      <div class="checkbox-custom">✓</div>
+      <div>
+        <span class="agenda-time">00:10 – 00:25 (15 דק׳)</span>
+        <h3 class="agenda-title">שלב 2: הצגת הדמו (The Mount) והגדרת יעדי 30-60-90 יום</h3>
+        <p class="agenda-desc">
+          לפתוח בטלפון את הדף של <strong>The Mount Canacona</strong>. להראות לה למה בעל עסק מקומי יגיד "כן" תוך 2 דקות. לעבור איתה על היעדים המספריים של החודש הראשון (30–40 עסקים + 10 מארגני אירועים) ועל פוטנציאל ההכנסה שלה.
+        </p>
+      </div>
+    </div>
+
+    <div class="agenda-item" onclick="toggleAgenda(2)" id="agenda-2">
+      <div class="checkbox-custom">✓</div>
+      <div>
+        <span class="agenda-time">00:25 – 00:40 (15 דק׳)</span>
+        <h3 class="agenda-title">שלב 3: מפת הקטגוריות (The Big 4) ומיפוי היכרויות אישיות שלה</h3>
+        <p class="agenda-desc">
+          לעבור על 4 קטגוריות העוגן (קפה/אירוח, וולנס ויוגה, מוניות/קטנועים, מארגני אירועים). לשאול אותה במקום: <em>"את מי את כבר מכירה אישית בפאלולם, פטנם וקנקונה שנוכל לסגור כבר השבוע?"</em> — לרשום מיד את 10 השמות הראשונים.
+        </p>
+      </div>
+    </div>
+
+    <div class="agenda-item" onclick="toggleAgenda(3)" id="agenda-3">
+      <div class="checkbox-custom">✓</div>
+      <div>
+        <span class="agenda-time">00:40 – 00:50 (10 דק׳)</span>
+        <h3 class="agenda-title">שלב 4: סימולציית מכירה (Role Play) והתגברות על התנגדויות</h3>
+        <p class="agenda-desc">
+          אתה ונאור משחקים בעל סטודיו יוגה או מסעדה חשדן בגואה. קרוטיקה מתרגלת את נאום ה-30 שניות באנגלית ומראה את הטלפון. מתרגלים מענה ל"יש לי אינסטגרם" ול"זה עולה כסף?".
+        </p>
+      </div>
+    </div>
+
+    <div class="agenda-item" onclick="toggleAgenda(4)" id="agenda-4">
+      <div class="checkbox-custom">✓</div>
+      <div>
+        <span class="agenda-time">00:50 – 01:00 (10 דק׳)</span>
+        <h3 class="agenda-title">שלב 5: הקמת טבלת המעקב (Pipeline) וקביעת דופק עבודה שבועי</h3>
+        <p class="agenda-desc">
+          לפתוח עבורה טבלת Google Sheets פשוטה לתיעוד פגישות. לקבוע צ'ק-אין קצר של 15 דקות בכל יום שלישי (בדיקת חסמים), וסיכום שבועי כל שבת בבוקר. משימה ראשונה ליום א׳–ג׳: להביא את 5 העסקים הראשונים.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3: 30-60-90 DAY ROADMAP & EARNINGS CALCULATOR -->
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">📈 3. תוכנית KPIs ל-3 חודשים + מחשבון תגמול להצגה בפגישה</h2>
+    </div>
+
+    <div class="grid-3" style="margin-bottom: 16px;">
+      <div class="card">
+        <div class="badge-status st-lead" style="margin-bottom: 8px;">חודש 1: Supply First</div>
+        <h3 style="margin: 0 0 8px; font-size: 18px;">מילוי המדפים והעסקים</h3>
+        <ul style="margin: 0; padding-right: 18px; font-size: 13.5px; color: var(--ink-muted);">
+          <li><strong>30–40</strong> עסקים מקומיים פעילים</li>
+          <li><strong>10</strong> מארגני אירועים קבועים</li>
+          <li>מיקוד: קנקונה, פאלולם, פטנם, אגונדה</li>
+          <li>מטרה מרכזית: לימוד פתיחת דלתות</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="badge-status st-demo" style="margin-bottom: 8px;">חודש 2: Traffic & QR</div>
+        <h3 style="margin: 0 0 8px; font-size: 18px;">יצירת טראפיק ולידים לעסקים</h3>
+        <ul style="margin: 0; padding-right: 18px; font-size: 13.5px; color: var(--ink-muted);">
+          <li>הצבת שלטי QR ב-<strong>20</strong> מוקדים חמים</li>
+          <li>עוד <strong>30</strong> עסקים מצטרפים (סה"כ ~70)</li>
+          <li>וידוא שבעלי העסקים מקבלים פניות וואטסאפ</li>
+          <li>מטרה מרכזית: שימור קשרים (Retention)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="badge-status st-active" style="margin-bottom: 8px;">חודש 3: Monetization</div>
+        <h3 style="margin: 0 0 8px; font-size: 18px;">המרה לעסקים משלמים</h3>
+        <ul style="margin: 0; padding-right: 18px; font-size: 13.5px; color: var(--ink-muted);">
+          <li>הצעת חבילות קידום / מנוי חודשי לעסקים</li>
+          <li>המרת <strong>10–15</strong> לקוחות מרוצים לתשלום</li>
+          <li>פתיחת זרם הכנסה של ה-<strong>10% ל-3 שנים</strong></li>
+          <li>החלטה משותפת על משרה קבועה</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Interactive Compensation Simulator -->
+    <div class="card">
+      <h3 style="margin: 0 0 6px; font-size: 18px;">💰 סימולטור תגמול לקרוטיקה (הראה לה את הפוטנציאל!)</h3>
+      <p style="margin: 0 0 16px; font-size: 13.5px; color: var(--ink-muted);">
+        שחקו עם המחוונים מולה בפגישה כדי להמחיש איך גיוס של ספקים היום מייצר לה הכנסה פסיבית קבועה ל-3 שנים:
+      </p>
+
+      <div class="calc-controls">
+        <div class="range-wrap">
+          <label>
+            <span>כמות עסקים שתגייס ב-3 חודשים:</span>
+            <span id="val-providers" style="color: var(--terracotta);">60</span>
+          </label>
+          <input type="range" id="rng-providers" min="10" max="150" step="5" value="60" oninput="updateCalc()" />
+        </div>
+
+        <div class="range-wrap">
+          <label>
+            <span>כמה מהם יהפכו למשלמים:</span>
+            <span id="val-paid" style="color: var(--terracotta);">15</span>
+          </label>
+          <input type="range" id="rng-paid" min="0" max="60" step="1" value="15" oninput="updateCalc()" />
+        </div>
+
+        <div class="range-wrap">
+          <label>
+            <span>מנוי חודשי ממוצע לעסק (₹ INR):</span>
+            <span id="val-price" style="color: var(--terracotta);">₹1,500</span>
+          </label>
+          <input type="range" id="rng-price" min="500" max="4000" step="250" value="1500" oninput="updateCalc()" />
+        </div>
+      </div>
+
+      <div class="calc-result">
+        <div>
+          <div style="font-size: 12px; font-weight: 700; color: #065f46;">בונוס הקמה חד-פעמי (₹150 לספק)</div>
+          <div style="font-size: 24px; font-weight: 800; color: #064e3b;" id="res-onboarding">₹9,000</div>
+        </div>
+        <div>
+          <div style="font-size: 12px; font-weight: 700; color: #065f46;">הכנסה חודשית קבועה (10% Rev-Share)</div>
+          <div style="font-size: 24px; font-weight: 800; color: #064e3b;" id="res-monthly">₹2,250 / חודש</div>
+        </div>
+        <div>
+          <div style="font-size: 12px; font-weight: 700; color: #065f46;">פוטנציאל מצטבר ל-3 שנים (מהעסקים האלה בלבד)</div>
+          <div style="font-size: 24px; font-weight: 800; color: var(--terracotta);" id="res-3years">₹90,000</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: FIELD SCRIPTS & OBJECTIONS -->
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">🎤 4. תסריטי שיחה ומענה להתנגדויות (לשטח באנגלית)</h2>
+    </div>
+
+    <div class="card" style="margin-bottom: 16px;">
+      <h3 style="margin: 0 0 10px; font-size: 17px;">תסריט הכניסה המהיר לבעל עסק (30 שניות + הצגת The Mount):</h3>
+      <div class="script-box">
+        <button class="copy-btn" onclick="copyScript('walkin-script', this)">📋 Copy Script</button>
+        <div id="walkin-script">
+          <p>"Hi! I'm Krutika with our local South Goa Community Platform. We're building a single digital hub that connects tourists, digital nomads, and expats directly with trusted local places here in Canacona, Palolem, and Patnem."</p>
+          <p><strong>[Open The Mount Demo on Phone]</strong></p>
+          <p>"Look at how The Mount looks here — they get a clean, fast digital storefront with their menu, rates, Google Maps pin, and events. Most importantly, every inquiry goes <strong>straight to their WhatsApp with zero commission</strong>."</p>
+          <p>"Since we are launching right now, setting up your business page is 100% free. If you give me 3 minutes, I'll snap two quick photos, take your prices, and put your place live today!"</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="objection-card" onclick="this.classList.toggle('open')">
+        <div class="objection-q">
+          <span>1. "כבר יש לי עמוד אינסטגרם / וואטסאפ"</span>
+          <span>🔽</span>
+        </div>
+        <div class="objection-a">
+          <div>אינסטגרם לא מאפשר חיפוש לפי שעה, מיקום או תקציב, ופוסטים בקבוצות וואטסאפ נעלמים תוך שעה.</div>
+          <div class="en-quote">
+            "Instagram is great for photos, but travelers can't search it by area, open hours, or service price. On our platform, someone looking for yoga or lunch in Palolem right now finds you in 5 seconds and clicks directly to your WhatsApp."
+          </div>
+        </div>
+      </div>
+
+      <div class="objection-card" onclick="this.classList.toggle('open')">
+        <div class="objection-q">
+          <span>2. "כמה זה עולה לי? אתם לוקחים אחוזים?"</span>
+          <span>🔽</span>
+        </div>
+        <div class="objection-a">
+          <div>כדי לבנות אמון בגואה — ההקמה חינמית, ואין שום עמלה על עסקאות/מזומן/UPI.</div>
+          <div class="en-quote">
+            "Zero setup fee, zero commissions on your bookings or cash. Getting listed is 100% free right now. Later on, if you love the customers we send you, you can choose optional paid featured placement — no pressure at all."
+          </div>
+        </div>
+      </div>
+
+      <div class="objection-card" onclick="this.classList.toggle('open')">
+        <div class="objection-q">
+          <span>3. "אין לי זמן או הבנה בטכנולוגיה"</span>
+          <span>🔽</span>
+        </div>
+        <div class="objection-a">
+          <div>קרוטיקה עושה את כל העבודה במקום ב-3 דקות.</div>
+          <div class="en-quote">
+            "You don't need to touch any app or dashboard. I do everything for you right now in 3 minutes — I take the photos, write the details, and send you the live link on WhatsApp so you can check it."
+          </div>
+        </div>
+      </div>
+
+      <div class="objection-card" onclick="this.classList.toggle('open')">
+        <div class="objection-q">
+          <span>4. "למי אתם פונים? רק תיירים זרים?"</span>
+          <span>🔽</span>
+        </div>
+        <div class="objection-a">
+          <div>לתיירים, למשפחות, לנוודים דיגיטליים וגם לקהילה המקומית בדרום גואה.</div>
+          <div class="en-quote">
+            "We serve international travelers, long-stay families, digital nomads, and locals looking for quality places across Canacona, Patnem, Palolem, and Agonda."
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5: MENTORSHIP & DISCOVERY QUESTIONS FOR KRUTIKA -->
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">🧠 5. שאלות שכדאי לשאול את קרוטיקה בפגישה (להערכת היכולת והחיבור)</h2>
+    </div>
+    <div class="card">
+      <div class="grid-2" style="gap: 14px;">
+        <div class="stat-box">
+          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">1. איפה ה-"Home Turf" שלה?</div>
+          <div style="font-size: 13.5px; color: var(--ink-muted);">
+            "אילו אזורים בקנקונה (פאלולם, פטנם, אגונדה, צ׳אודי) את מכירה הכי טוב ומרגישה הכי בנוח להיכנס אליהם?"
+          </div>
+        </div>
+        <div class="stat-box">
+          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">2. רשימת ההיכרויות המיידית</div>
+          <div style="font-size: 13.5px; color: var(--ink-muted);">
+            "אם נצא עכשיו לשטח, לאילו 5 בעלי עסקים או מורי יוגה את יכולה לשלוח הודעה או להיכנס עוד השבוע?"
+          </div>
+        </div>
+        <div class="stat-box">
+          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">3. התמודדות עם "לא" (Grit)</div>
+          <div style="font-size: 13.5px; color: var(--ink-muted);">
+            "בגואה הרבה אנשים אומרים 'נדבר מחר' או מתעלמים. מה תגידי לעסק כזה בביקור השני כדי לא להרגיש שנדחת אלא לפתוח דלת?"
+          </div>
+        </div>
+        <div class="stat-box">
+          <div style="font-weight: 800; color: var(--canopy-900); margin-bottom: 4px;">4. זמינות ושגרה</div>
+          <div style="font-size: 13.5px; color: var(--ink-muted);">
+            "כמה שעות בשבוע את יכולה להקדיש לסיורים בשטח, ואילו ימים הכי טובים מבחינתך לשיחות סנכרון?"
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 6: PIPELINE TABLE PREVIEW & MEETING NOTES -->
+  <section class="section">
+    <div class="section-header">
+      <h2 class="section-title">📊 6. מבנה טבלת ניהול הספקים (Pipeline) + הערות שלך מהפגישה</h2>
+    </div>
+    <div class="card" style="margin-bottom: 16px; overflow-x: auto;">
+      <p style="margin: 0 0 12px; font-size: 13.5px; color: var(--ink-muted);">
+        דוגמה לטבלת המעקב שתפתחו לה ב-Google Sheets כדי למדוד ביצועים (KPIs):
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>שם העסק</th>
+            <th>אזור</th>
+            <th>קטגוריה</th>
+            <th>איש קשר</th>
+            <th>סטטוס</th>
+            <th>תשלום ₹150</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>The Mount Eco Resort</strong></td>
+            <td>Palolem / Canacona</td>
+            <td>אירוח, קפה והופעות</td>
+            <td>+91 832 264 3456</td>
+            <td><span class="badge-status st-active">פעיל באוויר ✅</span></td>
+            <td>דוגמה (נכס עוגן)</td>
+          </tr>
+          <tr>
+            <td><strong>Karma Cafe</strong></td>
+            <td>Patnem / Colomb</td>
+            <td>קפה וקהילה</td>
+            <td>—</td>
+            <td><span class="badge-status st-demo">נשלח דמו ⏳</span></td>
+            <td>ממתין לאישור</td>
+          </tr>
+          <tr>
+            <td><strong>דוגמה: סטודיו יוגה מקומי</strong></td>
+            <td>Agonda</td>
+            <td>וולנס ויוגה</td>
+            <td>—</td>
+            <td><span class="badge-status st-lead">ליד חדש 📌</span></td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin: 0 0 8px; font-size: 16px;">📝 סיכום ומשימות פתוחות מהפגישה (נשמר אוטומטית בדפדפן שלך)</h3>
+      <textarea id="meeting-notes" class="notes-area" placeholder="כתוב כאן הערות תוך כדי הפגישה עם קרוטיקה (שמות של ספקים שהזכירה, החלטות, יעדים לשבוע הבא)..."></textarea>
+    </div>
+  </section>
+</div>
+
+<script>
+  // Persistent Agenda Checklist State
+  const STORAGE_KEY_AGENDA = 'luz_gtm_prep_agenda_v1';
+  const STORAGE_KEY_NOTES = 'luz_gtm_prep_notes_v1';
+
+  let agendaState = [false, false, false, false, false];
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_AGENDA);
+    if (saved) agendaState = JSON.parse(saved);
+  } catch (e) {}
+
+  function renderAgenda() {
+    let completed = 0;
+    agendaState.forEach((done, idx) => {
+      const el = document.getElementById('agenda-' + idx);
+      if (el) {
+        if (done) {
+          el.classList.add('done');
+          completed++;
+        } else {
+          el.classList.remove('done');
+        }
+      }
+    });
+    const pct = (completed / agendaState.length) * 100;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = `${completed} מתוך ${agendaState.length} שלבים הושלמו`;
+  }
+
+  function toggleAgenda(idx) {
+    agendaState[idx] = !agendaState[idx];
+    try {
+      localStorage.setItem(STORAGE_KEY_AGENDA, JSON.stringify(agendaState));
+    } catch (e) {}
+    renderAgenda();
+  }
+
+  function resetChecklist() {
+    agendaState = [false, false, false, false, false];
+    try {
+      localStorage.setItem(STORAGE_KEY_AGENDA, JSON.stringify(agendaState));
+    } catch (e) {}
+    renderAgenda();
+  }
+
+  // Notes Auto-Save
+  const notesEl = document.getElementById('meeting-notes');
+  try {
+    const savedNotes = localStorage.getItem(STORAGE_KEY_NOTES);
+    if (savedNotes) notesEl.value = savedNotes;
+  } catch (e) {}
+
+  notesEl.addEventListener('input', () => {
+    try {
+      localStorage.setItem(STORAGE_KEY_NOTES, notesEl.value);
+    } catch (e) {}
+  });
+
+  // Compensation Simulator
+  function updateCalc() {
+    const providers = Number(document.getElementById('rng-providers').value);
+    const paid = Math.min(providers, Number(document.getElementById('rng-paid').value));
+    const price = Number(document.getElementById('rng-price').value);
+
+    document.getElementById('val-providers').textContent = providers;
+    document.getElementById('val-paid').textContent = paid;
+    document.getElementById('val-price').textContent = '₹' + price.toLocaleString();
+
+    const onboardingTotal = providers * 150;
+    const monthlyRevShare = Math.round(paid * price * 0.1);
+    const totalThreeYears = onboardingTotal + (monthlyRevShare * 36);
+
+    document.getElementById('res-onboarding').textContent = '₹' + onboardingTotal.toLocaleString();
+    document.getElementById('res-monthly').textContent = '₹' + monthlyRevShare.toLocaleString() + ' / חודש';
+    document.getElementById('res-3years').textContent = '₹' + totalThreeYears.toLocaleString();
+  }
+
+  // Copy Script
+  function copyScript(id, btn) {
+    const text = document.getElementById(id).innerText;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        const prev = btn.textContent;
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => { btn.textContent = prev; }, 2000);
+      });
+    }
+  }
+
+  renderAgenda();
+  updateCalc();
+</script>
+
+</body>
+</html>
