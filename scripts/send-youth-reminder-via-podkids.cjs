@@ -109,13 +109,20 @@ async function connectAndRun(fn) {
 
   return new Promise((resolve, reject) => {
     let settled = false;
+    let opened = false;
+    let reconnectTimer = null;
     const finish = (err, val) => {
       if (settled) return;
       settled = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       err ? reject(err) : resolve(val);
     };
 
     function start() {
+      if (opened || settled) return;
       const sock = makeWASocket({
         version,
         auth: state,
@@ -127,6 +134,12 @@ async function connectAndRun(fn) {
       sock.ev.on('connection.update', async (u) => {
         const { connection, lastDisconnect } = u;
         if (connection === 'open') {
+          if (opened || settled) return;
+          opened = true;
+          if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+          }
           let result;
           let runErr = null;
           try {
@@ -141,12 +154,13 @@ async function connectAndRun(fn) {
             setTimeout(() => finish(runErr, result), 1000);
           }, 1500);
         } else if (connection === 'close') {
+          if (opened || settled) return;
           const code = lastDisconnect?.error?.output?.statusCode;
           if (code === DisconnectReason.loggedOut) {
             finish(new Error('WhatsApp session logged out — please refresh WA_SESSION_GZ_B64 secret'));
-          } else if (!settled && restarts < MAX_RESTARTS) {
+          } else if (restarts < MAX_RESTARTS) {
             restarts++;
-            setTimeout(start, 1000);
+            reconnectTimer = setTimeout(start, 1000);
           } else {
             finish(new Error('WhatsApp connection closed (code ' + code + ')'));
           }
@@ -223,11 +237,12 @@ const YOUTH_CENTER_EVENTS = [
     id: 'yc-2026-11-12-board-games',
     date: '2026-11-12',
     dayEn: 'Thursday, Nov 12',
-    startTime: '16:30',
-    endTime: '19:00',
+    startTime: '17:00',
+    endTime: '18:30',
     titleEn: 'Strategy Board Games & Tournaments',
     descriptionEn:
-      'Afternoon of board games, Catan, chess, strategy tabletop games, and friendly team competitions.',
+      'Afternoon of board games, Catan, chess, strategy tabletop games, and friendly team competitions. Feel free to bring board games from home!',
+    posterNoteEn: 'Please bring board games from home!',
     locationEn: 'Colomb Youth Center (near Shailish)',
     imageUrl: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&q=80&w=1000',
   },
@@ -492,26 +507,43 @@ async function renderEnglishPosterOverlay(rawImageBuffer, ev, timing = 'morning'
   const dayLabel = (ev.dayEn || ev.date || 'Today').toUpperCase();
   const scheduleBanner = `${prefix}${dayLabel}  •  ${timeRange}`;
   const locationText = ev.locationEn || 'Colomb Youth Center (near Shailish)  •  Ages 8-15';
+  const posterNoteEn = String(ev.posterNoteEn || '').trim();
+  const hasNote = Boolean(posterNoteEn);
+
+  const accentY = hasNote ? 364 : 418;
+  const scheduleY = hasNote ? 400 : 454;
+  const locationY = hasNote ? 600 : 612;
+  const footerY = hasNote ? 638 : 644;
 
   const titleSvgLines =
     titleLines.length === 1
-      ? `<text x="52" y="545" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="bold" fill="#FFFFFF">${escapeXml(
-          titleLines[0]
-        )}</text>`
-      : `<text x="52" y="502" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="bold" fill="#FFFFFF">${escapeXml(
-          titleLines[0]
-        )}</text>
-         <text x="52" y="554" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="bold" fill="#FFFFFF">${escapeXml(
-          titleLines[1]
-        )}</text>`;
+      ? `<text x="52" y="${hasNote ? 464 : 545}" font-family="Arial, Helvetica, sans-serif" font-size="${
+          hasNote ? 44 : 46
+        }" font-weight="bold" fill="#FFFFFF">${escapeXml(titleLines[0])}</text>`
+      : `<text x="52" y="${hasNote ? 448 : 502}" font-family="Arial, Helvetica, sans-serif" font-size="${
+          hasNote ? 39 : 42
+        }" font-weight="bold" fill="#FFFFFF">${escapeXml(titleLines[0])}</text>
+         <text x="52" y="${hasNote ? 494 : 554}" font-family="Arial, Helvetica, sans-serif" font-size="${
+          hasNote ? 39 : 42
+        }" font-weight="bold" fill="#FFFFFF">${escapeXml(titleLines[1])}</text>`;
+
+  const notePillWidth = Math.min(896, Math.max(380, posterNoteEn.length * 13 + 70));
+  const noteBadgeSvg = hasNote
+    ? `
+      <!-- Highlighted Event Note Pill -->
+      <rect x="52" y="518" width="${notePillWidth}" height="44" rx="22" fill="#f59e0b" />
+      <text x="76" y="547" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#111827">
+        NOTE: ${escapeXml(posterNoteEn)}
+      </text>`
+    : '';
 
   const svgOverlay = Buffer.from(`
     <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="darkGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#000000" stop-opacity="0.45" />
-          <stop offset="35%" stop-color="#000000" stop-opacity="0.15" />
-          <stop offset="62%" stop-color="#0b1711" stop-opacity="0.78" />
+          <stop offset="32%" stop-color="#000000" stop-opacity="0.14" />
+          <stop offset="56%" stop-color="#0b1711" stop-opacity="0.80" />
           <stop offset="100%" stop-color="#07110c" stop-opacity="0.96" />
         </linearGradient>
       </defs>
@@ -532,21 +564,22 @@ async function renderEnglishPosterOverlay(rawImageBuffer, ev, timing = 'morning'
       </text>
 
       <!-- Accent Bar -->
-      <rect x="52" y="418" width="84" height="6" rx="3" fill="#fbbf24" />
+      <rect x="52" y="${accentY}" width="84" height="6" rx="3" fill="#fbbf24" />
 
       <!-- Date & Time Line -->
-      <text x="52" y="454" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="bold" fill="#fbbf24" letter-spacing="1">
+      <text x="52" y="${scheduleY}" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="bold" fill="#fbbf24" letter-spacing="1">
         📅 ${escapeXml(scheduleBanner)}
       </text>
 
       <!-- Main Event Title (1-2 lines) -->
       ${titleSvgLines}
+      ${noteBadgeSvg}
 
       <!-- Footer Location & URL Bar -->
-      <text x="52" y="612" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#d1fae5">
+      <text x="52" y="${locationY}" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#d1fae5">
         📍 ${escapeXml(locationText)}
       </text>
-      <text x="52" y="644" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#9ca3af">
+      <text x="52" y="${footerY}" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#9ca3af">
         Register &amp; Volunteer: my-luz-dc028.web.app
       </text>
     </svg>
@@ -570,6 +603,11 @@ function buildEnglishCaption(ev, timing = 'morning') {
   const volunteerLine = ev.volunteerParent
     ? `🤝 *Volunteer Parent on Duty:* ${ev.volunteerParent}\n`
     : `🙋 *Volunteer Parent:* We need a volunteer parent on duty for this session — sign up via the link below!\n`;
+  const posterNote = String(ev.posterNoteEn || '').trim();
+  const noteLine =
+    posterNote && !descEn.toLowerCase().includes(posterNote.toLowerCase())
+      ? `🎲 *Note:* ${posterNote}\n`
+      : '';
 
   const isEvening = timing === 'evening';
   const header = isEvening
@@ -583,6 +621,7 @@ function buildEnglishCaption(ev, timing = 'morning') {
     `📅 *When:* ${whenLabel} · ${timeStr}\n` +
     `📍 *Location:* ${locEn}\n` +
     volunteerLine +
+    noteLine +
     `\n📝 *About the session:*\n${descEn}\n\n` +
     `👇 *Register your teen & sign up as volunteer parent:*\n` +
     `${eventUrl}`
@@ -641,6 +680,7 @@ function parseFirestoreYouthEntity(doc) {
     descriptionHe: f.descriptionHe?.stringValue?.trim() || undefined,
     locationEn: f.locationDetailsEn?.stringValue?.trim() || undefined,
     imageUrl: f.imageUrl?.stringValue?.trim() || undefined,
+    posterNoteEn: f.posterNoteEn?.stringValue?.trim() || undefined,
     volunteerParent: parseVolunteerNames(f),
   };
 }
@@ -698,7 +738,13 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false, timing = 'morni
 
   const caption = buildEnglishCaption(enrichedEv, timing);
 
+  let messageDispatched = false;
   await connectAndRun(async (sock) => {
+    if (messageDispatched) {
+      console.warn('⚠️ Duplicate callback invocation prevented in sendReminderViaPodkids.');
+      return;
+    }
+    messageDispatched = true;
     if (finalImageBuffer) {
       await sock.sendMessage(recipientJid, {
         image: finalImageBuffer,

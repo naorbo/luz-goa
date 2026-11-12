@@ -161,9 +161,9 @@ The teens are invited to kick things off with their first get-together — a mor
     titleHe: 'משחקי קופסה',
     titleEn: 'Strategy Board Games & Tournaments',
     descriptionHe:
-      'אחר צהריים של משחקי אסטרטגיה, קטאן, שחמט, משחקי שולחן וטורנירים מהנים.',
+      'אחר צהריים של משחקי אסטרטגיה, קטאן, שחמט, משחקי שולחן וטורנירים מהנים. מוזמנים להביא משחקים מהבית!',
     descriptionEn:
-      'Afternoon of board games, Catan, chess, strategy tabletop games, and friendly team competitions.',
+      'Afternoon of board games, Catan, chess, strategy tabletop games, and friendly team competitions. Feel free to bring board games from home!',
     area: 'Colomb',
     locationDetailsHe: 'מרכז הנוער קולום (ליד שייליש)',
     locationDetailsEn: 'Colomb Youth Center (near Shailish)',
@@ -182,8 +182,8 @@ The teens are invited to kick things off with their first get-together — a mor
     dayOfWeek: 4, // Thursday
     weekCycle: 'all',
     isYouthCenter: true,
-    startTime: '16:30',
-    endTime: '19:00',
+    startTime: '17:00',
+    endTime: '18:30',
   },
   // 6. Saturday 14/11/2026 - הקרנת סרט
   {
