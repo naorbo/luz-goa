@@ -1,19 +1,31 @@
-name: Youth Center 09:30 IST Morning WhatsApp Reminder
+name: Youth Center WhatsApp Reminders (09:30 Morning & 20:00 Evening-Before IST)
 
 on:
   schedule:
-    # 04:00 UTC is 09:30 AM IST (Asia/Kolkata, UTC+5:30 year-round)
-    - cron: '0 4 * * *'
+    # Off-peak fallback schedules (Asia/Kolkata = UTC+5:30):
+    # 04:05 UTC = 09:35 IST (Morning reminder for today's event)
+    - cron: '5 4 * * *'
+    # 14:23 UTC = 19:53 IST (Evening-before reminder for tomorrow's event)
+    - cron: '23 14 * * *'
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Execution mode (cron-once checks today in IST; sample sends next upcoming event)'
+        description: 'Execution mode (cron-once checks scheduled date; sample sends next upcoming event)'
         required: true
         default: 'cron-once'
         type: choice
         options:
           - cron-once
           - sample
+      timing:
+        description: 'Reminder slot (morning = today, evening = tomorrow, auto = infer from IST hour)'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - morning
+          - evening
       target_date_ist:
         description: 'Optional override date (YYYY-MM-DD) for cron-once mode'
         required: false
@@ -26,7 +38,7 @@ concurrency:
 
 jobs:
   send-morning-reminder:
-    name: Send 09:30 IST WhatsApp Reminder (Cloud)
+    name: Send Youth Center WhatsApp Reminder (Cloud)
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -57,12 +69,13 @@ jobs:
         env:
           WA_SESSION_GZ_B64: ${{ secrets.WA_SESSION_GZ_B64 }}
           TARGET_DATE_IST: ${{ inputs.target_date_ist }}
+          REMINDER_TIMING: ${{ inputs.timing || (github.event.schedule == '23 14 * * *' && 'evening' || (github.event.schedule == '5 4 * * *' && 'morning' || 'auto')) }}
         run: |
           MODE="${{ inputs.mode || 'cron-once' }}"
           if [ "$MODE" = "sample" ]; then
-            node scripts/send-youth-reminder-via-podkids.cjs --sample
+            node scripts/send-youth-reminder-via-podkids.cjs --sample --timing="$REMINDER_TIMING"
           else
-            node scripts/send-youth-reminder-via-podkids.cjs --cron-once
+            node scripts/send-youth-reminder-via-podkids.cjs --cron-once --timing="$REMINDER_TIMING"
           fi
 
       - name: Save updated WhatsApp cloud session & sent log

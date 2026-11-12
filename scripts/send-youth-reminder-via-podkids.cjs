@@ -39,7 +39,17 @@ function resolveSessionDir() {
     const filesMap = JSON.parse(rawJson);
     for (const [fileName, content] of Object.entries(filesMap)) {
       const targetPath = path.join(CLOUD_SESSION_DIR, fileName);
-      if (!fs.existsSync(targetPath)) {
+      let needsWrite = !fs.existsSync(targetPath);
+      if (!needsWrite) {
+        try {
+          const stat = fs.statSync(targetPath);
+          if (stat.size === 0) needsWrite = true;
+          else if (fileName === 'creds.json') JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+        } catch {
+          needsWrite = true;
+        }
+      }
+      if (needsWrite) {
         fs.writeFileSync(targetPath, content, 'utf8');
       }
     }
@@ -117,18 +127,19 @@ async function connectAndRun(fn) {
       sock.ev.on('connection.update', async (u) => {
         const { connection, lastDisconnect } = u;
         if (connection === 'open') {
+          let result;
+          let runErr = null;
           try {
-            const r = await fn(sock);
-            finish(null, r);
+            result = await fn(sock);
           } catch (e) {
-            finish(e);
-          } finally {
-            setTimeout(() => {
-              try {
-                sock.end();
-              } catch {}
-            }, 1500);
+            runErr = e;
           }
+          setTimeout(() => {
+            try {
+              sock.end();
+            } catch {}
+            setTimeout(() => finish(runErr, result), 1000);
+          }, 1500);
         } else if (connection === 'close') {
           const code = lastDisconnect?.error?.output?.statusCode;
           if (code === DisconnectReason.loggedOut) {
@@ -156,6 +167,7 @@ const YOUTH_CENTER_GROUP_JID = '120363430775078450@g.us';
 // STRICT LOCK: Keep 'test_dm_only' until user explicitly approves!
 const REMINDER_MODE = 'test_dm_only'; // 'test_dm_only' | 'live_group'
 const DAILY_REMINDER_TIME_IST = '09:30';
+const EVENING_REMINDER_TIME_IST = '20:00';
 const SENT_LOG_PATH = path.join(__dirname, '.youth-reminders-sent.json');
 
 const YOUTH_CENTER_EVENTS = [
@@ -353,6 +365,12 @@ const YOUTH_CENTER_EVENTS = [
   },
 ];
 
+function addDaysIso(dateStr, days) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return dt.toISOString().slice(0, 10);
+}
+
 function getIstNow() {
   const now = new Date();
   const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -367,10 +385,27 @@ function getIstNow() {
   const parts = fmt.formatToParts(now);
   const map = {};
   for (const p of parts) map[p.type] = p.value;
+  const dateStr = `${map.year}-${map.month}-${map.day}`;
   return {
-    dateStr: `${map.year}-${map.month}-${map.day}`,
+    dateStr,
+    tomorrowDateStr: addDaysIso(dateStr, 1),
     timeStr: `${map.hour}:${map.minute}`,
+    hour: Number(map.hour),
   };
+}
+
+function formatDayEnFromIso(dateStr) {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+    }).format(new Date(Date.UTC(y, m - 1, d)));
+  } catch {
+    return dateStr;
+  }
 }
 
 function getNextUpcomingEvent() {
@@ -446,15 +481,16 @@ function wrapTextLines(text, maxCharsPerLine = 30) {
 /**
  * Renders a crisp English Event Title, Date & Time, and Venue badge directly onto the image buffer.
  */
-async function renderEnglishPosterOverlay(rawImageBuffer, ev) {
+async function renderEnglishPosterOverlay(rawImageBuffer, ev, timing = 'morning') {
   const width = 1000;
   const height = 680;
 
   const titleEn = ev.titleEn || ev.titleHe || 'Youth Center Session';
   const titleLines = wrapTextLines(titleEn, 28);
   const timeRange = `${ev.startTime || '16:30'}${ev.endTime ? ` - ${ev.endTime}` : ''}`;
+  const prefix = timing === 'evening' ? 'TOMORROW  •  ' : 'TODAY  •  ';
   const dayLabel = (ev.dayEn || ev.date || 'Today').toUpperCase();
-  const scheduleBanner = `${dayLabel}  •  ${timeRange}`;
+  const scheduleBanner = `${prefix}${dayLabel}  •  ${timeRange}`;
   const locationText = ev.locationEn || 'Colomb Youth Center (near Shailish)  •  Ages 8-15';
 
   const titleSvgLines =
@@ -523,22 +559,28 @@ async function renderEnglishPosterOverlay(rawImageBuffer, ev) {
     .toBuffer();
 }
 
-function buildEnglishCaption(ev) {
+function buildEnglishCaption(ev, timing = 'morning') {
   const eventUrl = `${CANONICAL_SITE_URL}/?tab=youth_center&event=${encodeURIComponent(ev.id)}`;
   const titleEn = ev.titleEn || ev.titleHe || 'Youth Center Session';
   const descEn = ev.descriptionEn || ev.descriptionHe || titleEn;
   const locEn = ev.locationEn || 'Colomb Youth Center (near Shailish)';
   const timeStr = `${ev.startTime || '16:30'}${ev.endTime ? ` – ${ev.endTime}` : ''}`;
-  const dateLabel = ev.dayEn || ev.date || 'Today';
+  const dateLabel = ev.dayEn || formatDayEnFromIso(ev.date) || ev.date || 'Today';
 
   const volunteerLine = ev.volunteerParent
     ? `🤝 *Volunteer Parent on Duty:* ${ev.volunteerParent}\n`
     : `🙋 *Volunteer Parent:* We need a volunteer parent on duty for this session — sign up via the link below!\n`;
 
+  const isEvening = timing === 'evening';
+  const header = isEvening
+    ? `🌙 *Good evening dear parents! Tomorrow at Goa Teens House (Youth Center)* 🌿\n\n`
+    : `☀️ *Good morning dear parents! Goa Teens House (Youth Center) Reminder* 🌿\n\n`;
+  const whenLabel = isEvening ? `Tomorrow (${dateLabel})` : `Today (${dateLabel})`;
+
   return (
-    `☀️ *Good morning dear parents! Goa Teens House (Youth Center) Reminder* 🌿\n\n` +
+    header +
     `🎯 *${titleEn}*\n` +
-    `📅 *When:* ${dateLabel} · ${timeStr}\n` +
+    `📅 *When:* ${whenLabel} · ${timeStr}\n` +
     `📍 *Location:* ${locEn}\n` +
     volunteerLine +
     `\n📝 *About the session:*\n${descEn}\n\n` +
@@ -547,20 +589,15 @@ function buildEnglishCaption(ev) {
   );
 }
 
-function fetchVolunteerFromFirestore(eventId) {
+function fetchJsonHttps(url, timeoutMs = 5000) {
   return new Promise((resolve) => {
-    const url = `https://firestore.googleapis.com/v1/projects/my-luz-dc028/databases/(default)/documents/youth_center_events/${encodeURIComponent(
-      eventId
-    )}`;
-    const req = https.get(url, { timeout: 4000 }, (res) => {
+    const req = https.get(url, { timeout: timeoutMs }, (res) => {
       if (res.statusCode !== 200) return resolve(null);
       let raw = '';
       res.on('data', (c) => (raw += c));
       res.on('end', () => {
         try {
-          const doc = JSON.parse(raw);
-          const v = doc?.fields?.volunteerParent?.stringValue;
-          resolve(v && v.trim() ? v.trim() : null);
+          resolve(JSON.parse(raw));
         } catch {
           resolve(null);
         }
@@ -574,13 +611,73 @@ function fetchVolunteerFromFirestore(eventId) {
   });
 }
 
-async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
+function parseVolunteerNames(fields) {
+  const arr = fields?.volunteers?.arrayValue?.values;
+  if (Array.isArray(arr) && arr.length > 0) {
+    const names = arr
+      .map((item) => item?.mapValue?.fields?.name?.stringValue?.trim())
+      .filter(Boolean);
+    if (names.length > 0) return names.join(', ');
+  }
+  const legacy = fields?.volunteerParent?.stringValue?.trim();
+  return legacy || null;
+}
+
+function parseFirestoreYouthEntity(doc) {
+  const f = doc?.fields;
+  if (!f || !f.isYouthCenter?.booleanValue) return null;
+  const id = f.id?.stringValue?.trim();
+  if (!id || id === 'prod-wks-yc-colomb') return null;
+  const date = f.date?.stringValue?.trim();
+  return {
+    id,
+    date: date || undefined,
+    dayEn: date ? formatDayEnFromIso(date) : undefined,
+    startTime: f.startTime?.stringValue?.trim() || undefined,
+    endTime: f.endTime?.stringValue?.trim() || undefined,
+    titleEn: f.titleEn?.stringValue?.trim() || undefined,
+    titleHe: f.titleHe?.stringValue?.trim() || undefined,
+    descriptionEn: f.descriptionEn?.stringValue?.trim() || undefined,
+    descriptionHe: f.descriptionHe?.stringValue?.trim() || undefined,
+    locationEn: f.locationDetailsEn?.stringValue?.trim() || undefined,
+    imageUrl: f.imageUrl?.stringValue?.trim() || undefined,
+    volunteerParent: parseVolunteerNames(f),
+  };
+}
+
+async function getMergedYouthCenterEvents() {
+  const map = new Map(YOUTH_CENTER_EVENTS.map((ev) => [ev.id, { ...ev }]));
+  const res = await fetchJsonHttps(
+    'https://firestore.googleapis.com/v1/projects/my-luz-dc028/databases/(default)/documents/envs/prod/entities?pageSize=200'
+  );
+  for (const doc of res?.documents || []) {
+    const live = parseFirestoreYouthEntity(doc);
+    if (!live) continue;
+    const prev = map.get(live.id) || {};
+    const merged = { ...prev };
+    for (const [k, v] of Object.entries(live)) {
+      if (v !== undefined && v !== null && v !== '') merged[k] = v;
+    }
+    map.set(live.id, merged);
+  }
+  return Array.from(map.values());
+}
+
+async function fetchVolunteerFromFirestore(eventId) {
+  const url = `https://firestore.googleapis.com/v1/projects/my-luz-dc028/databases/(default)/documents/envs/prod/entities/${encodeURIComponent(
+    eventId
+  )}`;
+  const doc = await fetchJsonHttps(url, 4000);
+  return parseVolunteerNames(doc?.fields);
+}
+
+async function sendReminderViaPodkids(ev, { forceTestDm = false, timing = 'morning' } = {}) {
   if (!isLinked()) {
     throw new Error('PodKids WhatsApp session is not linked');
   }
 
   // Enrich with live volunteer parent from Firestore if available
-  const liveVolunteer = await fetchVolunteerFromFirestore(ev.id);
+  const liveVolunteer = ev.volunteerParent || (await fetchVolunteerFromFirestore(ev.id));
   const enrichedEv = liveVolunteer ? { ...ev, volunteerParent: liveVolunteer } : ev;
 
   // Strict safety check: never send to group while REMINDER_MODE !== 'live_group' or forceTestDm is true
@@ -593,13 +690,13 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
   if (enrichedEv.imageUrl && enrichedEv.imageUrl.startsWith('http')) {
     try {
       const rawBuffer = await fetchImageBuffer(enrichedEv.imageUrl);
-      finalImageBuffer = await renderEnglishPosterOverlay(rawBuffer, enrichedEv);
+      finalImageBuffer = await renderEnglishPosterOverlay(rawBuffer, enrichedEv, timing);
     } catch (err) {
       console.warn('⚠️ Could not process image overlay:', err.message);
     }
   }
 
-  const caption = buildEnglishCaption(enrichedEv);
+  const caption = buildEnglishCaption(enrichedEv, timing);
 
   await connectAndRun(async (sock) => {
     if (finalImageBuffer) {
@@ -614,59 +711,101 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false } = {}) {
     }
   });
 
+  // Allow PodKids shared whatsapp.js socket close (1500ms) + creds.json write to flush cleanly
+  await new Promise((r) => setTimeout(r, 2600));
+
   return {
     ok: true,
     eventId: enrichedEv.id,
     titleEn: enrichedEv.titleEn || enrichedEv.titleHe,
     recipientJid,
     mode: REMINDER_MODE,
+    timing,
     groupBlocked: recipientJid === SAFE_TEST_RECIPIENT_JID,
   };
 }
 
-// Mode 1: Immediate sample send (`node send-youth-reminder-via-podkids.cjs --sample`)
-if (process.argv.includes('--sample')) {
-  const sampleEv = getNextUpcomingEvent();
+function getCliArgValue(prefix) {
+  const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
+  return arg ? arg.slice(prefix.length + 1).trim() : '';
+}
+
+function resolveSlotTiming() {
+  const raw = (
+    getCliArgValue('--timing') ||
+    process.env.REMINDER_TIMING ||
+    'auto'
+  ).toLowerCase();
+  if (raw === 'morning' || raw === 'evening') return raw;
+  const { hour } = getIstNow();
+  return hour >= 15 ? 'evening' : 'morning';
+}
+
+async function dispatchScheduledSlot({ timing, targetDateOverride = '', forceResend = false }) {
+  const ist = getIstNow();
+  const defaultTargetDate = timing === 'evening' ? ist.tomorrowDateStr : ist.dateStr;
+  const targetDate = targetDateOverride.trim() || defaultTargetDate;
+  const label = timing === 'evening' ? 'evening-before (20:00 IST)' : 'morning (09:30 IST)';
+
   console.log(
-    `🎨 Generating English poster overlay & sending sample for: "${sampleEv.titleEn}" (${sampleEv.dayEn} · ${sampleEv.startTime}–${sampleEv.endTime})...`
+    `☁️ [Scheduler Check] Current IST: ${ist.dateStr} ${ist.timeStr} | Slot: ${timing} (${label}) | Target event date: ${targetDate}`
   );
-  sendReminderViaPodkids(sampleEv, { forceTestDm: true })
-    .then((res) => {
+
+  const allEvents = await getMergedYouthCenterEvents();
+  const matchingEvents = allEvents.filter((e) => e.date === targetDate);
+  if (matchingEvents.length === 0) {
+    console.log(`ℹ️ No Youth Center event scheduled for ${targetDate} (${timing} slot). Exiting cleanly.`);
+    return { sentCount: 0, targetDate, timing };
+  }
+
+  const sentLog = loadSentLog();
+  let sentCount = 0;
+  for (const ev of matchingEvents) {
+    const key = `${timing}_${targetDate}_${ev.id}`;
+    if (sentLog[key] && !forceResend) {
+      console.log(`⏭️ Already sent ${timing} reminder for ${key} at ${sentLog[key]}. Skipping.`);
+      continue;
+    }
+    console.log(`⏰ Sending ${label} English reminder for "${ev.titleEn}" (${targetDate})...`);
+    const res = await sendReminderViaPodkids(ev, { timing });
+    sentLog[key] = new Date().toISOString();
+    saveSentLog(sentLog);
+    sentCount++;
+    console.log(`✅ Sent ${timing} reminder for "${ev.titleEn}" to ${res.recipientJid} (mode: ${res.mode})`);
+  }
+  return { sentCount, targetDate, timing };
+}
+
+// Mode 1: Immediate sample send (`node send-youth-reminder-via-podkids.cjs --sample [--timing=morning|evening]`)
+if (process.argv.includes('--sample')) {
+  const timing = getCliArgValue('--timing') === 'evening' ? 'evening' : 'morning';
+  (async () => {
+    try {
+      const allEvents = await getMergedYouthCenterEvents();
+      const { dateStr } = getIstNow();
+      const sampleEv =
+        allEvents.find((e) => e.date >= dateStr) || getNextUpcomingEvent();
+      console.log(
+        `🎨 Generating English poster overlay (${timing}) & sending sample for: "${sampleEv.titleEn}" (${sampleEv.dayEn} · ${sampleEv.startTime}–${sampleEv.endTime})...`
+      );
+      const res = await sendReminderViaPodkids(sampleEv, { forceTestDm: true, timing });
       console.log(
         `✅ Sent English sample reminder (with overlaid image & ${CANONICAL_SITE_URL} link) to ${res.recipientJid}`
       );
       process.exit(0);
-    })
-    .catch((err) => {
+    } catch (err) {
       console.error('❌ Error:', err.message);
       process.exit(1);
-    });
+    }
+  })();
 } else if (process.argv.includes('--cron-once')) {
-  // Mode 2: Cloud Scheduled Run (GitHub Actions 09:30 IST — runs even when local PC is turned off)
+  // Mode 2: Cloud Scheduled Run (GitHub Actions 09:30 IST morning / 20:00 IST evening-before)
   (async () => {
     try {
-      const { dateStr, timeStr } = getIstNow();
-      const targetDate = (process.env.TARGET_DATE_IST || '').trim() || dateStr;
-      console.log(`☁️ [Cloud Cron Check] Current IST: ${dateStr} ${timeStr} | Checking events for date: ${targetDate}`);
-      const todaysEvents = YOUTH_CENTER_EVENTS.filter((e) => e.date === targetDate);
-      if (todaysEvents.length === 0) {
-        console.log(`ℹ️ No Youth Center event scheduled for ${targetDate}. Exiting cleanly.`);
-        process.exit(0);
-      }
-
-      const sentLog = loadSentLog();
-      for (const ev of todaysEvents) {
-        const key = `${targetDate}_${ev.id}`;
-        if (sentLog[key] && !process.env.FORCE_RESEND) {
-          console.log(`⏭️ Already sent reminder for ${key} at ${sentLog[key]}. Skipping.`);
-          continue;
-        }
-        console.log(`⏰ Sending 09:30 IST English morning reminder for "${ev.titleEn}" (${targetDate})...`);
-        const res = await sendReminderViaPodkids(ev);
-        sentLog[key] = new Date().toISOString();
-        saveSentLog(sentLog);
-        console.log(`✅ Sent reminder for "${ev.titleEn}" to ${res.recipientJid} (mode: ${res.mode})`);
-      }
+      const timing = resolveSlotTiming();
+      const targetDateOverride = getCliArgValue('--date') || process.env.TARGET_DATE_IST || '';
+      const forceResend = process.argv.includes('--force') || Boolean(process.env.FORCE_RESEND);
+      await dispatchScheduledSlot({ timing, targetDateOverride, forceResend });
       process.exit(0);
     } catch (err) {
       console.error('❌ [Cloud Cron Error]:', err.message);
@@ -674,7 +813,7 @@ if (process.argv.includes('--sample')) {
     }
   })();
 } else if (process.argv.includes('--daemon')) {
-  // Mode 2: Lightweight HTTP + 09:30 IST Cron Daemon using PodKids on-demand connectAndRun
+  // Mode 3: Lightweight HTTP + 09:30 IST Morning & 20:00 IST Evening-Before Cron Daemon
   const PORT = process.env.PORT || 8080;
 
   const server = http.createServer(async (req, res) => {
@@ -702,7 +841,8 @@ if (process.argv.includes('--sample')) {
           safeTestRecipient: SAFE_TEST_RECIPIENT_PHONE,
           futureTargetGroup: YOUTH_CENTER_GROUP_NAME,
           futureTargetGroupJid: YOUTH_CENTER_GROUP_JID,
-          scheduleTimeIst: DAILY_REMINDER_TIME_IST,
+          morningTimeIst: DAILY_REMINDER_TIME_IST,
+          eveningBeforeTimeIst: EVENING_REMINDER_TIME_IST,
           currentIst: `${dateStr} ${timeStr}`,
         })
       );
@@ -719,7 +859,8 @@ if (process.argv.includes('--sample')) {
             parsed.event ||
             YOUTH_CENTER_EVENTS.find((e) => e.id === parsed.eventId) ||
             getNextUpcomingEvent();
-          const result = await sendReminderViaPodkids(ev, { forceTestDm: true });
+          const timing = parsed.timing === 'evening' ? 'evening' : 'morning';
+          const result = await sendReminderViaPodkids(ev, { forceTestDm: true, timing });
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify(result));
         } catch (err) {
@@ -744,36 +885,27 @@ if (process.argv.includes('--sample')) {
     }
 
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Youth Center Morning Reminder Bot (PodKids WhatsApp Connection - English + Image Overlay) is running.');
+    res.end('Youth Center Reminder Bot (Morning 09:30 & Evening-Before 20:00 IST) is running.');
   });
 
   server.listen(PORT, () => {
     console.log(`🚀 Youth Center Reminder Bot (PodKids WhatsApp) listening on http://localhost:${PORT}`);
     console.log(`🔒 Mode: ${REMINDER_MODE} -> Sending ONLY to ${SAFE_TEST_RECIPIENT_PHONE} (Group "${YOUTH_CENTER_GROUP_NAME}" is locked)`);
     console.log(`🌐 Canonical URL: ${CANONICAL_SITE_URL}`);
-    console.log(`⏰ Daily schedule: ${DAILY_REMINDER_TIME_IST} IST (Asia/Kolkata)`);
+    console.log(`⏰ Daily schedules (Asia/Kolkata): Morning ${DAILY_REMINDER_TIME_IST} IST & Evening-before ${EVENING_REMINDER_TIME_IST} IST`);
   });
 
-  // Check every 45 seconds if it is 09:30 IST on an event day
+  // Check every 45 seconds for 09:30 IST (today) or 20:00 IST (tomorrow)
   setInterval(async () => {
     try {
-      const { dateStr, timeStr } = getIstNow();
-      if (timeStr !== DAILY_REMINDER_TIME_IST) return;
-
-      const todaysEvents = YOUTH_CENTER_EVENTS.filter((e) => e.date === dateStr);
-      if (todaysEvents.length === 0) return;
-
-      const sentLog = loadSentLog();
-      for (const ev of todaysEvents) {
-        const key = `${dateStr}_${ev.id}`;
-        if (sentLog[key]) continue;
-        sentLog[key] = new Date().toISOString();
-        saveSentLog(sentLog);
-        console.log(`⏰ [09:30 IST] Sending English morning reminder for ${ev.titleEn}...`);
-        await sendReminderViaPodkids(ev);
+      const { timeStr } = getIstNow();
+      if (timeStr === DAILY_REMINDER_TIME_IST) {
+        await dispatchScheduledSlot({ timing: 'morning' });
+      } else if (timeStr === EVENING_REMINDER_TIME_IST) {
+        await dispatchScheduledSlot({ timing: 'evening' });
       }
     } catch (err) {
-      console.error('❌ [09:30 Scheduler Error]:', err.message);
+      console.error('❌ [Scheduler Error]:', err.message);
     }
   }, 45 * 1000);
 }
