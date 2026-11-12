@@ -538,6 +538,14 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
           onClearInitialEvent?.();
           return;
         }
+        if (params.get('action') === 'volunteer' || params.get('volunteer')) {
+          const match = youthEvents.find((e) => e.id === initialEventId);
+          if (match) {
+            setSelectedEventForVolunteer(match);
+            onClearInitialEvent?.();
+            return;
+          }
+        }
       }
       const match = youthEvents.find((e) => e.id === initialEventId);
       if (match) {

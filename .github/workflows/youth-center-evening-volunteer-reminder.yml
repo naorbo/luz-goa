@@ -1,0 +1,53 @@
+name: Youth Center Evening Volunteer Parent Reminder (20:00 IST)
+
+on:
+  schedule:
+    # 14:30 UTC = 20:00 IST (Asia/Kolkata UTC+5:30)
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Send mode (live = Youth center parents group, test_dm = test phone only, dry_run = log only)'
+        required: true
+        default: 'live'
+        type: choice
+        options:
+          - live
+          - test_dm
+          - dry_run
+
+concurrency:
+  group: youth-center-volunteer-reminder
+  cancel-in-progress: false
+
+jobs:
+  check-and-send-volunteer-reminder:
+    name: Check & Send Evening Volunteer Reminder
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Baileys for WhatsApp
+        run: |
+          npm install --no-save --no-audit --no-fund @whiskeysockets/baileys@7.0.0-rc14
+
+      - name: Run Volunteer Reminder Bot
+        env:
+          LUZ_WA_SESSION_GZ_B64: ${{ secrets.LUZ_WA_SESSION_GZ_B64 || secrets.WA_SESSION_GZ_B64 }}
+        run: |
+          MODE="${{ inputs.mode || 'live' }}"
+          if [ "$MODE" = "test_dm" ]; then
+            node scripts/send-youth-volunteer-reminder.cjs --test-dm
+          elif [ "$MODE" = "dry_run" ]; then
+            node scripts/send-youth-volunteer-reminder.cjs --dry-run
+          else
+            node scripts/send-youth-volunteer-reminder.cjs
+          fi
