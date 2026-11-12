@@ -72,7 +72,7 @@ jobs:
 
       - name: Run Youth Center WhatsApp Reminder
         env:
-          WA_SESSION_GZ_B64: ${{ secrets.WA_SESSION_GZ_B64 }}
+          WA_SESSION_GZ_B64: ${{ secrets.LUZ_WA_SESSION_GZ_B64 || secrets.WA_SESSION_GZ_B64 }}
           TARGET_DATE_IST: ${{ inputs.target_date_ist }}
           FORCE_RESEND: ${{ inputs.force_resend }}
           REMINDER_TIMING: ${{ inputs.timing || (github.event.schedule == '23 14 * * *' && 'evening' || (github.event.schedule == '5 4 * * *' && 'morning' || 'auto')) }}

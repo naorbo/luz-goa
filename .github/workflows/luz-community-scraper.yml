@@ -1,0 +1,36 @@
+name: LUZ Goa Community WhatsApp Scraper (Auto-Ingestion)
+
+on:
+  schedule:
+    # Runs 4 times a day (UTC 03:00, 09:00, 15:00, 21:00 = 08:30, 14:30, 20:30, 02:30 IST)
+    - cron: '0 3,9,15,21 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: luz-community-whatsapp-scraper
+  cancel-in-progress: false
+
+jobs:
+  scrape-events:
+    name: Scrape Goa Community WhatsApp Events
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Baileys for WhatsApp Scraper
+        run: |
+          npm install --no-save --no-audit --no-fund @whiskeysockets/baileys@7.0.0-rc14
+
+      - name: Run LUZ Community Event Ingestion
+        env:
+          LUZ_WA_SESSION_GZ_B64: ${{ secrets.LUZ_WA_SESSION_GZ_B64 }}
+        run: |
+          node scripts/luz-community-scraper.cjs

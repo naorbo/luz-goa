@@ -24,6 +24,7 @@ try {
   sharp = require('C:\\podkids\\node_modules\\sharp');
 }
 
+const LOCAL_LUZ_SESSION = path.resolve(process.cwd(), '.wa-luz-session');
 const LOCAL_PODKIDS_SESSION = 'C:\\podkids\\.wa-session';
 const CLOUD_SESSION_DIR = path.resolve(process.cwd(), '.wa-session-cloud');
 
@@ -31,29 +32,31 @@ function resolveSessionDir() {
   if (process.env.WA_SESSION_DIR) {
     return path.resolve(process.env.WA_SESSION_DIR);
   }
-  if (process.env.WA_SESSION_GZ_B64) {
+  const rawB64 = process.env.LUZ_WA_SESSION_GZ_B64 || process.env.WA_SESSION_GZ_B64;
+  if (rawB64) {
     fs.mkdirSync(CLOUD_SESSION_DIR, { recursive: true });
-    const rawJson = zlib
-      .gunzipSync(Buffer.from(process.env.WA_SESSION_GZ_B64.trim(), 'base64'))
-      .toString('utf8');
-    const filesMap = JSON.parse(rawJson);
-    for (const [fileName, content] of Object.entries(filesMap)) {
-      const targetPath = path.join(CLOUD_SESSION_DIR, fileName);
-      let needsWrite = !fs.existsSync(targetPath);
-      if (!needsWrite) {
-        try {
-          const stat = fs.statSync(targetPath);
-          if (stat.size === 0) needsWrite = true;
-          else if (fileName === 'creds.json') JSON.parse(fs.readFileSync(targetPath, 'utf8'));
-        } catch {
-          needsWrite = true;
+    const buf = Buffer.from(rawB64.trim(), 'base64');
+    let unpacked = false;
+    try {
+      const tarPath = path.resolve('.tmp-session.tar.gz');
+      fs.writeFileSync(tarPath, buf);
+      require('node:child_process').execSync(`tar -xzf "${tarPath}" -C "${CLOUD_SESSION_DIR}"`);
+      fs.rmSync(tarPath, { force: true });
+      unpacked = true;
+    } catch {}
+    if (!unpacked) {
+      try {
+        const rawJson = zlib.gunzipSync(buf).toString('utf8');
+        const filesMap = JSON.parse(rawJson);
+        for (const [fileName, content] of Object.entries(filesMap)) {
+          fs.writeFileSync(path.join(CLOUD_SESSION_DIR, fileName), content, 'utf8');
         }
-      }
-      if (needsWrite) {
-        fs.writeFileSync(targetPath, content, 'utf8');
-      }
+      } catch {}
     }
     return CLOUD_SESSION_DIR;
+  }
+  if (fs.existsSync(path.join(LOCAL_LUZ_SESSION, 'creds.json'))) {
+    return LOCAL_LUZ_SESSION;
   }
   if (fs.existsSync(path.join(CLOUD_SESSION_DIR, 'creds.json'))) {
     return CLOUD_SESSION_DIR;
@@ -72,16 +75,15 @@ function isLinked() {
 
 async function connectAndRun(fn) {
   const sessionDir = resolveSessionDir();
-  if (sessionDir === LOCAL_PODKIDS_SESSION && fs.existsSync('C:\\podkids\\scripts\\lib\\whatsapp.js')) {
-    const podkidsWa = require('C:\\podkids\\scripts\\lib\\whatsapp.js');
-    return podkidsWa.connectAndRun(fn);
-  }
-
   let baileys;
   try {
     baileys = require('@whiskeysockets/baileys');
   } catch {
-    baileys = require('C:\\podkids\\node_modules\\@whiskeysockets\\baileys');
+    try {
+      baileys = require(path.resolve('services/whatsapp-scraper/node_modules/@whiskeysockets/baileys'));
+    } catch {
+      baileys = require('C:\\podkids\\node_modules\\@whiskeysockets\\baileys');
+    }
   }
 
   const makeWASocket = baileys.default || baileys;

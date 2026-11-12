@@ -23,5 +23,8 @@ ui-debug.log*
 services/whatsapp-scraper/auth_info_baileys/
 services/whatsapp-scraper/data/
 .wa-session-cloud/
+.wa-luz-session/
+.wa-*-session/
+*.b64
 scripts/.youth-reminders-sent.json
 
