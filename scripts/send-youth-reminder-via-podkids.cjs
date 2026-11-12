@@ -850,7 +850,9 @@ if (process.argv.includes('--sample')) {
     try {
       const timing = resolveSlotTiming();
       const targetDateOverride = getCliArgValue('--date') || process.env.TARGET_DATE_IST || '';
-      const forceResend = process.argv.includes('--force') || Boolean(process.env.FORCE_RESEND);
+      const forceResend =
+        process.argv.includes('--force') ||
+        ['1', 'true', 'yes'].includes(String(process.env.FORCE_RESEND || '').trim().toLowerCase());
       await dispatchScheduledSlot({ timing, targetDateOverride, forceResend });
       process.exit(0);
     } catch (err) {
