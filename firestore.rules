@@ -76,7 +76,7 @@ service cloud.firestore {
         && request.resource.data.priceAmount is number
         && request.resource.data.priceAmount >= 0
         && request.resource.data.priceAmount <= 500000
-        && request.resource.data.priceCurrency in ['INR', 'ILS', 'USD', 'FREE']
+        && request.resource.data.priceCurrency in ['INR', 'ILS', 'USD', 'FREE', 'CONTACT']
         && request.resource.data.keys().size() <= 40;
       allow update: if isValidEnv(env) && (
         isAdmin() ||
@@ -87,8 +87,19 @@ service cloud.firestore {
          && request.resource.data.hostName == resource.data.hostName
          && request.resource.data.hostPhone == resource.data.hostPhone
          && request.resource.data.priceAmount == resource.data.priceAmount
-         && request.resource.data.rsvpCount >= resource.data.rsvpCount
-         && request.resource.data.rsvpCount <= resource.data.rsvpCount + 10)
+         && request.resource.data.rsvpCount >= resource.data.get('rsvpCount', 0)
+         && request.resource.data.rsvpCount <= resource.data.get('rsvpCount', 0) + 10) ||
+        // Parents signing up as volunteers on Youth Center events can update volunteers & updatedAt
+        (request.resource.data.id == resource.data.id
+         && request.resource.data.type == resource.data.type
+         && request.resource.data.titleHe == resource.data.titleHe
+         && request.resource.data.hostName == resource.data.hostName
+         && request.resource.data.hostPhone == resource.data.hostPhone
+         && request.resource.data.priceAmount == resource.data.priceAmount
+         && request.resource.data.get('isYouthCenter', false) == true
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['volunteers', 'updatedAt'])
+         && request.resource.data.volunteers is list
+         && request.resource.data.volunteers.size() <= 20)
       );
       allow delete: if isValidEnv(env) && isAdmin();
     }

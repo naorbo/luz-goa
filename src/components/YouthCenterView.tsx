@@ -487,10 +487,12 @@ export const YouthCenterView: React.FC<YouthCenterViewProps> = ({
       }
       const existingTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
       const ovTime = ov.updatedAt ? new Date(ov.updatedAt).getTime() : 0;
+      const ovVols = ov.volunteers && ov.volunteers.length > 0 ? ov.volunteers : undefined;
+      const exVols = existing.volunteers && existing.volunteers.length > 0 ? existing.volunteers : undefined;
       if (ovTime >= existingTime) {
-        map.set(ov.id, { ...existing, ...ov, volunteers: ov.volunteers ?? existing.volunteers });
+        map.set(ov.id, { ...existing, ...ov, volunteers: ovVols ?? exVols ?? [] });
       } else {
-        map.set(ov.id, { ...ov, ...existing, volunteers: existing.volunteers ?? ov.volunteers });
+        map.set(ov.id, { ...ov, ...existing, volunteers: exVols ?? ovVols ?? [] });
       }
     });
 

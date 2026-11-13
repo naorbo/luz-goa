@@ -16,6 +16,16 @@
 ---
 
 ## משימות שהושלמו לאחרונה (Completed)
+- [x] **2026-11-13 | שדרוג ה-Daemon לענן (24/7 גם כשהמחשב סגור), שרת HTTP ו-Dockerfile (`Dockerfile`, `render.yaml`, `scripts/luz-community-daemon.cjs`):**
+  - הטמעת שרת HTTP מובנה (`GET /health`, `GET /summary`, `GET /summary.json`) המציג סיכום יומי חי בדפדפן ומאפשר שמירת השרת ער ב-Free Tier.
+  - תמיכה מלאה בטעינת סשן וואטסאפ מתוך משתנה סביבה (`LUZ_WA_SESSION_GZ_B64`) ללא תלות בקבצים מקומיים.
+  - יצירת `Dockerfile` מותאם ל-Docker / Render / Fly / VPS וקובץ `render.yaml` לפריסה מיידית ב-1 קליק בעלות $0.
+  - סקריפט אריזה ייעודי `scripts/pack-session.cjs` שמפיק את מחרוזת ה-Base64 של הסשן (`.wa-luz-session.b64`).
+- [x] **2026-11-13 | הקמת Daemon מאזין 24/7 לקהילות דרום גואה וסקריפט סיכום יומי (`scripts/luz-community-daemon.cjs`, `scripts/luz-community-summary.cjs`):**
+  - תהליך רקע (Daemon) מאזין קבוע ל-6 קבוצות קהילה (כולל 'הקהילה! חיים בדרום גואה❤', SGC1, House Hunt Canacona, Parents with Children).
+  - שמירה מקומית אטומית ב-SQLite (`data/community_messages.sqlite`) ו-JSONL יומי לפי קטגוריות (דיור, טרמפים/משלוחים, אירועים, ילדים, מרקטפלייס, שיח כללי).
+  - סקריפט סיכום יומי מובנה (`node scripts/luz-community-summary.cjs`) בפורמט Markdown בעברית.
+  - הקפדה מחמירה על Guardrails: 100% Read-Only, ללא שליחת הודעות, ובידוד מוחלט של מרכז הנוער.
 - [x] **2026-11-13 | חיבור 3 קבוצות וואטסאפ חדשות לסקרייפר של LUZ (`cd9d21d`):**
   - `(SGC1) South Goa Community Collective` (`120363429760018768@g.us`) -> אירועים וסדנאות
   - `Parents with Children in South Goa Group` (`120363182876398895@g.us`) -> פעילויות ילדים ומשפחה
@@ -33,6 +43,10 @@
   - חיזוק מילות מפתח בעברית ב-`index.html` ובניית `docs/` בהצלחה (`tsc` + `vite build`).
 - [x] **2026-11-13 | פריסה חיה ל-Firebase Hosting (`https://my-luz-dc028.web.app`):**
   - הועלו 10 קבצים מתוך `docs/` ושוחררה גרסת Production חדשה (`Deploy complete`).
+- [x] **2026-11-13 | תיקון סנכרון ותצוגת הורים מתנדבים במרכז הנוער (`firestore.rules`, `YouthCenterView.tsx`, `youthCenterEvents.ts`):**
+  - הוסרה דריסת `volunteers` מקומית על ידי `eventOverrides` ריקים ב-`YouthCenterView.tsx`.
+  - נפתחה הרשאה מאובטחת ב-`firestore.rules` להורים לעדכן `volunteers` באירועי מרכז הנוער ונפרסה ל-Firebase.
+  - הוטמעו השיבוצים של Sivan Ben Namer (`12.11`) ו-Smadar Hersckovitz (`19.11`) גם ב-`youthCenterEvents.ts` (ונבדק שהם קיימים ב-Firestore).
 
 ---
 
