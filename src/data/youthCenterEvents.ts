@@ -317,15 +317,6 @@ The teens are invited to kick things off with their first get-together — a mor
     isYouthCenter: true,
     startTime: '16:30',
     endTime: '19:00',
-    volunteers: [
-      {
-        id: 'vol-1794479701771',
-        name: 'Smadar Hersckovitz',
-        phone: '9721234567',
-        role: 'Volunteer Parent on Duty',
-        createdAt: '2026-11-12T10:35:01.771Z',
-      },
-    ],
   },
   // 10. Saturday 21/11/2026 - הקרנת סרט
   {
