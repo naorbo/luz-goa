@@ -1,12 +1,9 @@
-name: Youth Center WhatsApp Reminders (09:30 Morning & 20:00 Evening-Before IST)
+name: Youth Center WhatsApp Morning Reminder (09:30 IST)
 
 on:
   schedule:
-    # Off-peak fallback schedules (Asia/Kolkata = UTC+5:30):
     # 04:05 UTC = 09:35 IST (Morning reminder for today's event)
     - cron: '5 4 * * *'
-    # 14:23 UTC = 19:53 IST (Evening-before reminder for tomorrow's event)
-    - cron: '23 14 * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -18,12 +15,11 @@ on:
           - cron-once
           - sample
       timing:
-        description: 'Reminder slot (morning = today, evening = tomorrow, auto = infer from IST hour)'
+        description: 'Reminder slot'
         required: true
-        default: 'auto'
+        default: 'morning'
         type: choice
         options:
-          - auto
           - morning
           - evening
       target_date_ist:
@@ -75,7 +71,7 @@ jobs:
           WA_SESSION_GZ_B64: ${{ secrets.LUZ_WA_SESSION_GZ_B64 || secrets.WA_SESSION_GZ_B64 }}
           TARGET_DATE_IST: ${{ inputs.target_date_ist }}
           FORCE_RESEND: ${{ inputs.force_resend }}
-          REMINDER_TIMING: ${{ inputs.timing || (github.event.schedule == '23 14 * * *' && 'evening' || (github.event.schedule == '5 4 * * *' && 'morning' || 'auto')) }}
+          REMINDER_TIMING: ${{ inputs.timing || 'morning' }}
         run: |
           MODE="${{ inputs.mode || 'cron-once' }}"
           if [ "$MODE" = "sample" ]; then

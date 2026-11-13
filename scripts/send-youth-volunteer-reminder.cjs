@@ -440,6 +440,26 @@ async function main() {
   console.log(`Mode: ${isDryRun ? 'DRY RUN' : isTestDm ? `TEST DM (${SAFE_TEST_PHONE})` : `LIVE GROUP (${YOUTH_PARENTS_GROUP_JID})`}`);
   console.log('============================================================');
 
+  const { date: todayIst, hours: istHours, time: istTime } = getIstDateAndTime();
+
+  // STRICT QUIET HOURS LOCK: Never send messages to the WhatsApp group during night hours (22:00 - 08:00 IST)
+  // Protects against GitHub Actions runner delays where a job queued at 20:00 executes at 03:00 AM!
+  const isNightTime = istHours >= 22 || istHours < 8;
+  if (isNightTime && !isDryRun && !args.includes('--force-ignore-quiet-hours')) {
+    console.warn(
+      `🛑 [QUIET HOURS LOCK] Current time in India is ${istTime} (IST). Night hours (22:00-08:00) active. ABORTING to prevent disturbing parents!`
+    );
+    process.exit(0);
+  }
+
+  // Evening volunteer reminder should only be sent between 18:00 and 22:00 IST
+  if ((istHours < 18 || istHours >= 22) && !isDryRun && !isTestDm && !args.includes('--force-ignore-quiet-hours')) {
+    console.warn(
+      `🛑 [TIME WINDOW LOCK] Evening reminder executed at ${istTime} IST (outside 18:00-22:00 window). ABORTING.`
+    );
+    process.exit(0);
+  }
+
   const { upcoming, needingVolunteers } = await getUpcomingEventsNeedingVolunteers(4);
 
   if (needingVolunteers.length === 0) {

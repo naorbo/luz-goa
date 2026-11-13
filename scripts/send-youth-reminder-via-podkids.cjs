@@ -799,6 +799,34 @@ function resolveSlotTiming() {
 
 async function dispatchScheduledSlot({ timing, targetDateOverride = '', forceResend = false }) {
   const ist = getIstNow();
+  const currentHour = ist.hour;
+
+  // STRICT QUIET HOURS LOCK: Never send messages to the WhatsApp group during night hours (22:00 - 08:00 IST)
+  // Protects against GitHub Actions runner delays where a job queued at 20:00 executes at 03:00 AM!
+  const isNightTime = currentHour >= 22 || currentHour < 8;
+  if (isNightTime && !process.argv.includes('--force-ignore-quiet-hours')) {
+    console.warn(
+      `🛑 [QUIET HOURS LOCK] Current time in India is ${ist.timeStr} (IST). Night hours (22:00-08:00) active. ABORTING to prevent disturbing parents!`
+    );
+    return { sentCount: 0, targetDate: '', timing, abortedDueToQuietHours: true };
+  }
+
+  // Strict time window per slot:
+  // Morning slot (09:30): only allow execution between 08:00 and 13:00 IST
+  // Evening slot (20:00): only allow execution between 18:00 and 22:00 IST
+  if (timing === 'morning' && (currentHour < 8 || currentHour >= 13)) {
+    console.warn(
+      `🛑 [TIME WINDOW LOCK] Morning reminder executed at ${ist.timeStr} IST (outside 08:00-13:00 window). ABORTING.`
+    );
+    return { sentCount: 0, targetDate: '', timing, abortedDueToTimeWindow: true };
+  }
+  if (timing === 'evening' && (currentHour < 18 || currentHour >= 22)) {
+    console.warn(
+      `🛑 [TIME WINDOW LOCK] Evening reminder executed at ${ist.timeStr} IST (outside 18:00-22:00 window). ABORTING.`
+    );
+    return { sentCount: 0, targetDate: '', timing, abortedDueToTimeWindow: true };
+  }
+
   const defaultTargetDate = timing === 'evening' ? ist.tomorrowDateStr : ist.dateStr;
   const targetDate = targetDateOverride.trim() || defaultTargetDate;
   const label = timing === 'evening' ? 'evening-before (20:00 IST)' : 'morning (09:30 IST)';
