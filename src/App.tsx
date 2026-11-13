@@ -1275,8 +1275,8 @@ export function App() {
               </button>
               <div className="text-[11px] text-muted text-center">
                 {isHe
-                  ? `התחברות רשמית עבור: ${AUTHORIZED_ADMIN_EMAIL}`
-                  : `Authorized account: ${AUTHORIZED_ADMIN_EMAIL}`}
+                  ? 'התחברות מורשית לצוות הניהול דרך Google'
+                  : 'Authorized team Google account sign-in'}
               </div>
             </div>
           </div>

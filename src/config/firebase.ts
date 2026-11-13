@@ -166,7 +166,10 @@ export function getLuzFirestore(): { app: FirebaseApp; db: Firestore; auth: Auth
 
 export function isAuthorizedAdminUser(user: User | null): boolean {
   if (!user || !user.email) return false;
-  return user.email.trim().toLowerCase() === AUTHORIZED_ADMIN_EMAIL && user.emailVerified !== false;
+  return (
+    AUTHORIZED_ADMIN_EMAILS.includes(user.email.trim().toLowerCase()) &&
+    user.emailVerified !== false
+  );
 }
 
 export function subscribeToAdminAuth(
@@ -218,8 +221,8 @@ export async function signInAsLuzAdmin(): Promise<{
       return {
         ok: false,
         email,
-        errorHe: `גישה נדחתה (${email}). רק החשבון המורשה (${AUTHORIZED_ADMIN_EMAIL}) רשאי להיכנס לממשק הניהול ולסביבת הטסט.`,
-        errorEn: `Access denied (${email}). Only ${AUTHORIZED_ADMIN_EMAIL} is authorized to access Admin & TEST.`,
+        errorHe: `גישה נדחתה (${email}). רק חשבונות צוות הניהול המורשים רשאים להיכנס לממשק העריכה והניהול.`,
+        errorEn: `Access denied (${email}). Only authorized team accounts may access Admin & Event Editing.`,
       };
     }
 

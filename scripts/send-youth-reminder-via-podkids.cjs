@@ -734,7 +734,10 @@ async function sendReminderViaPodkids(ev, { forceTestDm = false, timing = 'morni
       : YOUTH_CENTER_GROUP_JID;
 
   let finalImageBuffer = null;
-  if (enrichedEv.imageUrl && enrichedEv.imageUrl.startsWith('http')) {
+  if (
+    enrichedEv.imageUrl &&
+    (enrichedEv.imageUrl.startsWith('http') || enrichedEv.imageUrl.startsWith('data:image/'))
+  ) {
     try {
       const rawBuffer = await fetchImageBuffer(enrichedEv.imageUrl);
       finalImageBuffer = await renderEnglishPosterOverlay(rawBuffer, enrichedEv, timing);
