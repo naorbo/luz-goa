@@ -31,10 +31,11 @@
   - סנכרון דינמי של `<link rel="canonical">` ו-`og:url` במעבר בין טאבים + סכמת `FAQPage` דו-לשונית.
   - הוספת `?tab=beit_bina`, תגי `hreflang`, ורענון תאריכי `lastmod` ב-`public/sitemap.xml`.
   - חיזוק מילות מפתח בעברית ב-`index.html` ובניית `docs/` בהצלחה (`tsc` + `vite build`).
+- [x] **2026-11-13 | פריסה חיה ל-Firebase Hosting (`https://my-luz-dc028.web.app`):**
+  - הועלו 10 קבצים מתוך `docs/` ושוחררה גרסת Production חדשה (`Deploy complete`).
 
 ---
 
 ## משימות פתוחות ומעקב שוטף (Backlog / Active)
 - [ ] **אישור וסינון פריטים ב-`moderation_queue`:** סקירה שוטפת דרך פאנל האדמין (`luzschedu@gmail.com`) של מודעות הדירות (`House Hunt Canacona`), סדנאות הילדים ואירועי הקהילה והעברתם ל-`approved`.
 - [ ] **הגדלת היצע הספקים המאומתים ב-`businesses` (יעד 50 ספקים):** כרגע יש 32 עסקים ב-`prodData.ts` (22 בפטנם, 10 בפאלולם, **0 באגונדה**). יש להשלים 18 ספקים נוספים בדגש על אגונדה ודיור/וילות (יישום מודל "פרופיל מתנה" 1-על-1 + קוד `#LUZ-XXXX`).
-- [ ] **פריסה חיה ל-Firebase Hosting (`firebase deploy --only hosting`):** פרסום הבנייה המעודכנת אל `https://my-luz-dc028.web.app/`.
