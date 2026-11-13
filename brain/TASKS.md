@@ -27,14 +27,14 @@
   - בדיקת 3–4 אירועים קרובים ללא מתנדבים ושליחת תזכורת ערב בקבוצת `Youth center parents` עם קישור ישיר לרישום באתר.
 - [x] **2026-11-13 | הגדרת כללי סשן אוטומטיים (`GEMINI.md`):**
   - הפעלה אוטומטית של סוכני הצמיחה בכל תחילת סשן ועדכון אוטומטי של `brain/TASKS.md` ו-`brain/memory/MEMORY.md` בכל סיום משימה.
+- [x] **2026-11-13 | שדרוג SEO ותשתית אורגנית (`seoAndSchema.ts`, `public/sitemap.xml`, `index.html`):**
+  - סנכרון דינמי של `<link rel="canonical">` ו-`og:url` במעבר בין טאבים + סכמת `FAQPage` דו-לשונית.
+  - הוספת `?tab=beit_bina`, תגי `hreflang`, ורענון תאריכי `lastmod` ב-`public/sitemap.xml`.
+  - חיזוק מילות מפתח בעברית ב-`index.html` ובניית `docs/` בהצלחה (`tsc` + `vite build`).
 
 ---
 
 ## משימות פתוחות ומעקב שוטף (Backlog / Active)
 - [ ] **אישור וסינון פריטים ב-`moderation_queue`:** סקירה שוטפת דרך פאנל האדמין (`luzschedu@gmail.com`) של מודעות הדירות (`House Hunt Canacona`), סדנאות הילדים ואירועי הקהילה והעברתם ל-`approved`.
 - [ ] **הגדלת היצע הספקים המאומתים ב-`businesses` (יעד 50 ספקים):** כרגע יש 32 עסקים ב-`prodData.ts` (22 בפטנם, 10 בפאלולם, **0 באגונדה**). יש להשלים 18 ספקים נוספים בדגש על אגונדה ודיור/וילות (יישום מודל "פרופיל מתנה" 1-על-1 + קוד `#LUZ-XXXX`).
-- [ ] **שדרוג SEO ותשתית אורגנית (`src/utils/seoAndSchema.ts`, `public/sitemap.xml`, `index.html`):**
-  - עדכון דינמי של תג `<link rel="canonical">` במעבר בין טאבים.
-  - הוספת סכמת `FAQPage` קהילתית דו-לשונית.
-  - הוספת `?tab=beit_bina` ורענון תאריכי `lastmod` ב-`public/sitemap.xml`.
-  - חיזוק מילות מפתח בעברית ב-`index.html`.
+- [ ] **פריסה חיה ל-Firebase Hosting (`firebase deploy --only hosting`):** פרסום הבנייה המעודכנת אל `https://my-luz-dc028.web.app/`.

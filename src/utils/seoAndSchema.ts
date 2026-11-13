@@ -75,8 +75,19 @@ export function syncSeoAndStructuredData(params: {
   setMetaContent('property', 'og:title', title);
   setMetaContent('property', 'og:description', description);
 
+  const canonicalUrl =
+    activeTab && activeTab !== 'events'
+      ? `https://my-luz-dc028.web.app/?tab=${encodeURIComponent(activeTab)}`
+      : 'https://my-luz-dc028.web.app/';
+  setMetaContent('property', 'og:url', canonicalUrl);
+  const canonicalEl = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (canonicalEl) {
+    canonicalEl.href = canonicalUrl;
+  }
+
   // 2. Build Dynamic Schema.org JSON-LD Graph
   const graph: Record<string, unknown>[] = [];
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   // Events & Workshops -> schema.org/Event
   entities
@@ -86,7 +97,7 @@ export function syncSeoAndStructuredData(params: {
       const coords = AREA_COORDS[ev.area] || AREA_COORDS.Colomb;
       const startDate = ev.date
         ? `${ev.date}T${ev.startTime || '17:00'}:00+05:30`
-        : `2026-11-04T${ev.startTime || '16:30'}:00+05:30`;
+        : `${todayIso}T${ev.startTime || '16:30'}:00+05:30`;
 
       graph.push({
         '@type': 'Event',
@@ -178,6 +189,50 @@ export function syncSeoAndStructuredData(params: {
         longitude: coords.lng,
       },
     });
+  });
+
+  // Bilingual Community FAQPage -> schema.org/FAQPage
+  graph.push({
+    '@type': 'FAQPage',
+    '@id': 'https://my-luz-dc028.web.app/#faq',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: isHe
+          ? 'היכן למצוא דירות ווילות עם אינטרנט סיבים בדרום גואה?'
+          : 'Where to find homes and villas with verified fiber WiFi in South Goa?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: isHe
+            ? 'ב-LUZ Goa מרוכזות דירות ווילות מאומתות בפטנם, קולום, פאלולם ואגונדה עם חיבור סיבים אופטיים יציב.'
+            : 'LUZ Goa lists verified homes and villas in Patnem, Colomb, Palolem, and Agonda with stable optical fiber internet.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: isHe
+          ? 'אילו פעילויות וחוגים קיימים לילדים ולנוער בקולום ופטנם?'
+          : 'What youth and kids activities run in Colomb and Patnem?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: isHe
+            ? 'מתנ"ס קולום פועל 4 ימים בשבוע ומציע חוגי תנועה, יצירה, נגרות ומרחב קהילתי לבני 11–15 ולמשפחות.'
+            : 'Colomb Youth Center runs 4 days a week offering movement, arts, crafts, and a community space for ages 11–15 and families.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: isHe
+          ? 'מה קורה השבוע בבית בינ"ה בדרום גואה?'
+          : 'What is happening this week at Beit BINA in South Goa?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: isHe
+            ? 'בבית בינ"ה גואה מתקיימים טורנירי שחמט, אימוני תנועה, סדנאות לימוד וקבלת שבת ישראלית קהילתית.'
+            : 'Beit BINA Goa hosts weekly chess mornings, movement workshops, study circles, and community Kabbalat Shabbat.',
+        },
+      },
+    ],
   });
 
   // Inject into <script id="luz-dynamic-schema" type="application/ld+json">

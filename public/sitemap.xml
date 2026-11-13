@@ -4,7 +4,7 @@
   <!-- Main Production Hub (South Goa Community OS) -->
   <url>
     <loc>https://my-luz-dc028.web.app/</loc>
-    <lastmod>2026-11-02</lastmod>
+    <lastmod>2026-11-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="en" href="https://my-luz-dc028.web.app/?lang=en"/>
@@ -14,32 +14,50 @@
   <!-- Community Business Directory -->
   <url>
     <loc>https://my-luz-dc028.web.app/?tab=businesses</loc>
-    <lastmod>2026-11-02</lastmod>
+    <lastmod>2026-11-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://my-luz-dc028.web.app/?tab=businesses&amp;lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://my-luz-dc028.web.app/?tab=businesses&amp;lang=he"/>
+  </url>
+
+  <!-- Beit BINA Hub (Workshops, Weekly Schedule & Kabbalat Shabbat) -->
+  <url>
+    <loc>https://my-luz-dc028.web.app/?tab=beit_bina</loc>
+    <lastmod>2026-11-13</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://my-luz-dc028.web.app/?tab=beit_bina&amp;lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://my-luz-dc028.web.app/?tab=beit_bina&amp;lang=he"/>
   </url>
 
   <!-- Colomb Youth Center (Ages 11-15) -->
   <url>
     <loc>https://my-luz-dc028.web.app/?tab=youth_center</loc>
-    <lastmod>2026-11-02</lastmod>
+    <lastmod>2026-11-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://my-luz-dc028.web.app/?tab=youth_center&amp;lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://my-luz-dc028.web.app/?tab=youth_center&amp;lang=he"/>
   </url>
 
   <!-- Ben AI Community Assistant -->
   <url>
     <loc>https://my-luz-dc028.web.app/?tab=ben</loc>
-    <lastmod>2026-11-02</lastmod>
+    <lastmod>2026-11-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://my-luz-dc028.web.app/?tab=ben&amp;lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://my-luz-dc028.web.app/?tab=ben&amp;lang=he"/>
   </url>
 
   <!-- Provider Studio (Publish Event / Home / Service) -->
   <url>
     <loc>https://my-luz-dc028.web.app/?tab=provider</loc>
-    <lastmod>2026-11-02</lastmod>
+    <lastmod>2026-11-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://my-luz-dc028.web.app/?tab=provider&amp;lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://my-luz-dc028.web.app/?tab=provider&amp;lang=he"/>
   </url>
 </urlset>
