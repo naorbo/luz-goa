@@ -47,6 +47,8 @@
   - הוסרה דריסת `volunteers` מקומית על ידי `eventOverrides` ריקים ב-`YouthCenterView.tsx`.
   - נפתחה הרשאה מאובטחת ב-`firestore.rules` להורים לעדכן `volunteers` באירועי מרכז הנוער ונפרסה ל-Firebase.
   - הוטמעו השיבוצים של Sivan Ben Namer (`12.11`) ו-Smadar Hersckovitz (`19.11`) גם ב-`youthCenterEvents.ts` (ונבדק שהם קיימים ב-Firestore).
+- [x] **2026-11-14 | הסרת רשומת בדיקה (`Smadar Hersckovitz`) מאירוע 19.11 (`a7abbac`):**
+  - הוסרה מ-Firestore (`yc-2026-11-19-art`) ומ-`youthCenterEvents.ts`, נבנתה מחדש ונפרסה ל-Firebase Hosting ול-GitHub.
 
 ---
 
